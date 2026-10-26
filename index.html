@@ -295,7 +295,8 @@ async function openSpace(id){
  (settlements.map(x=>'<div class="movement"><div class="movinfo"><strong>'+esc(labels(x.from_user_id))+' → '+esc(labels(x.to_user_id))+'</strong><small>'+esc(fmtDate(x.paid_on))+'</small></div><div class="amount">'+eur(x.amount)+'</div></div>').join('')||emptyHtml('Nessun rimborso registrato','I rimborsi confermati compariranno qui.'))+
  '<p class="tiny muted">I nomi dei partecipanti non sono disponibili nelle tabelle attuali; per ora vengono mostrati identificativi abbreviati.</p>';
  // Gestione del click tramite delegazione globale.
- document.querySelectorAll('[data-confirm-settlement]').forEach(b=>b.addEventListener('click',()=>saveSettlement(id,plan[Number(b.dataset.confirmSettlement)])));
+ const addExpenseButton=$('addSpaceMovementTop');if(addExpenseButton)addExpenseButton.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();try{openTransactionForm(null,'expense',id);}catch(err){notify('Errore apertura spesa: '+(err.message||err),'error');}});
+  document.querySelectorAll('[data-confirm-settlement]').forEach(b=>b.addEventListener('click',()=>saveSettlement(id,plan[Number(b.dataset.confirmSettlement)])));
  const all=$('confirmAllSettlements');if(all)all.addEventListener('click',()=>saveSettlement(id,plan,true));
  const form=$('inviteForm');if(form)form.addEventListener('submit',async e=>{
   e.preventDefault();const email=$('inviteEmail').value.trim(),result=$('inviteResult');result.innerHTML='<p class="tiny muted">Creo l’invito…</p>';
