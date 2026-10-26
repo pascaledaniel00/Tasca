@@ -133,7 +133,7 @@ function txDate(t){return t?.occurred_on||t?.date||'';} function budgetMonth(b){
 function activeSpace(){return spaces.find(s=>s.id===activeSpaceId)||null;}
 function scopedTransactions(){return transactions.filter(t=>t.space_id===activeSpaceId);}
 function scopedBudgets(){return budgets.filter(b=>b.space_id===activeSpaceId);}
-function scopedRecurring(){return recurring.filter(r=>!r.space_id||r.space_id===activeSpaceId);}
+function scopedRecurring(){return recurring.filter(r=>r.space_id===activeSpaceId);}
 function renderSpaceSelector(){
  const select=$('activeSpaceSelect');if(!select)return;
  if(!spaces.length){select.innerHTML='<option value="">Nessuno spazio disponibile</option>';select.disabled=true;return;}
