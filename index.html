@@ -140,7 +140,7 @@ function renderHome(){
 }
 function renderTransactions(){
  const query=$('searchMovements').value.trim().toLowerCase(),type=$('filterType').value,month=$('filterMonth').value;
- const rows=[...transactions].filter(t=>(!query||`${t.description} ${t.category} ${t.notes||''}`.toLowerCase().includes(query))&&(!type||t.type===type)&&(!month||txDate(t).slice(0,7)===month)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const rows=[...transactions].filter(t=>(!query||`${t.description} ${t.category} ${t.notes||''}`.toLowerCase().includes(query))&&(!type||t.type===type)&&(!month||txDate(t).slice(0,7)===month)).sort((a,b)=>txDate(b).localeCompare(txDate(a)));
  $('transactionsList').innerHTML=rows.map(t=>movementHtml(t,true)).join('')||emptyHtml('Nessun risultato','Modifica i filtri o aggiungi un movimento.');
 }
 function renderBudgets(){
@@ -220,7 +220,7 @@ function openRecurringForm(r=null){
  <div class="field full"><label>Nome</label><input name="name" required maxlength="120" value="${esc(r?.name||'')}" placeholder="Es. rata telefono, NOW"></div>
  <div class="field"><label>Importo (€)</label>${moneyInput(r?.amount??'')}</div>
  <div class="field"><label>Categoria</label><select name="category">${categoriesOptions('expense',r?.category||'Abbonamenti e intrattenimento')}</select></div>
- <div class="field"><label>Frequenza</label><select name="interval"><option value="monthly" ${!r||r.interval==='monthly'?'selected':''}>Mensile</option><option value="weekly" ${r?.interval==='weekly'?'selected':''}>Settimanale</option><option value="yearly" ${r?.interval==='yearly'?'selected':''}>Annuale</option><option value="once" ${r?.interval==='once'?'selected':''}>Una tantum</option></select></div>
+ <div class="field"><label>Frequenza</label><select name="interval"><option value="monthly" ${!r||r.cadence==='monthly'?'selected':''}>Mensile</option><option value="weekly" ${r?.cadence==='weekly'?'selected':''}>Settimanale</option><option value="yearly" ${r?.cadence==='yearly'?'selected':''}>Annuale</option><option value="once" ${r?.interval==='once'?'selected':''}>Una tantum</option></select></div>
  <div class="field"><label>Prossima scadenza</label><input name="next_due" type="date" value="${esc(planDue(r)||today())}" required></div>
  <div class="field"><label>Rate residue (facoltativo)</label><input name="installments_remaining" type="number" min="0" step="1" value="${esc(r?.remaining_installments??'')}"></div>
  <div class="field"><label>Metodo di pagamento</label><select name="payment_method"><option value="">Non specificato</option>${['Carta','Apple Pay','Contanti','Bonifico','PayPal','Addebito diretto','Altro'].map(x=>`<option ${r?.payment_method===x?'selected':''}>${x}</option>`).join('')}</select></div>
