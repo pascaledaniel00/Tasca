@@ -201,7 +201,7 @@ async function loadData(){
   ]);
   for(const r of [tx,bg,rc,sp])if(r.error)throw r.error;
   transactions=tx.data||[];budgets=bg.data||[];recurring=rc.data||[];spaces=sp.data||[];
-   if(!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]||{}).id||null;
+   if(activeSpaceId!==ALL_SPACES&&!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]||{}).id||null;
    $('userLabel').textContent=user.email||'Account';renderAll();notice('');
  }catch(err){notice(`Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`, 'error');}
 }
