@@ -294,7 +294,7 @@ async function openSpace(id){
  planHtml+'<h3 style="margin-top:18px">Movimenti dello spazio</h3><div>'+rows.map(t=>movementHtml(t)).join('')+'</div><h3 style="margin-top:18px">Rimborsi registrati</h3>'+
  (settlements.map(x=>'<div class="movement"><div class="movinfo"><strong>'+esc(labels(x.from_user_id))+' → '+esc(labels(x.to_user_id))+'</strong><small>'+esc(fmtDate(x.paid_on))+'</small></div><div class="amount">'+eur(x.amount)+'</div></div>').join('')||emptyHtml('Nessun rimborso registrato','I rimborsi confermati compariranno qui.'))+
  '<p class="tiny muted">I nomi dei partecipanti non sono disponibili nelle tabelle attuali; per ora vengono mostrati identificativi abbreviati.</p>';
- $('addSpaceMovementTop').addEventListener('click',()=>openTransactionForm(null,'expense',id));
+ // Gestione del click tramite delegazione globale.
  document.querySelectorAll('[data-confirm-settlement]').forEach(b=>b.addEventListener('click',()=>saveSettlement(id,plan[Number(b.dataset.confirmSettlement)])));
  const all=$('confirmAllSettlements');if(all)all.addEventListener('click',()=>saveSettlement(id,plan,true));
  const form=$('inviteForm');if(form)form.addEventListener('submit',async e=>{
@@ -320,6 +320,7 @@ function initNavigation(){
   const tr=e.target.closest('[data-toggle-rec]');if(tr){const r=recurring.find(x=>x.id===tr.dataset.toggleRec);if(r)updateRecurring(r.id,{status:planActive(r)?'paused':'active'});return;}
   const dr=e.target.closest('[data-delete-rec]');if(dr){deleteRecurring(dr.dataset.deleteRec);return;}
   const cancelDelete=e.target.closest('[data-cancel-delete-space]');if(cancelDelete){closeModal();return;}const confirmDelete=e.target.closest('[data-confirm-delete-space]');if(confirmDelete){performDeleteSpace(confirmDelete.dataset.confirmDeleteSpace);return;}const ds=e.target.closest('[data-delete-space]');if(ds){deleteSpace(ds.dataset.deleteSpace);return;}
+  const addSpaceExpense=e.target.closest('#addSpaceMovementTop');if(addSpaceExpense){if(!selectedSpace){notify('Apri prima uno spazio.','error');return;}openTransactionForm(null,'expense',selectedSpace.id);return;}
   const os=e.target.closest('[data-open-space]');if(os){openSpace(os.dataset.openSpace);}
  });
 }
