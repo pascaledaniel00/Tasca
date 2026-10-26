@@ -130,16 +130,19 @@ function categoriesOptions(type,selected=''){const list=CATEGORIES[type]||CATEGO
 function typeLabel(t){return ({expense:'Uscita',income:'Entrata',transfer:'Trasferimento',refund:'Rimborso'})[t]||t;}
 function typeSign(t){return t==='income'||t==='refund'?'+':t==='transfer'?'↔':'−';}
 function txDate(t){return t?.occurred_on||t?.date||'';} function budgetMonth(b){return String(b.month_start||b.month||'').slice(0,7);} function planDue(r){return r.next_due_on||r.next_due||'';} function planActive(r){return (r.status||(r.active?'active':'paused'))==='active';}
+const ALL_SPACES='__all_spaces__';
 function activeSpace(){return spaces.find(s=>s.id===activeSpaceId)||null;}
-function scopedTransactions(){return transactions.filter(t=>t.space_id===activeSpaceId);}
-function scopedBudgets(){return budgets.filter(b=>b.space_id===activeSpaceId);}
-function scopedRecurring(){return recurring.filter(r=>r.space_id===activeSpaceId);}
+function isAllSpaces(){return activeSpaceId===ALL_SPACES;}
+function requireSpecificSpace(action){if(!isAllSpaces())return true;notify('Per '+action+' seleziona prima uno spazio specifico.','error');return false;}
+function scopedTransactions(){return transactions.filter(t=>isAllSpaces()||t.space_id===activeSpaceId);}
+function scopedBudgets(){return budgets.filter(b=>isAllSpaces()||b.space_id===activeSpaceId);}
+function scopedRecurring(){return recurring.filter(r=>isAllSpaces()||r.space_id===activeSpaceId);}
 function renderSpaceSelector(){
  const select=$('activeSpaceSelect');if(!select)return;
  if(!spaces.length){select.innerHTML='<option value="">Nessuno spazio disponibile</option>';select.disabled=true;return;}
- select.disabled=false;select.innerHTML=spaces.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+(s.space_type==='personal'?'Personale':s.space_type==='trip'?'Viaggio':'Condiviso')+'</option>').join('');
- if(!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]).id;
- select.value=activeSpaceId||'';
+ select.disabled=false;select.innerHTML='<option value="'+ALL_SPACES+'">Tutti gli spazi</option>'+spaces.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+(s.space_type==='personal'?'Personale':s.space_type==='trip'?'Viaggio':'Condiviso')+'</option>').join('');
+ if(activeSpaceId!==ALL_SPACES&&!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]).id;
+ select.value=activeSpaceId||ALL_SPACES;
 }
 function monthRows(month){return scopedTransactions().filter(t=>txDate(t).slice(0,7)===month);}
 function sums(rows){return rows.reduce((s,t)=>{const n=Number(t.amount)||0;if(t.type==='income'||t.type==='refund')s.income+=n;else if(t.type==='expense')s.expense+=n;else if(t.type==='transfer')s.transfer+=n;return s;},{income:0,expense:0,transfer:0});}
@@ -147,7 +150,7 @@ function monthSummary(month=monthNow()){const s=sums(monthRows(month));return {.
 function fmtDate(s){if(!s)return '—';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?s:d.toLocaleDateString('it-IT');}
 function movementHtml(t,actions=false){const positive=t.type==='income'||t.type==='refund';return `<div class="movement"><div class="movicon">${t.type==='income'?'↗':t.type==='transfer'?'⇄':t.type==='refund'?'↩':'↘'}</div><div class="movinfo"><strong>${esc(t.description||t.category||typeLabel(t.type))}</strong><small>${esc(fmtDate(txDate(t)))} · ${esc(t.category||typeLabel(t.type))}${t.payment_method?' · '+esc(t.payment_method):''}${t.status&&t.status!=='confirmed'?' · '+esc(t.status==='planned'?'Previsto':'Da verificare'):''}</small></div><div class="amount ${positive?'income':t.type==='expense'?'expense':''}">${typeSign(t.type)} ${eur(t.amount)}</div>${actions?`<div class="row-actions"><button class="btn small" data-edit-tx="${esc(t.id)}">Modifica</button><button class="btn small danger" data-delete-tx="${esc(t.id)}">Elimina</button></div>`:''}</div>`;}
 function emptyHtml(title,body){return `<div class="empty"><b>${esc(title)}</b>${esc(body)}</div>`;}
-function monthBudgetSpend(b){return scopedTransactions().filter(t=>t.type==='expense'&&txDate(t).slice(0,7)===budgetMonth(b)&&t.category===b.category).reduce((s,t)=>s+Number(t.amount||0),0);}
+function monthBudgetSpend(b){return transactions.filter(t=>t.space_id===b.space_id&&t.type==='expense'&&txDate(t).slice(0,7)===budgetMonth(b)&&t.category===b.category).reduce((s,t)=>s+Number(t.amount||0),0);}
 function renderHome(){
  const s=monthSummary();$('heroBalance').textContent=eur(s.residual);$('heroSubtitle').textContent=`${eur(s.income)} di entrate · ${eur(s.expense)} di uscite registrate a ${new Date().toLocaleDateString('it-IT',{month:'long'})}.`;
  $('goalValue').textContent=eur(goal);$('goalCaption').textContent=s.residual>=goal?`Obiettivo raggiunto: ${eur(s.residual-goal)} oltre il target`:`Mancano ${eur(goal-s.residual)} per raggiungere il target`;const p=goal===0?(s.residual>=0?100:0):Math.max(0,Math.min(100,s.residual/goal*100));$('goalProgress').style.width=p+'%';
@@ -325,8 +328,8 @@ async function openSpace(id){
 function initNavigation(){
  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.goto)));
- $('quickExpense').addEventListener('click',()=>openTransactionForm(null,'expense',activeSpaceId));$('quickIncome').addEventListener('click',()=>openTransactionForm(null,'income',activeSpaceId));$('newTransactionBtn').addEventListener('click',()=>openTransactionForm(null,'expense',activeSpaceId));$('newBudgetBtn').addEventListener('click',()=>openBudgetForm());$('newRecurringBtn').addEventListener('click',()=>openRecurringForm());$('newSpaceBtn').addEventListener('click',openSpaceForm);$('editGoalBtn').addEventListener('click',openGoalForm);
- $('activeSpaceSelect').addEventListener('change',e=>{activeSpaceId=e.target.value||null;renderAll();const current=activeSpace();notify(current?'Spazio attivo: '+current.name:'Seleziona uno spazio');});
+ $('quickExpense').addEventListener('click',()=>{if(requireSpecificSpace('registrare un movimento'))openTransactionForm(null,'expense',activeSpaceId);});$('quickIncome').addEventListener('click',()=>{if(requireSpecificSpace('registrare un movimento'))openTransactionForm(null,'income',activeSpaceId);});$('newTransactionBtn').addEventListener('click',()=>{if(requireSpecificSpace('registrare un movimento'))openTransactionForm(null,'expense',activeSpaceId);});$('newBudgetBtn').addEventListener('click',()=>{if(requireSpecificSpace('creare un budget'))openBudgetForm();});$('newRecurringBtn').addEventListener('click',()=>{if(requireSpecificSpace('creare una ricorrenza'))openRecurringForm();});$('newSpaceBtn').addEventListener('click',openSpaceForm);$('editGoalBtn').addEventListener('click',openGoalForm);
+ $('activeSpaceSelect').addEventListener('change',e=>{activeSpaceId=e.target.value||null;renderAll();const current=activeSpace();notify(isAllSpaces()?'Visualizzazione di tutti gli spazi':current?'Spazio attivo: '+current.name:'Seleziona uno spazio');});
   $('searchMovements').addEventListener('input',renderTransactions);$('filterType').addEventListener('change',renderTransactions);$('filterMonth').addEventListener('change',renderTransactions);$('budgetMonth').addEventListener('change',renderBudgets);
  $('refreshBtn').addEventListener('click',loadData);$('logoutBtn').addEventListener('click',async()=>{if(db)await db.auth.signOut();showLogin();});
  $('modalClose').addEventListener('click',closeModal);$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal();});
