@@ -47,6 +47,11 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
   <nav id="desktopNav" class="nav">
     <button data-page="home" class="active">Panoramica</button><button data-page="transactions">Movimenti</button><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button><button data-page="advice">Consigli</button><button data-page="spaces">Condivisione</button>
   </nav>
+  <div class="panel" style="margin-bottom:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <label for="activeSpaceSelect" style="font-size:12px;font-weight:700;color:var(--muted)">SPAZIO ATTIVO</label>
+    <select id="activeSpaceSelect" aria-label="Seleziona lo spazio da visualizzare" style="flex:1;min-width:180px;border:1px solid var(--line);background:white;border-radius:10px;padding:10px;color:var(--ink)"></select>
+    <span class="tiny muted">Movimenti, totali e budget mostrati per questo spazio</span>
+  </div>
   <div id="globalNotice" class="notice"></div>
   <main>
     <section id="page-home" class="section active">
@@ -111,7 +116,7 @@ const today = () => new Date().toLocaleDateString('sv-SE');
 const monthNow = () => today().slice(0,7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const validConfig = () => SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('INSERISCI') && SUPABASE_PUBLIC_KEY && !SUPABASE_PUBLIC_KEY.includes('INSERISCI');
-let db=null,user=null,page='home',transactions=[],budgets=[],recurring=[],spaces=[],editingTransaction=null,editingBudget=null,editingRecurring=null,selectedSpace=null,transactionSpaceId=null,toastTimer=null;
+let db=null,user=null,page='home',transactions=[],budgets=[],recurring=[],spaces=[],editingTransaction=null,editingBudget=null,editingRecurring=null,selectedSpace=null,activeSpaceId=null,transactionSpaceId=null,toastTimer=null;
 let goal = 40;
 try { goal = Math.max(0,Number(localStorage.getItem('tasca_monthly_goal') ?? 40)); } catch {}
 function notify(message,type='ok'){const el=$('toast');el.textContent=message;el.classList.remove('hidden');el.style.background=type==='error'?'#B84C43':'#1E2924';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.add('hidden'),3200);}
@@ -124,31 +129,43 @@ function moneyInput(value=''){return `<input name="amount" type="number" inputmo
 function categoriesOptions(type,selected=''){const list=CATEGORIES[type]||CATEGORIES.expense;return list.map(c=>`<option ${c===selected?'selected':''} value="${esc(c)}">${esc(c)}</option>`).join('');}
 function typeLabel(t){return ({expense:'Uscita',income:'Entrata',transfer:'Trasferimento',refund:'Rimborso'})[t]||t;}
 function typeSign(t){return t==='income'||t==='refund'?'+':t==='transfer'?'↔':'−';}
-function txDate(t){return t?.occurred_on||t?.date||'';} function budgetMonth(b){return String(b.month_start||b.month||'').slice(0,7);} function planDue(r){return r.next_due_on||r.next_due||'';} function planActive(r){return (r.status||(r.active?'active':'paused'))==='active';} function monthRows(month){return transactions.filter(t=>txDate(t).slice(0,7)===month);}
+function txDate(t){return t?.occurred_on||t?.date||'';} function budgetMonth(b){return String(b.month_start||b.month||'').slice(0,7);} function planDue(r){return r.next_due_on||r.next_due||'';} function planActive(r){return (r.status||(r.active?'active':'paused'))==='active';}
+function activeSpace(){return spaces.find(s=>s.id===activeSpaceId)||null;}
+function scopedTransactions(){return transactions.filter(t=>t.space_id===activeSpaceId);}
+function scopedBudgets(){return budgets.filter(b=>b.space_id===activeSpaceId);}
+function scopedRecurring(){return recurring.filter(r=>!r.space_id||r.space_id===activeSpaceId);}
+function renderSpaceSelector(){
+ const select=$('activeSpaceSelect');if(!select)return;
+ if(!spaces.length){select.innerHTML='<option value="">Nessuno spazio disponibile</option>';select.disabled=true;return;}
+ select.disabled=false;select.innerHTML=spaces.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+(s.space_type==='personal'?'Personale':s.space_type==='trip'?'Viaggio':'Condiviso')+'</option>').join('');
+ if(!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]).id;
+ select.value=activeSpaceId||'';
+}
+function monthRows(month){return scopedTransactions().filter(t=>txDate(t).slice(0,7)===month);}
 function sums(rows){return rows.reduce((s,t)=>{const n=Number(t.amount)||0;if(t.type==='income'||t.type==='refund')s.income+=n;else if(t.type==='expense')s.expense+=n;else if(t.type==='transfer')s.transfer+=n;return s;},{income:0,expense:0,transfer:0});}
 function monthSummary(month=monthNow()){const s=sums(monthRows(month));return {...s,residual:s.income-s.expense};}
 function fmtDate(s){if(!s)return '—';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?s:d.toLocaleDateString('it-IT');}
 function movementHtml(t,actions=false){const positive=t.type==='income'||t.type==='refund';return `<div class="movement"><div class="movicon">${t.type==='income'?'↗':t.type==='transfer'?'⇄':t.type==='refund'?'↩':'↘'}</div><div class="movinfo"><strong>${esc(t.description||t.category||typeLabel(t.type))}</strong><small>${esc(fmtDate(txDate(t)))} · ${esc(t.category||typeLabel(t.type))}${t.payment_method?' · '+esc(t.payment_method):''}${t.status&&t.status!=='confirmed'?' · '+esc(t.status==='planned'?'Previsto':'Da verificare'):''}</small></div><div class="amount ${positive?'income':t.type==='expense'?'expense':''}">${typeSign(t.type)} ${eur(t.amount)}</div>${actions?`<div class="row-actions"><button class="btn small" data-edit-tx="${esc(t.id)}">Modifica</button><button class="btn small danger" data-delete-tx="${esc(t.id)}">Elimina</button></div>`:''}</div>`;}
 function emptyHtml(title,body){return `<div class="empty"><b>${esc(title)}</b>${esc(body)}</div>`;}
-function monthBudgetSpend(b){return transactions.filter(t=>t.type==='expense'&&txDate(t).slice(0,7)===budgetMonth(b)&&t.category===b.category).reduce((s,t)=>s+Number(t.amount||0),0);}
+function monthBudgetSpend(b){return scopedTransactions().filter(t=>t.type==='expense'&&txDate(t).slice(0,7)===budgetMonth(b)&&t.category===b.category).reduce((s,t)=>s+Number(t.amount||0),0);}
 function renderHome(){
  const s=monthSummary();$('heroBalance').textContent=eur(s.residual);$('heroSubtitle').textContent=`${eur(s.income)} di entrate · ${eur(s.expense)} di uscite registrate a ${new Date().toLocaleDateString('it-IT',{month:'long'})}.`;
  $('goalValue').textContent=eur(goal);$('goalCaption').textContent=s.residual>=goal?`Obiettivo raggiunto: ${eur(s.residual-goal)} oltre il target`:`Mancano ${eur(goal-s.residual)} per raggiungere il target`;const p=goal===0?(s.residual>=0?100:0):Math.max(0,Math.min(100,s.residual/goal*100));$('goalProgress').style.width=p+'%';
  $('incomeTotal').textContent=eur(s.income);$('expenseTotal').textContent=eur(s.expense);$('monthResidual').textContent=eur(s.residual);$('residualCaption').textContent=s.residual>=goal?'Target raggiunto o superato':'Sotto il target mensile';
- const recent=[...transactions].sort((a,b)=>txDate(b).localeCompare(txDate(a))).slice(0,5);$('recentMovements').innerHTML=recent.map(t=>movementHtml(t)).join('')||emptyHtml('Nessun movimento ancora','Aggiungi la prima entrata o spesa.');
- const bs=budgets.filter(b=>budgetMonth(b)===monthNow()).slice(0,5);$('homeBudgets').innerHTML=bs.map(b=>{const spent=monthBudgetSpend(b),pct=Number(b.amount)>0?spent/Number(b.amount)*100:0;return `<div class="budgetrow"><div class="btop"><span>${esc(b.category)}</span><span>${eur(spent)} / ${eur(b.amount)}</span></div><div class="budgetbar"><span class="${pct>100?'over':''}" style="width:${Math.min(100,pct)}%"></span></div></div>`}).join('')||emptyHtml('Nessun budget per questo mese','Crea un limite per una categoria di spesa.');
+ const recent=[...scopedTransactions()].sort((a,b)=>txDate(b).localeCompare(txDate(a))).slice(0,5);$('recentMovements').innerHTML=recent.map(t=>movementHtml(t)).join('')||emptyHtml('Nessun movimento ancora','Aggiungi la prima entrata o spesa.');
+ const bs=scopedBudgets().filter(b=>budgetMonth(b)===monthNow()).slice(0,5);$('homeBudgets').innerHTML=bs.map(b=>{const spent=monthBudgetSpend(b),pct=Number(b.amount)>0?spent/Number(b.amount)*100:0;return `<div class="budgetrow"><div class="btop"><span>${esc(b.category)}</span><span>${eur(spent)} / ${eur(b.amount)}</span></div><div class="budgetbar"><span class="${pct>100?'over':''}" style="width:${Math.min(100,pct)}%"></span></div></div>`}).join('')||emptyHtml('Nessun budget per questo mese','Crea un limite per una categoria di spesa.');
 }
 function renderTransactions(){
  const query=$('searchMovements').value.trim().toLowerCase(),type=$('filterType').value,month=$('filterMonth').value;
- const rows=[...transactions].filter(t=>(!query||`${t.description} ${t.category} ${t.notes||''}`.toLowerCase().includes(query))&&(!type||t.type===type)&&(!month||txDate(t).slice(0,7)===month)).sort((a,b)=>txDate(b).localeCompare(txDate(a)));
+ const rows=[...scopedTransactions()].filter(t=>(!query||`${t.description} ${t.category} ${t.notes||''}`.toLowerCase().includes(query))&&(!type||t.type===type)&&(!month||txDate(t).slice(0,7)===month)).sort((a,b)=>txDate(b).localeCompare(txDate(a)));
  $('transactionsList').innerHTML=rows.map(t=>movementHtml(t,true)).join('')||emptyHtml('Nessun risultato','Modifica i filtri o aggiungi un movimento.');
 }
 function renderBudgets(){
- const month=$('budgetMonth').value||monthNow(),rows=budgets.filter(b=>budgetMonth(b)===month).sort((a,b)=>a.category.localeCompare(b.category));
+ const month=$('budgetMonth').value||monthNow(),rows=scopedBudgets().filter(b=>budgetMonth(b)===month).sort((a,b)=>a.category.localeCompare(b.category));
  $('budgetsList').innerHTML=rows.map(b=>{const spent=monthBudgetSpend(b),limit=Number(b.amount)||0,pct=limit?spent/limit*100:0;return `<div class="budgetrow"><div class="btop"><strong>${esc(b.category)}</strong><span>${eur(spent)} / ${eur(limit)} · ${Math.round(pct)}%</span></div><div class="budgetbar"><span class="${pct>100?'over':''}" style="width:${Math.min(100,pct)}%"></span></div><div class="btop muted" style="margin-top:6px"><span>${pct>100?'Superato': 'Residuo'}</span><span>${eur(limit-spent)}</span></div><div class="row-actions"><button class="btn small" data-edit-budget="${esc(b.id)}">Modifica</button><button class="btn small danger" data-delete-budget="${esc(b.id)}">Elimina</button></div></div>`}).join('')||emptyHtml('Nessun budget per questo mese','Aggiungi un budget mensile per categoria.');
 }
 function renderRecurring(){
- $('recurringList').innerHTML=[...recurring].sort((a,b)=>planDue(a).localeCompare(planDue(b))).map(r=>`<div class="movement"><div class="movicon">↻</div><div class="movinfo"><strong>${esc(r.name)}</strong><small>${esc(r.category||'Altra spesa')} · ${r.cadence==='monthly'?'Mensile':r.cadence==='weekly'?'Settimanale':r.cadence==='yearly'?'Annuale':'Una tantum'} · Prossima scadenza: ${esc(fmtDate(planDue(r)))}${r.remaining_installments!=null?' · Rate residue: '+esc(r.remaining_installments):''}</small><small>${planActive(r)?'Attiva':'Sospesa'}</small></div><div class="amount expense">${eur(r.amount)}</div><div class="row-actions"><button class="btn small" data-edit-rec="${esc(r.id)}">Modifica</button><button class="btn small" data-toggle-rec="${esc(r.id)}">${planActive(r)?'Sospendi':'Riattiva'}</button><button class="btn small danger" data-delete-rec="${esc(r.id)}">Elimina</button></div></div>`).join('')||emptyHtml('Nessuna ricorrenza registrata','Aggiungi abbonamenti, rate e pagamenti previsti.');
+ $('recurringList').innerHTML=[...scopedRecurring()].sort((a,b)=>planDue(a).localeCompare(planDue(b))).map(r=>`<div class="movement"><div class="movicon">↻</div><div class="movinfo"><strong>${esc(r.name)}</strong><small>${esc(r.category||'Altra spesa')} · ${r.cadence==='monthly'?'Mensile':r.cadence==='weekly'?'Settimanale':r.cadence==='yearly'?'Annuale':'Una tantum'} · Prossima scadenza: ${esc(fmtDate(planDue(r)))}${r.remaining_installments!=null?' · Rate residue: '+esc(r.remaining_installments):''}</small><small>${planActive(r)?'Attiva':'Sospesa'}</small></div><div class="amount expense">${eur(r.amount)}</div><div class="row-actions"><button class="btn small" data-edit-rec="${esc(r.id)}">Modifica</button><button class="btn small" data-toggle-rec="${esc(r.id)}">${planActive(r)?'Sospendi':'Riattiva'}</button><button class="btn small danger" data-delete-rec="${esc(r.id)}">Elimina</button></div></div>`).join('')||emptyHtml('Nessuna ricorrenza registrata','Aggiungi abbonamenti, rate e pagamenti previsti.');
 }
 function renderAdvice(){
  const s=monthSummary(),rows=monthRows(monthNow()).filter(t=>t.type==='expense'),cats={};rows.forEach(t=>cats[t.category||'Da classificare']=(cats[t.category||'Da classificare']||0)+Number(t.amount||0));
@@ -164,7 +181,7 @@ function renderAdvice(){
 function renderSpaces(){
  $('spacesList').innerHTML=spaces.map(s=>{const kind=s.space_type==='personal'?'personal':s.space_type==='trip'?'trip':'shared';const label=kind==='personal'?'Personale':kind==='trip'?'Viaggio':'Condiviso';const symbol=kind==='personal'?'●':kind==='trip'?'✈':'●';return `<div class="space-card ${kind}"><div class="movicon ${kind}">${symbol}</div><div class="movinfo"><strong>${esc(s.name)}</strong><div><span class="space-type ${kind}">${label}</span></div><small>Creato ${esc(fmtDate((s.created_at||'').slice(0,10)))}</small></div><div class="space-buttons"><button class="btn small" data-open-space="${esc(s.id)}">Apri</button><button class="btn small danger" data-delete-space="${esc(s.id)}" type="button">Elimina</button></div></div>`;}).join('')||emptyHtml('Nessuno spazio disponibile','Crea uno spazio personale o condiviso per iniziare.');
 }
-function renderAll(){renderHome();renderTransactions();renderBudgets();renderRecurring();renderAdvice();renderSpaces();}
+function renderAll(){renderSpaceSelector();renderHome();renderTransactions();renderBudgets();renderRecurring();renderAdvice();renderSpaces();}
 function showAuth(mode){const signup=mode==='signup',reset=mode==='reset';$('authPassword').type='password';$('togglePassword').setAttribute('aria-label','Mostra password');$('togglePassword').setAttribute('title','Mostra password');$('togglePassword').setAttribute('aria-pressed','false');$('authTitle').textContent=signup?'Crea il tuo account':reset?'Recupera la password':'Bentornato';$('authSubtitle').textContent=signup?'Registrati per salvare i tuoi movimenti in modo sicuro.':reset?'Ti invieremo le istruzioni per reimpostare la password.':'Accedi per sincronizzare le tue finanze.';$('authPassword').classList.toggle('hidden',reset);$('authPassword').required=!reset;$('authConfirmWrap').classList.toggle('hidden',!signup);$('authConfirm').required=signup;$('authSubmit').textContent=signup?'Registrati':reset?'Invia istruzioni':'Accedi';$('showSignup').classList.toggle('hidden',signup);$('showReset').classList.toggle('hidden',reset);$('authForm').dataset.mode=mode;showAuthMessage('');}
 async function authSubmit(e){e.preventDefault();if(!db){showAuthMessage('Configura prima URL e chiave pubblica Supabase nel codice.','error');return;}const mode=$('authForm').dataset.mode,email=$('authEmail').value.trim(),password=$('authPassword').value;try{$('authSubmit').disabled=true;if(mode==='signup'){if(password!==$('authConfirm').value)throw new Error('Le password non coincidono.');const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;showAuthMessage('Registrazione inviata. Se la conferma email è attiva, controlla la posta prima di accedere.');}else if(mode==='reset'){const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;showAuthMessage('Se l’indirizzo è registrato, riceverai le istruzioni via email.');}else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;}}catch(err){showAuthMessage(err.message||'Operazione non riuscita.','error');}finally{$('authSubmit').disabled=false;}}
 function showApp(){ $('authScreen').classList.add('hidden');$('appScreen').classList.remove('hidden');$('mobileNav').classList.remove('hidden');}
@@ -181,11 +198,12 @@ async function loadData(){
   ]);
   for(const r of [tx,bg,rc,sp])if(r.error)throw r.error;
   transactions=tx.data||[];budgets=bg.data||[];recurring=rc.data||[];spaces=sp.data||[];
-  $('userLabel').textContent=user.email||'Account';renderAll();notice('');
+   if(!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]||{}).id||null;
+   $('userLabel').textContent=user.email||'Account';renderAll();notice('');
  }catch(err){notice(`Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`, 'error');}
 }
 function openTransactionForm(t=null,defaultType='expense',spaceId=null){
- editingTransaction=t;transactionSpaceId=t?.space_id||spaceId||null;
+ editingTransaction=t;transactionSpaceId=t?.space_id||spaceId||activeSpaceId||null;
  const type=t?.type||defaultType;
  openModal(t?'Modifica movimento':'Nuovo movimento',`<form id="txForm"><div class="formgrid">
  <div class="field"><label>Tipo</label><select name="type" id="txType"><option value="expense" ${type==='expense'?'selected':''}>Uscita</option><option value="income" ${type==='income'?'selected':''}>Entrata</option><option value="transfer" ${type==='transfer'?'selected':''}>Trasferimento</option><option value="refund" ${type==='refund'?'selected':''}>Rimborso</option></select></div>
@@ -201,7 +219,7 @@ function openTransactionForm(t=null,defaultType='expense',spaceId=null){
  $('txForm').addEventListener('submit',saveTransaction);
 }
 async function saveTransaction(e){
- e.preventDefault();if(!db||!user)return;const f=new FormData(e.target),spaceId=transactionSpaceId||spaces.find(s=>s.space_type==='personal')?.id,payload={space_id:spaceId,type:f.get('type'),amount:Number(f.get('amount')),currency:'EUR',description:String(f.get('description')).trim(),category:f.get('category'),occurred_on:f.get('date'),paid_by:user.id,created_by:user.id,payment_method:f.get('payment_method')||null,status:f.get('status'),notes:f.get('notes')||null};
+ e.preventDefault();if(!db||!user)return;const f=new FormData(e.target),spaceId=transactionSpaceId||activeSpaceId||spaces.find(s=>s.space_type==='personal')?.id,payload={space_id:spaceId,type:f.get('type'),amount:Number(f.get('amount')),currency:'EUR',description:String(f.get('description')).trim(),category:f.get('category'),occurred_on:f.get('date'),paid_by:user.id,created_by:user.id,payment_method:f.get('payment_method')||null,status:f.get('status'),notes:f.get('notes')||null};
  if(!payload.space_id){notify('Crea prima uno spazio personale nella sezione Spazi.','error');return;}if(!(payload.amount>0)){notify('Inserisci un importo maggiore di zero.','error');return;}
  try{const q=editingTransaction?db.from('transactions').update(payload).eq('id',editingTransaction.id):db.from('transactions').insert(payload);const {error}=await q;if(error)throw error;const savedSpaceId=transactionSpaceId;transactionSpaceId=null;closeModal();notify(editingTransaction?'Movimento aggiornato':'Movimento registrato');await loadData();if(savedSpaceId&&selectedSpace?.id===savedSpaceId)await openSpace(savedSpaceId);}catch(err){notify(err.message||'Errore nel salvataggio','error');}
 }
@@ -212,7 +230,7 @@ function openBudgetForm(b=null){
  <div class="field full"><label>Categoria</label><select name="category" required>${[...CATEGORIES.expense,...new Set(budgets.map(x=>x.category))].filter((x,i,a)=>a.indexOf(x)===i).map(c=>`<option ${b?.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
  <div class="field"><label>Limite mensile (€)</label>${moneyInput(b?.amount??'')}</div><div class="field"><label>Mese</label><input name="month" type="month" required value="${esc(budgetMonth(b)||month)}"></div>
  </div><button class="btn primary full" style="margin-top:14px" type="submit">Salva budget</button></form>`);
- $('budgetForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),payload={space_id:b?.space_id||spaces.find(s=>s.space_type==='personal')?.id,category:f.get('category'),amount:Number(f.get('amount')),month_start:f.get('month')+'-01'};try{if(!payload.space_id)throw new Error('Crea prima uno spazio personale nella sezione Spazi.');if(!(payload.amount>0))throw new Error('Il limite deve essere maggiore di zero.');const same=budgets.find(x=>x.category===payload.category&&budgetMonth(x)===f.get('month')&&x.id!==b?.id);if(same)throw new Error('Esiste già un budget per questa categoria e questo mese.');const q=b?db.from('budgets').update(payload).eq('id',b.id):db.from('budgets').insert(payload);const {error}=await q;if(error)throw error;closeModal();notify('Budget salvato');await loadData();}catch(err){notify(err.message,'error');}});
+ $('budgetForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),payload={space_id:b?.space_id||activeSpaceId||spaces.find(s=>s.space_type==='personal')?.id,category:f.get('category'),amount:Number(f.get('amount')),month_start:f.get('month')+'-01'};try{if(!payload.space_id)throw new Error('Crea prima uno spazio personale nella sezione Spazi.');if(!(payload.amount>0))throw new Error('Il limite deve essere maggiore di zero.');const same=budgets.find(x=>x.category===payload.category&&budgetMonth(x)===f.get('month')&&x.id!==b?.id);if(same)throw new Error('Esiste già un budget per questa categoria e questo mese.');const q=b?db.from('budgets').update(payload).eq('id',b.id):db.from('budgets').insert(payload);const {error}=await q;if(error)throw error;closeModal();notify('Budget salvato');await loadData();}catch(err){notify(err.message,'error');}});
 }
 async function deleteBudget(id){if(!confirm('Eliminare questo budget?'))return;const {error}=await db.from('budgets').delete().eq('id',id);if(error){notify(error.message,'error');return;}await loadData();notify('Budget eliminato');}
 function openRecurringForm(r=null){
@@ -257,7 +275,7 @@ async function saveSettlement(spaceId,payment,bulk=false){
  }catch(err){notify('Rimborso non registrato: '+(err.message||'errore database'),'error');}
 }
 async function openSpace(id){
- const s=spaces.find(x=>x.id===id);if(!s)return;selectedSpace=s;
+ const s=spaces.find(x=>x.id===id);if(!s)return;selectedSpace=s;activeSpaceId=id;renderSpaceSelector();renderHome();renderTransactions();renderBudgets();renderRecurring();renderAdvice();
  const [tx,sh,st,mem]=await Promise.all([
   db.from('transactions').select('*').eq('space_id',id).order('occurred_on',{ascending:false}).limit(500),
   db.from('expense_shares').select('transaction_id,user_id,share_amount').limit(5000),
@@ -307,8 +325,9 @@ async function openSpace(id){
 function initNavigation(){
  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.goto)));
- $('quickExpense').addEventListener('click',()=>openTransactionForm(null,'expense'));$('quickIncome').addEventListener('click',()=>openTransactionForm(null,'income'));$('newTransactionBtn').addEventListener('click',()=>openTransactionForm());$('newBudgetBtn').addEventListener('click',()=>openBudgetForm());$('newRecurringBtn').addEventListener('click',()=>openRecurringForm());$('newSpaceBtn').addEventListener('click',openSpaceForm);$('editGoalBtn').addEventListener('click',openGoalForm);
- $('searchMovements').addEventListener('input',renderTransactions);$('filterType').addEventListener('change',renderTransactions);$('filterMonth').addEventListener('change',renderTransactions);$('budgetMonth').addEventListener('change',renderBudgets);
+ $('quickExpense').addEventListener('click',()=>openTransactionForm(null,'expense',activeSpaceId));$('quickIncome').addEventListener('click',()=>openTransactionForm(null,'income',activeSpaceId));$('newTransactionBtn').addEventListener('click',()=>openTransactionForm(null,'expense',activeSpaceId));$('newBudgetBtn').addEventListener('click',()=>openBudgetForm());$('newRecurringBtn').addEventListener('click',()=>openRecurringForm());$('newSpaceBtn').addEventListener('click',openSpaceForm);$('editGoalBtn').addEventListener('click',openGoalForm);
+ $('activeSpaceSelect').addEventListener('change',e=>{activeSpaceId=e.target.value||null;renderAll();const current=activeSpace();notify(current?'Spazio attivo: '+current.name:'Seleziona uno spazio');});
+  $('searchMovements').addEventListener('input',renderTransactions);$('filterType').addEventListener('change',renderTransactions);$('filterMonth').addEventListener('change',renderTransactions);$('budgetMonth').addEventListener('change',renderBudgets);
  $('refreshBtn').addEventListener('click',loadData);$('logoutBtn').addEventListener('click',async()=>{if(db)await db.auth.signOut();showLogin();});
  $('modalClose').addEventListener('click',closeModal);$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal();});
  $('togglePassword').addEventListener('click',()=>{const input=$('authPassword'),show=input.type==='password';input.type=show?'text':'password';$('togglePassword').setAttribute('aria-label',show?'Nascondi password':'Mostra password');$('togglePassword').setAttribute('title',show?'Nascondi password':'Mostra password');$('togglePassword').setAttribute('aria-pressed',String(show));});$('showSignup').addEventListener('click',()=>showAuth('signup'));$('showReset').addEventListener('click',()=>showAuth('reset'));$('authForm').addEventListener('submit',authSubmit);
