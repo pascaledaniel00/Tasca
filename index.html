@@ -192,7 +192,7 @@ function openTransactionForm(t=null,defaultType='expense',spaceId=null){
  <div class="field"><label>Importo (€)</label>${moneyInput(t?.amount??'')}</div>
  <div class="field full"><label>Descrizione</label><input name="description" required maxlength="160" value="${esc(t?.description||'')}" placeholder="Es. spesa supermercato"></div>
  <div class="field"><label>Categoria</label><select name="category" id="txCategory">${categoriesOptions(type,t?.category||'')}</select></div>
- <div class="field"><label>Data operazione</label><input name="date" type="date" required value="${esc(t?.date||today())}"></div>
+ <div class="field"><label>Data operazione</label><input name="date" type="date" required value="${esc(txDate(t)||today())}"></div>
  <div class="field"><label>Metodo di pagamento</label><select name="payment_method"><option value="">Non specificato</option>${['Carta','Apple Pay','Contanti','Bonifico','PayPal','Addebito diretto','Altro'].map(x=>`<option ${t?.payment_method===x?'selected':''}>${x}</option>`).join('')}</select></div>
  <div class="field"><label>Stato</label><select name="status"><option value="confirmed" ${!t||t.status==='confirmed'?'selected':''}>Confermato</option><option value="planned" ${t?.status==='planned'?'selected':''}>Previsto</option><option value="verify" ${t?.status==='verify'?'selected':''}>Da verificare</option></select></div>
  <div class="field full"><label>Note (facoltative)</label><textarea name="notes" maxlength="1000">${esc(t?.notes||'')}</textarea></div>
