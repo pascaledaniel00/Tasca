@@ -124,7 +124,7 @@ function moneyInput(value=''){return `<input name="amount" type="number" inputmo
 function categoriesOptions(type,selected=''){const list=CATEGORIES[type]||CATEGORIES.expense;return list.map(c=>`<option ${c===selected?'selected':''} value="${esc(c)}">${esc(c)}</option>`).join('');}
 function typeLabel(t){return ({expense:'Uscita',income:'Entrata',transfer:'Trasferimento',refund:'Rimborso'})[t]||t;}
 function typeSign(t){return t==='income'||t==='refund'?'+':t==='transfer'?'↔':'−';}
-function txDate(t){return t.occurred_on||t.date||'';} function budgetMonth(b){return String(b.month_start||b.month||'').slice(0,7);} function planDue(r){return r.next_due_on||r.next_due||'';} function planActive(r){return (r.status||(r.active?'active':'paused'))==='active';} function monthRows(month){return transactions.filter(t=>txDate(t).slice(0,7)===month);}
+function txDate(t){return t?.occurred_on||t?.date||'';} function budgetMonth(b){return String(b.month_start||b.month||'').slice(0,7);} function planDue(r){return r.next_due_on||r.next_due||'';} function planActive(r){return (r.status||(r.active?'active':'paused'))==='active';} function monthRows(month){return transactions.filter(t=>txDate(t).slice(0,7)===month);}
 function sums(rows){return rows.reduce((s,t)=>{const n=Number(t.amount)||0;if(t.type==='income'||t.type==='refund')s.income+=n;else if(t.type==='expense')s.expense+=n;else if(t.type==='transfer')s.transfer+=n;return s;},{income:0,expense:0,transfer:0});}
 function monthSummary(month=monthNow()){const s=sums(monthRows(month));return {...s,residual:s.income-s.expense};}
 function fmtDate(s){if(!s)return '—';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?s:d.toLocaleDateString('it-IT');}
