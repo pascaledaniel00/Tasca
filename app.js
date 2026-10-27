@@ -3,6 +3,7 @@ import {
   categoryBreakdown,
   monthlyTrend,
   summarizeTransactions,
+  validateTransactionInput,
 } from './finance-core.js';
 
 (() => {
