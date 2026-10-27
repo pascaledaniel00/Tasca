@@ -120,3 +120,10 @@ html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840
  line-height: 1;
 }
 #desktopNav button[data-page]:hover::after { opacity: .9; }
+
+
+/* Utility classes for settings and the monthly goal progress indicator. */
+.goal-progress-fill { width: 0%; }
+.settings-inline-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.settings-theme-label { margin-right: 12px; }
+.settings-actions-row { gap: 8px; flex-wrap: wrap; }
