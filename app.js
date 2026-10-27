@@ -1732,8 +1732,7 @@ import {
     const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
       (item) => normalizeCategory(item) === normalizeCategory(rawCategory)
     );
-    const category =
-      shortcutCategoryAliases[rawCategory] || canonicalCategory || 'Da verificare';
+    const category = shortcutCategoryAliases[rawCategory] || canonicalCategory || 'Da verificare';
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
@@ -1756,7 +1755,7 @@ import {
               : space.space_type === 'trip'
                 ? 'Progetto/viaggio'
                 : 'Condiviso';
-          return (index + 1) + '. ' + space.name + ' (' + kind + ')';
+          return index + 1 + '. ' + space.name + ' (' + kind + ')';
         })
         .join('\n');
       const choice = window.prompt(
@@ -1770,11 +1769,7 @@ import {
         return;
       }
       const selectedIndex = Number(choice.trim()) - 1;
-      if (
-        !Number.isInteger(selectedIndex) ||
-        selectedIndex < 0 ||
-        selectedIndex >= spaces.length
-      ) {
+      if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= spaces.length) {
         notify('Numero dello spazio non valido. Riapri il collegamento e riprova.', 'error');
         return;
       }
