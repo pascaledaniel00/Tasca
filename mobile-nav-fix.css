@@ -160,3 +160,46 @@ video {
     flex: 0 0 auto;
   }
 }
+
+
+/* Home: align the two lower dashboard cards and their headings consistently. */
+#page-home .layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+#page-home .layout > .panel {
+  min-width: 0;
+  height: 100%;
+}
+
+#page-home .layout > .panel > .panelhead {
+  min-height: 34px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+#page-home .layout > .panel > .panelhead h3 {
+  min-width: 0;
+  line-height: 1.35;
+}
+
+#page-home .layout > .panel > .panelhead .btn {
+  flex: 0 0 auto;
+}
+
+#page-home #recentMovements,
+#page-home #homeBudgets {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 760px) {
+  #page-home .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #page-home .layout > .panel > .panelhead {
+    min-height: 0;
+  }
+}
