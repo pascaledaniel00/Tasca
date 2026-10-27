@@ -1644,7 +1644,10 @@ import {
         e.preventDefault();
         const spaceId = addSpaceMovement.dataset.spaceId;
         if (!spaceId || !spaces.some((space) => space.id === spaceId)) {
-          notify('Non riesco a identificare lo spazio per questa spesa. Riapri lo spazio e riprova.', 'error');
+          notify(
+            'Non riesco a identificare lo spazio per questa spesa. Riapri lo spazio e riprova.',
+            'error'
+          );
           return;
         }
         try {
