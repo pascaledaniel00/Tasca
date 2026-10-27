@@ -322,6 +322,26 @@ import {
         })
         .join('') ||
       emptyHtml('Nessun budget per questo mese', 'Crea un limite per una categoria di spesa.');
+    const playful = $('homeBudgetNudge');
+    if (playful) {
+      const pressured = bs
+        .map((b) => ({ category: b.category, pct: Number(b.amount) > 0 ? (monthBudgetSpend(b) / Number(b.amount)) * 100 : 0 }))
+        .sort((a, b) => b.pct - a.pct)[0];
+      const day = new Date().getDate();
+      let message = 'Ogni euro registrato è un piccolo passo verso un budget più chiaro. Anche il caffè conta!';
+      if (pressured && pressured.pct >= 100) {
+        message = pressured.category.toLowerCase().includes('bar') || pressured.category.toLowerCase().includes('cene')
+          ? 'Ehm… qui il budget ha già dato tutto. Gli smiski possono aspettare il mese prossimo 😅'
+          : `Ops: hai già superato il budget “${pressured.category}”. Facciamo respirare questa categoria fino a fine mese.`;
+      } else if (pressured && pressured.pct >= 75 && day <= 10) {
+        message = `Ehi! Siamo già al ${Math.round(pressured.pct)}% del budget “${pressured.category}” e il mese è appena iniziato. Gli smiski possono aspettare 😄`;
+      } else if (pressured && pressured.pct >= 75) {
+        message = `Occhio al budget “${pressured.category}”: sei al ${Math.round(pressured.pct)}%. Un piccolo rallentamento ora può salvare il residuo di fine mese.`;
+      } else if (s.residual < goal) {
+        message = `Il target di fine mese è ${eur(goal)}: per ora mancano ${eur(goal - s.residual)}. Piccoli passi, senza panico.`;
+      }
+      playful.textContent = message;
+    }
     renderDashboardCharts();
   }
   function renderDashboardCharts() {
