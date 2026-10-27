@@ -130,8 +130,11 @@ export function calculateParticipantBalances(memberIds = [], expenses = [], shar
     const amount = amountOf(expense);
     if (balances.has(expense.paid_by)) balances.set(expense.paid_by, balances.get(expense.paid_by) + amount);
   }
+  const eligibleExpenseIds = new Set(
+    expenses.filter((expense) => expense?.type === 'expense' && expense?.status === 'confirmed').map((expense) => expense.id)
+  );
   for (const share of shares) {
-    if (!balances.has(share.user_id)) continue;
+    if (!eligibleExpenseIds.has(share.transaction_id) || !balances.has(share.user_id)) continue;
     balances.set(share.user_id, balances.get(share.user_id) - amountOf({ amount: share.share_amount }));
   }
   for (const settlement of settlements) {
