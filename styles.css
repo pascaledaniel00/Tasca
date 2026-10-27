@@ -49,7 +49,7 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
 #navBackdrop{display:none}
 @media(min-width:721px){.app:not(.hidden){width:calc(100% - 246px);max-width:none;margin-left:246px;margin-right:0;padding:22px 28px 40px}.top{margin-bottom:24px}}
 @media(max-width:720px){#desktopNav{width:min(300px,86vw);transition:transform .22s ease,visibility .22s ease}#desktopNav button:focus-visible,#mobileMenuBtn:focus-visible{outline:3px solid var(--g);outline-offset:2px}.app{width:100%;max-width:none;margin:0;padding:calc(12px + env(safe-area-inset-top)) 13px calc(24px + env(safe-area-inset-bottom))}.top{align-items:center}.nav{display:flex;position:fixed;z-index:41;left:0;top:0;bottom:0;margin:0;padding:calc(22px + env(safe-area-inset-top)) 15px 22px;flex-direction:column;align-items:stretch;gap:6px;flex-wrap:nowrap;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);box-shadow:18px 0 50px #0002;transform:translateX(-105%);transition:transform .22s ease;visibility:hidden}.nav.open{transform:translateX(0);visibility:visible}#mobileMenuBtn{display:grid;place-items:center}.brand-home{margin-right:auto}.brand-copy p{display:none}#navBackdrop.open{display:block;position:fixed;z-index:40;inset:0;background:#101b1680;backdrop-filter:blur(2px)}.bottomnav{display:none!important}}
-@media(prefers-reduced-motion:reduce){#desktopNav{transition:none}}
+@media(prefers-reduced-motion:reduce){#desktopNav,.nav{transition:none}}
 
 /* Schermata iPhone: layout a tutta larghezza e icona SVG locale ispirata a Comandi Rapidi. */
 #page-shortcut{display:none;width:100%;max-width:none;min-width:0}
@@ -64,14 +64,10 @@ html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840
 @media(max-width:720px){#page-shortcut .shortcut-hero{padding:clamp(16px,4vw,24px)}#page-shortcut .shortcut-steps{grid-template-columns:1fr}}
 
 
-/* Home: scorciatoie per creare spazi personali o condivisi */
-.home-space-actions{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 14px}
+/* Azioni della home: layout responsive consolidato nel blocco sottostante. */
 .home-space-copy{min-width:0}
 .home-space-copy h3{margin:0 0 5px;font-size:16px}
 .home-space-copy p{margin:0;line-height:1.5}
-.home-space-buttons{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
-@media(max-width:720px){.home-space-actions{align-items:stretch;flex-direction:column;gap:13px}.home-space-buttons{display:grid;grid-template-columns:1fr 1fr}.home-space-buttons .btn{min-height:44px;padding:10px 8px;font-size:13px}}
-@media(max-width:380px){.home-space-buttons{grid-template-columns:1fr}}
 
 
 /* Layout più robusto: evita sovrapposizioni nei pannelli e nelle azioni della home. */
