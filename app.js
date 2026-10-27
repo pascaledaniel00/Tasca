@@ -3,6 +3,7 @@ import {
   categoryBreakdown,
   monthlyTrend,
   summarizeTransactions,
+  validateTransactionInput,
 } from './finance-core.js';
 
 (() => {
@@ -78,7 +79,9 @@ import {
     activeSpaceId = null,
     transactionSpaceId = null,
     toastTimer = null;
-  let shortcutImportRunning = false;
+  let shortcutImportRunning = false,
+    dataLoadSequence = 0,
+    transactionSaving = false;
   let goal = 40;
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
@@ -141,7 +144,8 @@ import {
     $('modalBody').innerHTML = html;
     $('modal').classList.add('open');
   }
-  function closeModal() {
+  function closeModal(force = false) {
+    if (transactionSaving && !force) return;
     $('modal').classList.remove('open');
     $('modalBody').innerHTML = '';
     closeAccountPopover();
@@ -570,7 +574,18 @@ import {
     $('mobileNav').classList.remove('hidden');
   }
   function showLogin() {
+    dataLoadSequence += 1;
     user = null;
+    transactions = [];
+    budgets = [];
+    recurring = [];
+    spaces = [];
+    activeSpaceId = null;
+    selectedSpace = null;
+    transactionSpaceId = null;
+    editingTransaction = null;
+    closeModal(true);
+    notice('');
     $('appScreen').classList.add('hidden');
     $('mobileNav').classList.add('hidden');
     $('authScreen').classList.remove('hidden');
@@ -590,6 +605,8 @@ import {
 
   async function loadData() {
     if (!db || !user) return;
+    const requestId = ++dataLoadSequence;
+    const requestUserId = user.id;
     notice('Aggiornamento dei dati…');
     try {
       const [tx, bg, rc, sp] = await Promise.all([
@@ -604,6 +621,7 @@ import {
         ),
         fetchAllRows(() => db.from('spaces').select('*').order('created_at', { ascending: false })),
       ]);
+      if (requestId !== dataLoadSequence || user?.id !== requestUserId) return;
       transactions = tx;
       budgets = bg;
       recurring = rc;
@@ -613,9 +631,11 @@ import {
           (spaces.find((space) => space.space_type === 'personal') || spaces[0] || {}).id || null;
       }
       renderAll();
+      if (requestId !== dataLoadSequence || user?.id !== requestUserId) return;
       notice('');
       await processShortcutImport();
     } catch (err) {
+      if (requestId !== dataLoadSequence || user?.id !== requestUserId) return;
       notice(
         `Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`,
         'error'
@@ -646,10 +666,13 @@ import {
   }
   async function saveTransaction(e) {
     e.preventDefault();
-    if (!db || !user) return;
+    if (!db || !user || transactionSaving) return;
     const f = new FormData(e.target),
       spaceId =
         transactionSpaceId || activeSpaceId || spaces.find((s) => s.space_type === 'personal')?.id,
+      isEditing = Boolean(editingTransaction),
+      editingId = editingTransaction?.id,
+      savedSpaceId = transactionSpaceId,
       payload = {
         space_id: spaceId,
         type: f.get('type'),
@@ -664,28 +687,32 @@ import {
         status: f.get('status'),
         notes: f.get('notes') || null,
       };
-    if (!payload.space_id) {
-      notify('Crea prima uno spazio personale nella sezione Spazi.', 'error');
+    const validationError = validateTransactionInput(payload);
+    if (validationError) {
+      notify(validationError, 'error');
       return;
     }
-    if (!(payload.amount > 0)) {
-      notify('Inserisci un importo maggiore di zero.', 'error');
-      return;
-    }
+
+    transactionSaving = true;
+    const submitButton = e.submitter || e.target.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
     try {
-      const q = editingTransaction
-        ? db.from('transactions').update(payload).eq('id', editingTransaction.id)
+      const q = isEditing
+        ? db.from('transactions').update(payload).eq('id', editingId)
         : db.from('transactions').insert(payload);
       const { error } = await q;
       if (error) throw error;
-      const savedSpaceId = transactionSpaceId;
       transactionSpaceId = null;
-      closeModal();
-      notify(editingTransaction ? 'Movimento aggiornato' : 'Movimento registrato');
+      editingTransaction = null;
+      closeModal(true);
+      notify(isEditing ? 'Movimento aggiornato' : 'Movimento registrato');
       await loadData();
       if (savedSpaceId && selectedSpace?.id === savedSpaceId) await openSpace(savedSpaceId);
     } catch (err) {
       notify(err.message || 'Errore nel salvataggio', 'error');
+    } finally {
+      transactionSaving = false;
+      if (submitButton) submitButton.disabled = false;
     }
   }
   async function deleteTransaction(id) {
@@ -1858,9 +1885,10 @@ import {
     });
     db.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        const userChanged = user?.id !== session.user.id;
         user = session.user;
         showApp();
-        loadData();
+        if (event !== 'INITIAL_SESSION' && (event === 'SIGNED_IN' || userChanged)) loadData();
         if (event === 'SIGNED_IN') handlePendingInvite();
       } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
         showLogin();

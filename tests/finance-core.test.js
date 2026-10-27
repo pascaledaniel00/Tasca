@@ -5,6 +5,7 @@ import {
   categoryBreakdown,
   monthlyTrend,
   summarizeTransactions,
+  validateTransactionInput,
 } from '../finance-core.js';
 
 test('riepilogo separa entrate, uscite e trasferimenti', () => {
@@ -101,4 +102,20 @@ test('rifiuta parametri temporali e limiti non validi', () => {
   assert.throws(() => monthlyTrend([], 'ottobre', 6), TypeError);
   assert.throws(() => monthlyTrend([], '2026-10', 0), RangeError);
   assert.throws(() => categoryBreakdown([], '2026-10', 0), RangeError);
+});
+
+test('validazione movimento rifiuta dati incompleti o non validi', () => {
+  const valid = {
+    space_id: 'personal',
+    type: 'expense',
+    amount: 12.5,
+    description: '  Caffè  ',
+    category: 'Bar, colazioni e snack',
+    occurred_on: '2026-10-27',
+  };
+  assert.equal(validateTransactionInput(valid), null);
+  assert.match(validateTransactionInput({ ...valid, amount: 0 }), /maggiore di zero/);
+  assert.match(validateTransactionInput({ ...valid, space_id: null }), /spazio personale/);
+  assert.match(validateTransactionInput({ ...valid, occurred_on: '2026-02-30' }), /data valida/);
+  assert.match(validateTransactionInput({ ...valid, description: ' ' }), /descrizione/);
 });
