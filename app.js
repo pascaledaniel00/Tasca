@@ -1732,10 +1732,7 @@ import {
     const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
       (item) => normalizeCategory(item) === normalizeCategory(rawCategory)
     );
-    const category =
-      shortcutCategoryAliases[rawCategory] ||
-      canonicalCategory ||
-      'Da verificare';
+    const category = shortcutCategoryAliases[rawCategory] || canonicalCategory || 'Da verificare';
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
