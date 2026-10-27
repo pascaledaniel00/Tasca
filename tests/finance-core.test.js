@@ -104,7 +104,6 @@ test('rifiuta parametri temporali e limiti non validi', () => {
   assert.throws(() => categoryBreakdown([], '2026-10', 0), RangeError);
 });
 
-
 test('validazione movimento rifiuta dati incompleti o non validi', () => {
   const valid = {
     space_id: 'personal',
