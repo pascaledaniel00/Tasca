@@ -67,7 +67,7 @@ html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840
 #page-shortcut .shortcut-hero{width:100%;max-width:none;min-width:0}
 #page-shortcut .shortcut-hero{display:block;box-sizing:border-box}
 #page-shortcut .shortcut-hero > *{max-width:100%}
-#page-shortcut .shortcut-hero > p{max-width:760px}
+#page-shortcut .shortcut-hero > p{width:100%;max-width:none}#page-shortcut .shortcut-hero .notice,#page-shortcut .shortcut-steps{width:100%;max-width:none}#page-shortcut .shortcut-hero .shortcut-steps>div{min-width:0}
 .shortcut-mark{display:grid;place-items:center;flex:0 0 58px;width:58px;height:58px;padding:5px;border-radius:17px}
 .shortcut-mark:before,.shortcut-mark:after{content:none}
 .shortcut-mark svg{display:block;width:100%;height:100%;overflow:visible}
