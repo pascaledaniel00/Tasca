@@ -237,18 +237,28 @@ async function openSpace(id){
   return;
  }
  const shared=space.space_type!=='personal',canInvite=space.owner_id===user?.id&&shared;
- const memberIds=[...new Set([...members.map(m=>m.user_id),s.owner_id].filter(Boolean))];
+ const memberIds=[...new Set([...members.map(member=>member.user_id),space.owner_id].filter(Boolean))];
  const labels=id=>id===user?.id?'Tu':'Partecipante '+String(id).slice(0,8);
- const eligibleExpenses=rows.filter(t=>t.type==='expense'&&t.status==='confirmed');
- const missingShares=eligibleExpenses.filter(t=>!shares.some(x=>x.transaction_id===t.id));
+ const eligibleExpenses=rows.filter(transaction=>transaction.type==='expense'&&transaction.status==='confirmed');
+ const sharesByTransaction=new Map();
+ shares.forEach(share=>{
+  const transactionShares=sharesByTransaction.get(share.transaction_id)||[];
+  transactionShares.push(share);
+  sharesByTransaction.set(share.transaction_id,transactionShares);
+ });
+ const missingShares=eligibleExpenses.filter(transaction=>!sharesByTransaction.has(transaction.id));
  const balances=memberIds.map(user_id=>{
   let balance=0;
-  eligibleExpenses.forEach(t=>{
-   const txShares=shares.filter(x=>x.transaction_id===t.id);
-   if(t.paid_by===user_id)balance+=Number(t.amount)||0;
-   txShares.filter(x=>x.user_id===user_id).forEach(x=>balance-=Number(x.share_amount)||0);
+  eligibleExpenses.forEach(transaction=>{
+   if(transaction.paid_by===user_id)balance+=Number(transaction.amount)||0;
+   (sharesByTransaction.get(transaction.id)||[]).forEach(share=>{
+    if(share.user_id===user_id)balance-=Number(share.share_amount)||0;
+   });
   });
-  settlements.forEach(x=>{if(x.from_user_id===user_id)balance-=Number(x.amount)||0;if(x.to_user_id===user_id)balance+=Number(x.amount)||0;});
+  settlements.forEach(settlement=>{
+   if(settlement.from_user_id===user_id)balance-=Number(settlement.amount)||0;
+   if(settlement.to_user_id===user_id)balance+=Number(settlement.amount)||0;
+  });
   return {user_id,balance:Math.round(balance*100)/100};
  });
  const plan=settlementPlan(balances),blocked=missingShares.length>0;
