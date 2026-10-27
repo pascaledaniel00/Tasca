@@ -1,8 +1,12 @@
 import {
   budgetComparison,
+  calculateParticipantBalances,
   categoryBreakdown,
   monthlyTrend,
+  serializeFinanceCsv,
+  settlementPlan,
   summarizeTransactions,
+  validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
 
@@ -795,7 +799,7 @@ import {
  <div class="field full"><label>Nome</label><input name="name" required maxlength="120" value="${esc(r?.name || '')}" placeholder="Es. rata telefono, NOW"></div>
  <div class="field"><label>Importo (€)</label>${moneyInput(r?.amount ?? '')}</div>
  <div class="field"><label>Categoria</label><select name="category">${categoriesOptions('expense', r?.category || 'Abbonamenti e intrattenimento')}</select></div>
- <div class="field"><label>Frequenza</label><select name="interval"><option value="monthly" ${!r || r.cadence === 'monthly' ? 'selected' : ''}>Mensile</option><option value="weekly" ${r?.cadence === 'weekly' ? 'selected' : ''}>Settimanale</option><option value="yearly" ${r?.cadence === 'yearly' ? 'selected' : ''}>Annuale</option><option value="once" ${r?.interval === 'once' ? 'selected' : ''}>Una tantum</option></select></div>
+ <div class="field"><label>Frequenza</label><select name="interval"><option value="monthly" ${!r || r.cadence === 'monthly' ? 'selected' : ''}>Mensile</option><option value="weekly" ${r?.cadence === 'weekly' ? 'selected' : ''}>Settimanale</option><option value="yearly" ${r?.cadence === 'yearly' ? 'selected' : ''}>Annuale</option><option value="once" ${r?.cadence === 'once' ? 'selected' : ''}>Una tantum</option></select></div>
  <div class="field"><label>Prossima scadenza</label><input name="next_due" type="date" value="${esc(planDue(r) || today())}" required></div>
  <div class="field"><label>Rate residue (facoltativo)</label><input name="installments_remaining" type="number" min="0" step="1" value="${esc(r?.remaining_installments ?? '')}"></div>
  <div class="field"><label>Metodo di pagamento</label><select name="payment_method"><option value="">Non specificato</option>${['Carta', 'Apple Pay', 'Contanti', 'Bonifico', 'PayPal', 'Addebito diretto', 'Altro'].map((x) => `<option ${r?.payment_method === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
@@ -821,10 +825,9 @@ import {
         created_on: today(),
         client_id: r?.client_id || null,
       };
+      const validationError = validateRecurringPlanInput(payload);
       try {
-        if (!payload.space_id)
-          throw new Error('Crea prima uno spazio personale nella sezione Spazi.');
-        if (!(payload.amount > 0)) throw new Error('Inserisci un importo valido.');
+        if (validationError) throw new Error(validationError);
         const q = r
           ? db.from('recurring_plans').update(payload).eq('id', r.id)
           : db.from('recurring_plans').insert(payload);
@@ -1011,33 +1014,6 @@ import {
       notify('Spazio non eliminato: ' + (err.message || 'errore del database'), 'error');
     }
   }
-  function settlementPlan(balances) {
-    const debtors = balances
-      .filter((x) => x.balance < -0.005)
-      .map((x) => ({ user_id: x.user_id, amount: -x.balance }))
-      .sort((a, b) => b.amount - a.amount);
-    const creditors = balances
-      .filter((x) => x.balance > 0.005)
-      .map((x) => ({ user_id: x.user_id, amount: x.balance }))
-      .sort((a, b) => b.amount - a.amount);
-    const plan = [];
-    let i = 0,
-      j = 0;
-    while (i < debtors.length && j < creditors.length) {
-      const amount = Math.round(Math.min(debtors[i].amount, creditors[j].amount) * 100) / 100;
-      if (amount > 0)
-        plan.push({
-          from_user_id: debtors[i].user_id,
-          to_user_id: creditors[j].user_id,
-          amount,
-        });
-      debtors[i].amount = Math.round((debtors[i].amount - amount) * 100) / 100;
-      creditors[j].amount = Math.round((creditors[j].amount - amount) * 100) / 100;
-      if (debtors[i].amount < 0.005) i++;
-      if (creditors[j].amount < 0.005) j++;
-    }
-    return plan;
-  }
   async function saveSettlement(spaceId, payment, bulk = false) {
     const ok = confirm(
       (bulk
@@ -1148,20 +1124,7 @@ import {
     const missingShares = eligibleExpenses.filter(
       (transaction) => !sharesByTransaction.has(transaction.id)
     );
-    const balances = memberIds.map((user_id) => {
-      let balance = 0;
-      eligibleExpenses.forEach((transaction) => {
-        if (transaction.paid_by === user_id) balance += Number(transaction.amount) || 0;
-        (sharesByTransaction.get(transaction.id) || []).forEach((share) => {
-          if (share.user_id === user_id) balance -= Number(share.share_amount) || 0;
-        });
-      });
-      settlements.forEach((settlement) => {
-        if (settlement.from_user_id === user_id) balance -= Number(settlement.amount) || 0;
-        if (settlement.to_user_id === user_id) balance += Number(settlement.amount) || 0;
-      });
-      return { user_id, balance: Math.round(balance * 100) / 100 };
-    });
+    const balances = calculateParticipantBalances(memberIds, eligibleExpenses, shares, settlements);
     const plan = settlementPlan(balances),
       blocked = missingShares.length > 0;
     const planHtml = shared
@@ -1304,31 +1267,14 @@ import {
       notify('Accedi per esportare i dati.', 'error');
       return;
     }
-    const groups = [
+    const csv = serializeFinanceCsv([
       { name: 'movimenti', rows: transactions },
       { name: 'budget', rows: budgets },
       { name: 'ricorrenze', rows: recurring },
-    ];
-    const fields = [
-      ...new Set([
-        'tipo_record',
-        ...groups.flatMap((g) => g.rows.flatMap((row) => Object.keys(row || {}))),
-      ]),
-    ];
-    const cell = (value) => {
-      const s =
-        value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
-      return '"' + s.replace(/"/g, '""') + '"';
-    };
-    const lines = [fields.map(cell).join(';')];
-    for (const group of groups)
-      for (const row of group.rows)
-        lines.push(fields.map((f) => cell(f === 'tipo_record' ? group.name : row?.[f])).join(';'));
-    const blob = new Blob(['\\uFEFF' + lines.join('\\r\\n')], {
-      type: 'text/csv;charset=utf-8;',
-    });
-    const url = URL.createObjectURL(blob),
-      a = document.createElement('a');
+    ]);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
     a.download = 'tasca-esportazione-' + today() + '.csv';
     document.body.appendChild(a);

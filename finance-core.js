@@ -121,3 +121,121 @@ export function validateTransactionInput(payload = {}) {
   }
   return null;
 }
+
+export function calculateParticipantBalances(
+  memberIds = [],
+  expenses = [],
+  shares = [],
+  settlements = []
+) {
+  const balances = new Map(memberIds.map((userId) => [userId, 0]));
+  for (const expense of expenses) {
+    if (expense?.type !== 'expense' || expense?.status !== 'confirmed') continue;
+    const amount = amountOf(expense);
+    if (balances.has(expense.paid_by))
+      balances.set(expense.paid_by, balances.get(expense.paid_by) + amount);
+  }
+  const eligibleExpenseIds = new Set(
+    expenses
+      .filter((expense) => expense?.type === 'expense' && expense?.status === 'confirmed')
+      .map((expense) => expense.id)
+  );
+  for (const share of shares) {
+    if (!eligibleExpenseIds.has(share.transaction_id) || !balances.has(share.user_id)) continue;
+    balances.set(
+      share.user_id,
+      balances.get(share.user_id) - amountOf({ amount: share.share_amount })
+    );
+  }
+  for (const settlement of settlements) {
+    const amount = amountOf(settlement);
+    if (balances.has(settlement.from_user_id)) {
+      balances.set(settlement.from_user_id, balances.get(settlement.from_user_id) - amount);
+    }
+    if (balances.has(settlement.to_user_id)) {
+      balances.set(settlement.to_user_id, balances.get(settlement.to_user_id) + amount);
+    }
+  }
+  return memberIds.map((user_id) => ({
+    user_id,
+    balance: Math.round((balances.get(user_id) || 0) * 100) / 100,
+  }));
+}
+
+export function settlementPlan(balances = []) {
+  const debtors = balances
+    .filter((item) => Number(item.balance) < -0.005)
+    .map((item) => ({ user_id: item.user_id, amount: -Number(item.balance) }))
+    .sort((a, b) => b.amount - a.amount);
+  const creditors = balances
+    .filter((item) => Number(item.balance) > 0.005)
+    .map((item) => ({ user_id: item.user_id, amount: Number(item.balance) }))
+    .sort((a, b) => b.amount - a.amount);
+  const plan = [];
+  let i = 0;
+  let j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const amount = Math.round(Math.min(debtors[i].amount, creditors[j].amount) * 100) / 100;
+    if (amount > 0) {
+      plan.push({
+        from_user_id: debtors[i].user_id,
+        to_user_id: creditors[j].user_id,
+        amount,
+      });
+    }
+    debtors[i].amount = Math.round((debtors[i].amount - amount) * 100) / 100;
+    creditors[j].amount = Math.round((creditors[j].amount - amount) * 100) / 100;
+    if (debtors[i].amount < 0.005) i++;
+    if (creditors[j].amount < 0.005) j++;
+  }
+  return plan;
+}
+
+export function serializeFinanceCsv(groups = []) {
+  const validGroups = groups.filter((group) => group && Array.isArray(group.rows));
+  const fields = [
+    ...new Set([
+      'tipo_record',
+      ...validGroups.flatMap((group) => group.rows.flatMap((row) => Object.keys(row || {}))),
+    ]),
+  ];
+  const cell = (value) => {
+    const text =
+      value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return '"' + text.replace(/"/g, '""') + '"';
+  };
+  const lines = [fields.map(cell).join(';')];
+  for (const group of validGroups) {
+    for (const row of group.rows) {
+      lines.push(
+        fields.map((field) => cell(field === 'tipo_record' ? group.name : row?.[field])).join(';')
+      );
+    }
+  }
+  return '\uFEFF' + lines.join('\r\n');
+}
+
+export function validateRecurringPlanInput(payload = {}) {
+  if (!payload.space_id) return 'Crea prima uno spazio personale nella sezione Spazi.';
+  if (!String(payload.name || '').trim()) return 'Inserisci un nome per la ricorrenza.';
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return 'Inserisci un importo maggiore di zero.';
+  if (!['monthly', 'weekly', 'yearly', 'once'].includes(payload.cadence)) {
+    return 'Seleziona una frequenza valida.';
+  }
+  const date = String(payload.next_due_on || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Inserisci una data di scadenza valida.';
+  const parsedDate = new Date(date + 'T00:00:00.000Z');
+  if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+    return 'Inserisci una data di scadenza valida.';
+  }
+  if (
+    payload.remaining_installments != null &&
+    payload.remaining_installments !== '' &&
+    (!Number.isInteger(Number(payload.remaining_installments)) ||
+      Number(payload.remaining_installments) < 0)
+  ) {
+    return 'Le rate residue devono essere un numero intero pari o superiore a zero.';
+  }
+  return null;
+}

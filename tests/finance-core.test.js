@@ -2,9 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   budgetComparison,
+  calculateParticipantBalances,
   categoryBreakdown,
   monthlyTrend,
+  serializeFinanceCsv,
+  settlementPlan,
   summarizeTransactions,
+  validateRecurringPlanInput,
   validateTransactionInput,
 } from '../finance-core.js';
 
@@ -118,4 +122,71 @@ test('validazione movimento rifiuta dati incompleti o non validi', () => {
   assert.match(validateTransactionInput({ ...valid, space_id: null }), /spazio personale/);
   assert.match(validateTransactionInput({ ...valid, occurred_on: '2026-02-30' }), /data valida/);
   assert.match(validateTransactionInput({ ...valid, description: ' ' }), /descrizione/);
+});
+
+test('saldi condivisi considerano spese confermate, quote e rimborsi una sola volta', () => {
+  const balances = calculateParticipantBalances(
+    ['anna', 'luca'],
+    [
+      { id: 'tx-confirmed', type: 'expense', status: 'confirmed', paid_by: 'anna', amount: 60 },
+      { id: 'tx-pending', type: 'expense', status: 'pending', paid_by: 'luca', amount: 100 },
+    ],
+    [
+      { transaction_id: 'tx-confirmed', user_id: 'anna', share_amount: 30 },
+      { transaction_id: 'tx-confirmed', user_id: 'luca', share_amount: 30 },
+      { transaction_id: 'tx-pending', user_id: 'luca', share_amount: 100 },
+    ],
+    [{ from_user_id: 'luca', to_user_id: 'anna', amount: 10 }]
+  );
+  assert.deepEqual(balances, [
+    { user_id: 'anna', balance: 40 },
+    { user_id: 'luca', balance: -40 },
+  ]);
+});
+
+test('piano rimborsi compensa debitori e creditori con importi al centesimo', () => {
+  assert.deepEqual(
+    settlementPlan([
+      { user_id: 'a', balance: -20.1 },
+      { user_id: 'b', balance: -9.9 },
+      { user_id: 'c', balance: 30 },
+    ]),
+    [
+      { from_user_id: 'a', to_user_id: 'c', amount: 20.1 },
+      { from_user_id: 'b', to_user_id: 'c', amount: 9.9 },
+    ]
+  );
+});
+
+test('esportazione CSV mantiene intestazioni, BOM e virgolette sicure', () => {
+  const csv = serializeFinanceCsv([
+    { name: 'movimenti', rows: [{ description: 'Cena; "amici"', amount: 25, notes: null }] },
+    { name: 'budget', rows: [{ category: 'Casa', amount: 200 }] },
+  ]);
+  assert.ok(csv.startsWith('\uFEFF'));
+  assert.match(csv, /"tipo_record";"description";"amount";"notes";"category"/);
+  assert.match(csv, /"movimenti";"Cena; ""amici""";"25";"";""/);
+  assert.match(csv, /"budget";"";"200";"";"Casa"/);
+});
+
+test('validazione ricorrenze controlla importo, frequenza, data e rate residue', () => {
+  const valid = {
+    space_id: 'personal',
+    name: 'Rata telefono',
+    amount: 42.15,
+    cadence: 'monthly',
+    next_due_on: '2026-11-01',
+    remaining_installments: 4,
+  };
+  assert.equal(validateRecurringPlanInput(valid), null);
+  assert.match(validateRecurringPlanInput({ ...valid, amount: 0 }), /maggiore di zero/);
+  assert.match(validateRecurringPlanInput({ ...valid, cadence: 'daily' }), /frequenza valida/);
+  assert.match(
+    validateRecurringPlanInput({ ...valid, next_due_on: '2026-02-30' }),
+    /data di scadenza valida/
+  );
+  assert.match(
+    validateRecurringPlanInput({ ...valid, remaining_installments: 1.5 }),
+    /numero intero/
+  );
 });
