@@ -129,12 +129,13 @@ test('saldi condivisi considerano spese confermate, quote e rimborsi una sola vo
   const balances = calculateParticipantBalances(
     ['anna', 'luca'],
     [
-      { type: 'expense', status: 'confirmed', paid_by: 'anna', amount: 60 },
-      { type: 'expense', status: 'pending', paid_by: 'luca', amount: 100 },
+      { id: 'tx-confirmed', type: 'expense', status: 'confirmed', paid_by: 'anna', amount: 60 },
+      { id: 'tx-pending', type: 'expense', status: 'pending', paid_by: 'luca', amount: 100 },
     ],
     [
-      { user_id: 'anna', share_amount: 30 },
-      { user_id: 'luca', share_amount: 30 },
+      { transaction_id: 'tx-confirmed', user_id: 'anna', share_amount: 30 },
+      { transaction_id: 'tx-confirmed', user_id: 'luca', share_amount: 30 },
+      { transaction_id: 'tx-pending', user_id: 'luca', share_amount: 100 },
     ],
     [{ from_user_id: 'luca', to_user_id: 'anna', amount: 10 }]
   );
