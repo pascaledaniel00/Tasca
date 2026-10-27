@@ -1,0 +1,5 @@
+/* Correzione anteprima mobile: il backdrop deve restare dietro al menu laterale. */
+@media (max-width: 720px) {
+  #navBackdrop.open { z-index: 24; }
+  #desktopNav { z-index: 25; }
+}
