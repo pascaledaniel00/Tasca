@@ -122,20 +122,30 @@ export function validateTransactionInput(payload = {}) {
   return null;
 }
 
-
-export function calculateParticipantBalances(memberIds = [], expenses = [], shares = [], settlements = []) {
+export function calculateParticipantBalances(
+  memberIds = [],
+  expenses = [],
+  shares = [],
+  settlements = []
+) {
   const balances = new Map(memberIds.map((userId) => [userId, 0]));
   for (const expense of expenses) {
     if (expense?.type !== 'expense' || expense?.status !== 'confirmed') continue;
     const amount = amountOf(expense);
-    if (balances.has(expense.paid_by)) balances.set(expense.paid_by, balances.get(expense.paid_by) + amount);
+    if (balances.has(expense.paid_by))
+      balances.set(expense.paid_by, balances.get(expense.paid_by) + amount);
   }
   const eligibleExpenseIds = new Set(
-    expenses.filter((expense) => expense?.type === 'expense' && expense?.status === 'confirmed').map((expense) => expense.id)
+    expenses
+      .filter((expense) => expense?.type === 'expense' && expense?.status === 'confirmed')
+      .map((expense) => expense.id)
   );
   for (const share of shares) {
     if (!eligibleExpenseIds.has(share.transaction_id) || !balances.has(share.user_id)) continue;
-    balances.set(share.user_id, balances.get(share.user_id) - amountOf({ amount: share.share_amount }));
+    balances.set(
+      share.user_id,
+      balances.get(share.user_id) - amountOf({ amount: share.share_amount })
+    );
   }
   for (const settlement of settlements) {
     const amount = amountOf(settlement);
@@ -190,13 +200,16 @@ export function serializeFinanceCsv(groups = []) {
     ]),
   ];
   const cell = (value) => {
-    const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const text =
+      value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
     return '"' + text.replace(/"/g, '""') + '"';
   };
   const lines = [fields.map(cell).join(';')];
   for (const group of validGroups) {
     for (const row of group.rows) {
-      lines.push(fields.map((field) => cell(field === 'tipo_record' ? group.name : row?.[field])).join(';'));
+      lines.push(
+        fields.map((field) => cell(field === 'tipo_record' ? group.name : row?.[field])).join(';')
+      );
     }
   }
   return '\uFEFF' + lines.join('\r\n');
@@ -219,7 +232,8 @@ export function validateRecurringPlanInput(payload = {}) {
   if (
     payload.remaining_installments != null &&
     payload.remaining_installments !== '' &&
-    (!Number.isInteger(Number(payload.remaining_installments)) || Number(payload.remaining_installments) < 0)
+    (!Number.isInteger(Number(payload.remaining_installments)) ||
+      Number(payload.remaining_installments) < 0)
   ) {
     return 'Le rate residue devono essere un numero intero pari o superiore a zero.';
   }
