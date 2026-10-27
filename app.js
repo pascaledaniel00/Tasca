@@ -1718,21 +1718,23 @@ import {
       : 'expense';
     // Compatibilità con le etichette del menu nel Comando Rapido iOS.
     // URLSearchParams decodifica già gli spazi e i caratteri percent-encoded.
-    const shortcutCategoryAliases = {
-      Spesa: 'Alimentari e supermercato',
-      Altro: 'Altre spese personali',
-      'Parcheggi e manutenzione': 'Parcheggi e manutenzione',
-      'Altre spese personali': 'Altre spese personali',
-    };
     const normalizeCategory = (value) =>
       String(value || '')
         .trim()
         .toLocaleLowerCase('it-IT')
         .replace(/\s+/g, ' ');
+    const shortcutCategoryAliases = {
+      spesa: 'Alimentari e supermercato',
+      altro: 'Altre spese personali',
+      'parcheggi e manutenzione': 'Parcheggi e manutenzione',
+      'altre spese personali': 'Altre spese personali',
+    };
+    const normalizedRawCategory = normalizeCategory(rawCategory);
     const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
-      (item) => normalizeCategory(item) === normalizeCategory(rawCategory)
+      (item) => normalizeCategory(item) === normalizedRawCategory
     );
-    const category = shortcutCategoryAliases[rawCategory] || canonicalCategory || 'Da verificare';
+    const category =
+      shortcutCategoryAliases[normalizedRawCategory] || canonicalCategory || 'Da verificare';
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
