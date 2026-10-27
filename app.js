@@ -1790,11 +1790,11 @@ import {
                 : 'Condiviso';
           return index + 1 + '. ' + space.name + ' (' + kind + ')';
         })
-        .join('\\n');
+        .join('\n');
       const choice = window.prompt(
-        'Dove vuoi registrare questa spesa?\\n\\n' +
+        'Dove vuoi registrare questa spesa?\n\n' +
           spaceChoices +
-          '\\n\\nInserisci il numero dello spazio. Premi Annulla per non registrare.'
+          '\n\nInserisci il numero dello spazio. Premi Annulla per non registrare.'
       );
       if (choice === null) {
         notify('Importazione annullata: non è stato salvato alcun movimento.');
