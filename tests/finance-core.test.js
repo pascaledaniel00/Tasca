@@ -5,6 +5,7 @@ import {
   categoryBreakdown,
   monthlyTrend,
   summarizeTransactions,
+  validateTransactionInput,
 } from '../finance-core.js';
 
 test('riepilogo separa entrate, uscite e trasferimenti', () => {
