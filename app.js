@@ -1697,7 +1697,7 @@ import {
 
   function clearShortcutParams() {
     const url = new URL(location.href);
-    ['finanze', 'amount', 'description', 'merchant', 'date', 'category', 'method', 'type'].forEach(
+    ['finanze', 'amount', 'description', 'merchant', 'date', 'category', 'method', 'type', 'space'].forEach(
       (k) => url.searchParams.delete(k)
     );
     history.replaceState({}, document.title, url.pathname + url.search + url.hash);
@@ -1747,9 +1747,40 @@ import {
       );
       return;
     }
-    let targetSpace = spaces.length === 1 ? spaces[0] : null;
+    // Il Comando Rapido può passare space=personal/personale oppure space=shared/condiviso.
+    // Se il parametro manca, manteniamo la selezione tradizionale tra tutti gli spazi.
+    const requestedSpace = normalizeCategory(params.get('space'));
+    const requestedSpaceType =
+      ['personal', 'personale'].includes(requestedSpace)
+        ? 'personal'
+        : ['shared', 'condiviso'].includes(requestedSpace)
+          ? 'shared'
+          : ['trip', 'viaggio', 'progetto/viaggio'].includes(requestedSpace)
+            ? 'trip'
+            : null;
+    if (requestedSpace && !requestedSpaceType) {
+      notify('Spazio del Comando Rapido non riconosciuto. Usa Personale o Condiviso.', 'error');
+      clearShortcutParams();
+      return;
+    }
+    const eligibleSpaces = requestedSpaceType
+      ? spaces.filter((space) => space.space_type === requestedSpaceType)
+      : spaces;
+    if (requestedSpaceType && eligibleSpaces.length === 0) {
+      notify(
+        requestedSpaceType === 'personal'
+          ? 'Non hai uno spazio personale disponibile per questa registrazione.'
+          : requestedSpaceType === 'shared'
+            ? 'Non hai uno spazio condiviso disponibile per questa registrazione.'
+            : 'Non hai uno spazio progetto/viaggio disponibile per questa registrazione.',
+        'error'
+      );
+      clearShortcutParams();
+      return;
+    }
+    let targetSpace = eligibleSpaces.length === 1 ? eligibleSpaces[0] : null;
     if (!targetSpace) {
-      const spaceChoices = spaces
+      const spaceChoices = eligibleSpaces
         .map((space, index) => {
           const kind =
             space.space_type === 'personal'
@@ -1771,11 +1802,15 @@ import {
         return;
       }
       const selectedIndex = Number(choice.trim()) - 1;
-      if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= spaces.length) {
+      if (
+        !Number.isInteger(selectedIndex) ||
+        selectedIndex < 0 ||
+        selectedIndex >= eligibleSpaces.length
+      ) {
         notify('Numero dello spazio non valido. Riapri il collegamento e riprova.', 'error');
         return;
       }
-      targetSpace = spaces[selectedIndex];
+      targetSpace = eligibleSpaces[selectedIndex];
     }
     const normalized = (s) =>
       String(s || '')
