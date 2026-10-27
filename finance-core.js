@@ -102,3 +102,22 @@ export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
     .sort((a, b) => b.percent - a.percent || b.spent - a.spent)
     .slice(0, limit);
 }
+
+export function validateTransactionInput(payload = {}) {
+  if (!payload.space_id) return 'Crea prima uno spazio personale nella sezione Spazi.';
+  if (!['expense', 'income', 'transfer', 'refund'].includes(payload.type)) {
+    return 'Seleziona un tipo di movimento valido.';
+  }
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return 'Inserisci un importo maggiore di zero.';
+  if (!String(payload.description || '').trim()) return 'Inserisci una descrizione per il movimento.';
+  if (!String(payload.category || '').trim()) return 'Seleziona una categoria.';
+  const date = String(payload.occurred_on || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Inserisci una data valida.';
+  const parsedDate = new Date(date + 'T00:00:00.000Z');
+  if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+    return 'Inserisci una data valida.';
+  }
+  return null;
+}
+
