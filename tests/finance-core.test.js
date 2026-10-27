@@ -124,7 +124,6 @@ test('validazione movimento rifiuta dati incompleti o non validi', () => {
   assert.match(validateTransactionInput({ ...valid, description: ' ' }), /descrizione/);
 });
 
-
 test('saldi condivisi considerano spese confermate, quote e rimborsi una sola volta', () => {
   const balances = calculateParticipantBalances(
     ['anna', 'luca'],
@@ -182,6 +181,12 @@ test('validazione ricorrenze controlla importo, frequenza, data e rate residue',
   assert.equal(validateRecurringPlanInput(valid), null);
   assert.match(validateRecurringPlanInput({ ...valid, amount: 0 }), /maggiore di zero/);
   assert.match(validateRecurringPlanInput({ ...valid, cadence: 'daily' }), /frequenza valida/);
-  assert.match(validateRecurringPlanInput({ ...valid, next_due_on: '2026-02-30' }), /data di scadenza valida/);
-  assert.match(validateRecurringPlanInput({ ...valid, remaining_installments: 1.5 }), /numero intero/);
+  assert.match(
+    validateRecurringPlanInput({ ...valid, next_due_on: '2026-02-30' }),
+    /data di scadenza valida/
+  );
+  assert.match(
+    validateRecurringPlanInput({ ...valid, remaining_installments: 1.5 }),
+    /numero intero/
+  );
 });
