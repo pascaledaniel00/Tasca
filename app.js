@@ -508,6 +508,21 @@ import {
     renderAdvice();
     renderSpaces();
   }
+  function restoreRememberedEmail() {
+    try {
+      const saved = localStorage.getItem('tasca_remembered_email') || '';
+      if (saved && $('authEmail')) {
+        $('authEmail').value = saved;
+        $('rememberLogin').checked = true;
+      }
+    } catch {}
+  }
+  function saveRememberedEmail(email) {
+    try {
+      if ($('rememberLogin')?.checked) localStorage.setItem('tasca_remembered_email', email);
+      else localStorage.removeItem('tasca_remembered_email');
+    } catch {}
+  }
   function showAuth(mode) {
     const signup = mode === 'signup',
       reset = mode === 'reset';
@@ -544,6 +559,7 @@ import {
     const mode = $('authForm').dataset.mode,
       email = $('authEmail').value.trim(),
       password = $('authPassword').value;
+    if (mode === 'login') saveRememberedEmail(email);
     try {
       $('authSubmit').disabled = true;
       if (mode === 'signup') {
@@ -1511,8 +1527,8 @@ import {
     });
     $('shortcutInfoBtn').addEventListener('click', () =>
       openModal(
-        'Comando Rapido per iPhone',
-        `<div class="account-settings"><p>Il link d’installazione verrà aggiunto qui dopo la verifica completa del flusso su iPhone.</p><p class="muted tiny">La versione finale dovrà essere testata almeno su apertura del link, passaggio dei dati, scelta dello spazio, gestione dei duplicati e conferma del salvataggio. Fino ad allora il download resta disattivato.</p><button class="btn primary full" id="shortcutCloseInfo" type="button">Ho capito</button></div>`
+        'Scorciatoia Wallet',
+        `<div class="account-settings"><p>Apri il link qui sotto sul tuo iPhone per aggiungere il comando rapido.</p><p><a class="btn primary full" href="https://www.icloud.com/shortcuts/424d5b7c67394fa7ae48db1a09e56031" target="_blank" rel="noopener noreferrer">Aggiungi Comando Rapido</a></p><p class="muted tiny">Dopo l’installazione, eseguilo dall’app Comandi e verifica i dati prima di confermare il salvataggio in Tasca.</p><button class="btn full" id="shortcutCloseInfo" type="button">Chiudi</button></div>`
       )
     );
     document.querySelectorAll('[data-page]').forEach((b) =>
@@ -1889,6 +1905,7 @@ import {
 
   async function start() {
     initTheme();
+    restoreRememberedEmail();
     $('budgetMonth').value = monthNow();
     $('filterMonth').value = monthNow();
     initNavigation();
