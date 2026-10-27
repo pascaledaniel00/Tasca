@@ -110,7 +110,8 @@ export function validateTransactionInput(payload = {}) {
   }
   const amount = Number(payload.amount);
   if (!Number.isFinite(amount) || amount <= 0) return 'Inserisci un importo maggiore di zero.';
-  if (!String(payload.description || '').trim()) return 'Inserisci una descrizione per il movimento.';
+  if (!String(payload.description || '').trim())
+    return 'Inserisci una descrizione per il movimento.';
   if (!String(payload.category || '').trim()) return 'Seleziona una categoria.';
   const date = String(payload.occurred_on || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Inserisci una data valida.';
@@ -120,4 +121,3 @@ export function validateTransactionInput(payload = {}) {
   }
   return null;
 }
-
