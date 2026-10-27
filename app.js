@@ -24,6 +24,7 @@ import {
       'Carburante',
       'Parcheggi',
       'Manutenzione auto',
+      'Parcheggi e manutenzione',
       'Alimentari e supermercato',
       'Bar, colazioni e snack',
       'Pranzi fuori casa',
@@ -1715,15 +1716,26 @@ import {
     const type = ['expense', 'income', 'transfer', 'refund'].includes(params.get('type'))
       ? params.get('type')
       : 'expense';
-    const legacyCategories = {
+    // Compatibilità con le etichette del menu nel Comando Rapido iOS.
+    // URLSearchParams decodifica già gli spazi e i caratteri percent-encoded.
+    const shortcutCategoryAliases = {
       Spesa: 'Alimentari e supermercato',
       Altro: 'Altre spese personali',
+      'Parcheggi e manutenzione': 'Parcheggi e manutenzione',
+      'Altre spese personali': 'Altre spese personali',
     };
+    const normalizeCategory = (value) =>
+      String(value || '')
+        .trim()
+        .toLocaleLowerCase('it-IT')
+        .replace(/\\s+/g, ' ');
+    const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
+      (item) => normalizeCategory(item) === normalizeCategory(rawCategory)
+    );
     const category =
-      legacyCategories[rawCategory] ||
-      ((CATEGORIES[type] || CATEGORIES.expense).includes(rawCategory)
-        ? rawCategory
-        : 'Da verificare');
+      shortcutCategoryAliases[rawCategory] ||
+      canonicalCategory ||
+      'Da verificare';
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
