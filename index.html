@@ -55,6 +55,7 @@
               </button>
             </div>
           </div>
+          <label class="remember-login" for="rememberLogin"><input id="rememberLogin" type="checkbox" /> <span>Ricordami su questo dispositivo</span></label>
           <div id="authConfirmWrap" class="field hidden">
             <label for="authConfirm">Conferma password</label
             ><input id="authConfirm" type="password" autocomplete="new-password" minlength="8" />
@@ -359,7 +360,7 @@
         <section id="page-shortcut" class="section">
           <div class="page-title">
             <div>
-              <h2>Registra con iPhone</h2>
+              <h2>Scorciatoia Wallet</h2>
               <p class="muted tiny">
                 Il modo più rapido per trasformare un pagamento in un movimento Tasca.
               </p>
@@ -405,11 +406,11 @@
               Stiamo preparando il Comando Rapido per acquisire i dati di un pagamento e passarli a
               Tasca, con una schermata di controllo prima di salvare la spesa.
             </p>
-            <div class="notice warn">
-              <strong>Download non ancora disponibile.</strong> Il comando è in fase di verifica:
-              pubblicheremo qui il link d’installazione solo dopo aver completato i test su iPhone,
-              per evitare di proporre un’automazione non affidabile.
+            <div class="notice ok">
+              <strong>Comando Rapido disponibile.</strong> Hai già verificato che il collegamento a Tasca registra correttamente una spesa.
             </div>
+            <p>Installa o apri il comando rapido dal tuo iPhone usando il link iCloud ufficiale.</p>
+            <p><a class="btn primary shortcut-install-link" href="https://www.icloud.com/shortcuts/424d5b7c67394fa7ae48db1a09e56031" target="_blank" rel="noopener noreferrer">＋ Aggiungi Comando Rapido</a></p>
             <div class="shortcut-steps">
               <div><strong>1. Pagamento</strong><span>Usa Wallet come fai normalmente.</span></div>
               <div>
@@ -424,7 +425,7 @@
                 >
               </div>
             </div>
-            <button id="shortcutInfoBtn" class="btn primary" type="button">Come funzionerà</button>
+            <button id="shortcutInfoBtn" class="btn" type="button">Come usarlo</button>
             <p class="muted tiny">
               Nota: iOS non consente di leggere in modo universale tutte le notifiche bancarie o i
               dettagli di ogni pagamento Wallet. La compatibilità verrà indicata chiaramente quando
