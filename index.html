@@ -369,13 +369,13 @@ async function processShortcutImport(){
  const type=['expense','income','transfer','refund'].includes(params.get('type'))?params.get('type'):'expense';
  const legacyCategories={'Spesa':'Alimentari e supermercato','Altro':'Altre spese personali'};
  const category=legacyCategories[rawCategory]||((CATEGORIES[type]||CATEGORIES.expense).includes(rawCategory)?rawCategory:'Da verificare');
- if(!Number.isFinite(amount)||amount<=0||!description||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){
+ if(!Number.isFinite(amount)||amount<=0||!description||!/^\d{4}-\d{2}-\d{2}$/.test(date)){
   notify('Dati del Comando Rapido incompleti o non validi. Controlla importo, esercente e data.','error');
   return;
  }
  const targetSpace=spaces.find(s=>s.space_type==='personal')||(spaces.length===1?spaces[0]:null);
  if(!targetSpace){notify('Per importare il pagamento crea uno spazio personale oppure seleziona un solo spazio disponibile.','error');return;}
- const normalized=s=>String(s||'').trim().toLocaleLowerCase('it-IT').replace(/\\s+/g,' ');
+ const normalized=s=>String(s||'').trim().toLocaleLowerCase('it-IT').replace(/\s+/g,' ');
  const duplicate=transactions.some(t=>t.space_id===targetSpace.id&&txDate(t)===date&&Math.round(Number(t.amount)*100)===Math.round(amount*100)&&normalized(t.description)===normalized(description));
  if(duplicate){
   notify('Possibile duplicato: questo importo e questo esercente risultano già registrati nella stessa data.','error');
@@ -384,7 +384,7 @@ async function processShortcutImport(){
  }
  shortcutImportRunning=true;
  try{
-  const accepted=confirm('Registrare in Tasca questo pagamento?\\n\\n'+description+'\\n'+eur(amount)+'\\nData: '+date+'\\nMetodo: '+method+'\\nCategoria: '+category);
+  const accepted=confirm('Registrare in Tasca questo pagamento?\n\n'+description+'\n'+eur(amount)+'\nData: '+date+'\nMetodo: '+method+'\nCategoria: '+category);
   if(!accepted){clearShortcutParams();notify('Importazione annullata.');return;}
   const payload={space_id:targetSpace.id,type,amount,currency:'EUR',description,category,occurred_on:date,paid_by:user.id,created_by:user.id,payment_method:method,status:'confirmed',notes:category==='Da verificare'?'Importato dal Comando Rapido: categoria da verificare.':'Importato dal Comando Rapido.'};
   const {error}=await db.from('transactions').insert(payload);
