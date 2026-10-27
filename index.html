@@ -106,7 +106,7 @@ const SUPABASE_URL = 'https://njgmlxyecjyreieqcpwk.supabase.co';
 const SUPABASE_PUBLIC_KEY = 'sb_publishable_U6dgmohD5p7Z5jxcwHLZSg_MoR2cjz1';
 
 const CATEGORIES = {
-expense:['Casa e affitto','Auto e assicurazione','Carburante','Parcheggi','Manutenzione auto','Alimentari e supermercato','Bar, colazioni e snack','Pranzi fuori casa','Cene, aperitivi e ristoranti','Trasporti pubblici e taxi','Telefono e rate tecnologiche','Abbonamenti e intrattenimento','Shopping e cura personale','Salute e farmacia','Sport e tempo libero','Regali, viaggi e vacanze','Commissioni bancarie e finanziarie','Rate e pagamenti dilazionati','Altre spese personali'],
+expense:['Casa e affitto','Auto e assicurazione','Carburante','Parcheggi','Manutenzione auto','Alimentari e supermercato','Bar, colazioni e snack','Pranzi fuori casa','Cene, aperitivi e ristoranti','Trasporti pubblici e taxi','Telefono e rate tecnologiche','Abbonamenti e intrattenimento','Shopping e cura personale','Salute e farmacia','Sport e tempo libero','Regali, viaggi e vacanze','Commissioni bancarie e finanziarie','Rate e pagamenti dilazionati','Altre spese personali','Da verificare'],
 income:['Stipendio','Rimborso ricevuto','Regalo o entrata occasionale','Altre entrate'],
 transfer:['Trasferimento tra conti'],
 refund:['Rimborso ricevuto']
@@ -118,6 +118,7 @@ const monthNow = () => today().slice(0,7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const validConfig = () => SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('INSERISCI') && SUPABASE_PUBLIC_KEY && !SUPABASE_PUBLIC_KEY.includes('INSERISCI');
 let db=null,user=null,page='home',transactions=[],budgets=[],recurring=[],spaces=[],editingTransaction=null,editingBudget=null,editingRecurring=null,selectedSpace=null,activeSpaceId=null,transactionSpaceId=null,toastTimer=null;
+let shortcutImportRunning=false;
 let goal = 40;
 try { goal = Math.max(0,Number(localStorage.getItem('tasca_monthly_goal') ?? 40)); } catch {}
 function notify(message,type='ok'){const el=$('toast');el.textContent=message;el.classList.remove('hidden');el.style.background=type==='error'?'#B84C43':'#1E2924';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.add('hidden'),3200);}
@@ -204,6 +205,7 @@ async function loadData(){
   transactions=tx.data||[];budgets=bg.data||[];recurring=rc.data||[];spaces=sp.data||[];
    if(activeSpaceId!==ALL_SPACES&&!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]||{}).id||null;
    $('userLabel').textContent=user.email||'Account';renderAll();notice('');
+   await processShortcutImport();
  }catch(err){notice(`Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`, 'error');}
 }
 function openTransactionForm(t=null,defaultType='expense',spaceId=null){
@@ -349,6 +351,51 @@ function initNavigation(){
  });
 }
 async function handlePendingInvite(){const url=new URL(location.href);const token=url.searchParams.get('invite');if(!token||!user)return;url.searchParams.delete('invite');history.replaceState({},'',url.toString());try{const {data,error}=await db.rpc('accept_space_invitation',{p_token:token});if(error)throw error;notify('Invito accettato: sei entrato nello spazio.');await loadData();if(data)showPage('spaces');}catch(err){notify('Invito non accettato: '+(err.message||'link non valido o scaduto'),'error');}}
+
+function clearShortcutParams(){
+ const url=new URL(location.href);
+ ['finanze','amount','description','merchant','date','category','method','type'].forEach(k=>url.searchParams.delete(k));
+ history.replaceState({},document.title,url.pathname+url.search+url.hash);
+}
+async function processShortcutImport(){
+ if(shortcutImportRunning||!db||!user||!spaces.length)return;
+ const params=new URLSearchParams(location.search);
+ if(params.get('finanze')!=='add')return;
+ const amount=Number(String(params.get('amount')||'').replace(',','.'));
+ const description=String(params.get('description')||params.get('merchant')||'').trim().slice(0,160);
+ const date=params.get('date')||today();
+ const method=params.get('method')||'Apple Pay';
+ const rawCategory=String(params.get('category')||'Da verificare').trim();
+ const type=['expense','income','transfer','refund'].includes(params.get('type'))?params.get('type'):'expense';
+ const legacyCategories={'Spesa':'Alimentari e supermercato','Altro':'Altre spese personali'};
+ const category=legacyCategories[rawCategory]||((CATEGORIES[type]||CATEGORIES.expense).includes(rawCategory)?rawCategory:'Da verificare');
+ if(!Number.isFinite(amount)||amount<=0||!description||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){
+  notify('Dati del Comando Rapido incompleti o non validi. Controlla importo, esercente e data.','error');
+  return;
+ }
+ const targetSpace=spaces.find(s=>s.space_type==='personal')||(spaces.length===1?spaces[0]:null);
+ if(!targetSpace){notify('Per importare il pagamento crea uno spazio personale oppure seleziona un solo spazio disponibile.','error');return;}
+ const normalized=s=>String(s||'').trim().toLocaleLowerCase('it-IT').replace(/\\s+/g,' ');
+ const duplicate=transactions.some(t=>t.space_id===targetSpace.id&&txDate(t)===date&&Math.round(Number(t.amount)*100)===Math.round(amount*100)&&normalized(t.description)===normalized(description));
+ if(duplicate){
+  notify('Possibile duplicato: questo importo e questo esercente risultano già registrati nella stessa data.','error');
+  clearShortcutParams();
+  return;
+ }
+ shortcutImportRunning=true;
+ try{
+  const accepted=confirm('Registrare in Tasca questo pagamento?\\n\\n'+description+'\\n'+eur(amount)+'\\nData: '+date+'\\nMetodo: '+method+'\\nCategoria: '+category);
+  if(!accepted){clearShortcutParams();notify('Importazione annullata.');return;}
+  const payload={space_id:targetSpace.id,type,amount,currency:'EUR',description,category,occurred_on:date,paid_by:user.id,created_by:user.id,payment_method:method,status:'confirmed',notes:category==='Da verificare'?'Importato dal Comando Rapido: categoria da verificare.':'Importato dal Comando Rapido.'};
+  const {error}=await db.from('transactions').insert(payload);
+  if(error)throw error;
+  clearShortcutParams();
+  notify('Pagamento importato da Comando Rapido.');
+  await loadData();
+ }catch(err){notify('Importazione non riuscita: '+(err.message||'errore sconosciuto')+'. Il link è stato mantenuto per riprovare.','error');}
+ finally{shortcutImportRunning=false;}
+}
+
 async function start(){
  $('budgetMonth').value=monthNow();$('filterMonth').value=monthNow();initNavigation();
  if(!validConfig()||!window.supabase){showAuthMessage('Prima di accedere, inserisci URL e chiave pubblica del progetto Supabase nel codice.','warn');return;}
