@@ -21,14 +21,19 @@ const transactionMonth = (row) => String(row?.occurred_on || row?.date || '').sl
 const monthKey = (value) => String(value || '').slice(0, 7);
 
 export function monthlyTrend(rows = [], endMonth, count = 6) {
-  if (!Number.isInteger(count) || count < 1) throw new RangeError('count deve essere positivo.');
+  if (!Number.isInteger(count) || count < 1) {
+    throw new RangeError('count deve essere positivo.');
+  }
   const end = monthKey(endMonth);
   const match = /^(\d{4})-(\d{2})$/.exec(end);
-  if (!match || Number(match[2]) < 1 || Number(match[2]) > 12)
+  if (!match || Number(match[2]) < 1 || Number(match[2]) > 12) {
     throw new TypeError('endMonth deve avere formato YYYY-MM.');
+  }
   const endDate = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
   const months = Array.from({ length: count }, (_, index) => {
-    const date = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - count + 1 + index, 1));
+    const date = new Date(
+      Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - count + 1 + index, 1)
+    );
     return {
       month: date.toISOString().slice(0, 7),
       income: 0,
@@ -47,7 +52,9 @@ export function monthlyTrend(rows = [], endMonth, count = 6) {
 }
 
 export function categoryBreakdown(rows = [], month, limit = 5) {
-  if (!Number.isInteger(limit) || limit < 1) throw new RangeError('limit deve essere positivo.');
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new RangeError('limit deve essere positivo.');
+  }
   const totals = new Map();
   for (const row of rows) {
     if (row?.type !== 'expense' || transactionMonth(row) !== monthKey(month)) continue;
@@ -65,7 +72,9 @@ export function categoryBreakdown(rows = [], month, limit = 5) {
 }
 
 export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
-  if (!Number.isInteger(limit) || limit < 1) throw new RangeError('limit deve essere positivo.');
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new RangeError('limit deve essere positivo.');
+  }
   return budgets
     .filter((budget) => monthKey(budget.month_start || budget.month) === monthKey(month))
     .map((budget) => {
@@ -77,7 +86,9 @@ export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
           row.space_id === budget.space_id &&
           row.category === budget.category &&
           transactionMonth(row) === monthKey(month)
-        ) return sum + amountOf(row);
+        ) {
+          return sum + amountOf(row);
+        }
         return sum;
       }, 0);
       return {
