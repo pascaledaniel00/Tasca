@@ -62,3 +62,13 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
 html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840,#242a40);box-shadow:0 8px 20px #0003}
 @media(min-width:721px){main,#page-shortcut{width:100%;max-width:none}}
 @media(max-width:720px){#page-shortcut .shortcut-hero{padding:clamp(16px,4vw,24px)}#page-shortcut .shortcut-steps{grid-template-columns:1fr}}
+
+
+/* Home: scorciatoie per creare spazi personali o condivisi */
+.home-space-actions{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 14px}
+.home-space-copy{min-width:0}
+.home-space-copy h3{margin:0 0 5px;font-size:16px}
+.home-space-copy p{margin:0;line-height:1.5}
+.home-space-buttons{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+@media(max-width:720px){.home-space-actions{align-items:stretch;flex-direction:column;gap:13px}.home-space-buttons{display:grid;grid-template-columns:1fr 1fr}.home-space-buttons .btn{min-height:44px;padding:10px 8px;font-size:13px}}
+@media(max-width:380px){.home-space-buttons{grid-template-columns:1fr}}
