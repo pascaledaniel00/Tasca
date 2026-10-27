@@ -1,4 +1,9 @@
-import { budgetComparison, categoryBreakdown, monthlyTrend, summarizeTransactions } from './finance-core.js';
+import {
+  budgetComparison,
+  categoryBreakdown,
+  monthlyTrend,
+  summarizeTransactions,
+} from './finance-core.js';
 
 (() => {
   'use strict';
@@ -321,10 +326,8 @@ import { budgetComparison, categoryBreakdown, monthlyTrend, summarizeTransaction
         const label = new Date(item.month + '-15T12:00:00').toLocaleDateString('it-IT', {
           month: 'short',
         });
-        const incomeHeight =
-          item.income > 0 ? Math.max(3, (item.income / maxTrend) * 100) : 0;
-        const expenseHeight =
-          item.expense > 0 ? Math.max(3, (item.expense / maxTrend) * 100) : 0;
+        const incomeHeight = item.income > 0 ? Math.max(3, (item.income / maxTrend) * 100) : 0;
+        const expenseHeight = item.expense > 0 ? Math.max(3, (item.expense / maxTrend) * 100) : 0;
         return `<div class="trend-month" aria-label="${esc(label)}: entrate ${eur(item.income)}, uscite ${eur(item.expense)}"><div class="trend-bars"><span class="trend-bar income" style="height:${incomeHeight}%"></span><span class="trend-bar expense" style="height:${expenseHeight}%"></span></div><span class="trend-label">${esc(label)}</span></div>`;
       })
       .join('');
