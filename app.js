@@ -24,6 +24,7 @@ import {
       'Carburante',
       'Parcheggi',
       'Manutenzione auto',
+      'Parcheggi e manutenzione',
       'Alimentari e supermercato',
       'Bar, colazioni e snack',
       'Pranzi fuori casa',
@@ -1715,15 +1716,23 @@ import {
     const type = ['expense', 'income', 'transfer', 'refund'].includes(params.get('type'))
       ? params.get('type')
       : 'expense';
-    const legacyCategories = {
+    // Compatibilità con le etichette del menu nel Comando Rapido iOS.
+    // URLSearchParams decodifica già gli spazi e i caratteri percent-encoded.
+    const shortcutCategoryAliases = {
       Spesa: 'Alimentari e supermercato',
       Altro: 'Altre spese personali',
+      'Parcheggi e manutenzione': 'Parcheggi e manutenzione',
+      'Altre spese personali': 'Altre spese personali',
     };
-    const category =
-      legacyCategories[rawCategory] ||
-      ((CATEGORIES[type] || CATEGORIES.expense).includes(rawCategory)
-        ? rawCategory
-        : 'Da verificare');
+    const normalizeCategory = (value) =>
+      String(value || '')
+        .trim()
+        .toLocaleLowerCase('it-IT')
+        .replace(/\s+/g, ' ');
+    const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
+      (item) => normalizeCategory(item) === normalizeCategory(rawCategory)
+    );
+    const category = shortcutCategoryAliases[rawCategory] || canonicalCategory || 'Da verificare';
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
@@ -1736,14 +1745,35 @@ import {
       );
       return;
     }
-    const targetSpace =
-      spaces.find((s) => s.space_type === 'personal') || (spaces.length === 1 ? spaces[0] : null);
+    let targetSpace = spaces.length === 1 ? spaces[0] : null;
     if (!targetSpace) {
-      notify(
-        'Per importare il pagamento crea uno spazio personale oppure seleziona un solo spazio disponibile.',
-        'error'
+      const spaceChoices = spaces
+        .map((space, index) => {
+          const kind =
+            space.space_type === 'personal'
+              ? 'Personale'
+              : space.space_type === 'trip'
+                ? 'Progetto/viaggio'
+                : 'Condiviso';
+          return index + 1 + '. ' + space.name + ' (' + kind + ')';
+        })
+        .join('\n');
+      const choice = window.prompt(
+        'Dove vuoi registrare questa spesa?\n\n' +
+          spaceChoices +
+          '\n\nInserisci il numero dello spazio. Premi Annulla per non registrare.'
       );
-      return;
+      if (choice === null) {
+        notify('Importazione annullata: non è stato salvato alcun movimento.');
+        clearShortcutParams();
+        return;
+      }
+      const selectedIndex = Number(choice.trim()) - 1;
+      if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= spaces.length) {
+        notify('Numero dello spazio non valido. Riapri il collegamento e riprova.', 'error');
+        return;
+      }
+      targetSpace = spaces[selectedIndex];
     }
     const normalized = (s) =>
       String(s || '')
@@ -1777,7 +1807,9 @@ import {
           '\nMetodo: ' +
           method +
           '\nCategoria: ' +
-          category
+          category +
+          '\nSpazio: ' +
+          targetSpace.name
       );
       if (!accepted) {
         clearShortcutParams();
