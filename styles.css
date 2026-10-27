@@ -107,3 +107,20 @@ html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840
   .home-space-buttons .btn { width: 100%; min-height: 44px; }
   .toolbar > input, .toolbar > select { flex: 1 1 145px; }
 }
+
+
+/* Riordino personalizzato della barra laterale */
+#desktopNav button[data-page] { cursor: grab; user-select: none; -webkit-user-select: none; }
+#desktopNav button[data-page]:active { cursor: grabbing; }
+#desktopNav button[data-page].dragging { opacity: .42; background: var(--gs); border: 1px dashed var(--g); }
+#desktopNav button[data-page][aria-grabbed="true"] { box-shadow: 0 8px 22px #173d3220; }
+#desktopNav button[data-page]:focus-visible { outline-offset: 2px; }
+#desktopNav button[data-page]::after {
+ content: "⠿";
+ margin-left: auto;
+ color: var(--muted);
+ opacity: .42;
+ font-size: 17px;
+ line-height: 1;
+}
+#desktopNav button[data-page]:hover::after { opacity: .9; }
