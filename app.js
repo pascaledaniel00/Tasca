@@ -17,7 +17,7 @@ import {
   const SUPABASE_URL = 'https://njgmlxyecjyreieqcpwk.supabase.co';
   const SUPABASE_PUBLIC_KEY = 'sb_publishable_U6dgmohD5p7Z5jxcwHLZSg_MoR2cjz1';
   // URL pubblico del Worker Cloudflare. Inserire l'URL workers.dev dopo la pubblicazione.
-  const AI_WORKER_URL = '';
+  const AI_WORKER_URL = 'https://tasca-ai.pascaledaniel00.workers.dev';
 
 
   const CATEGORIES = {
