@@ -2,10 +2,7 @@
 <html lang="it">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta id="themeColorMeta" name="theme-color" content="#173D32" />
     <meta
       name="description"
@@ -27,9 +24,7 @@
           </div>
         </div>
         <h2 id="authTitle">Bentornato</h2>
-        <p class="muted tiny" id="authSubtitle">
-          Accedi per sincronizzare le tue finanze.
-        </p>
+        <p class="muted tiny" id="authSubtitle">Accedi per sincronizzare le tue finanze.</p>
         <div id="authNotice" class="notice"></div>
         <form id="authForm">
           <div class="field">
@@ -54,9 +49,7 @@
                 title="Mostra password"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"
-                  ></path>
+                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               </button>
@@ -64,26 +57,17 @@
           </div>
           <div id="authConfirmWrap" class="field hidden">
             <label for="authConfirm">Conferma password</label
-            ><input
-              id="authConfirm"
-              type="password"
-              autocomplete="new-password"
-              minlength="8"
-            />
+            ><input id="authConfirm" type="password" autocomplete="new-password" minlength="8" />
           </div>
-          <button class="btn primary full" id="authSubmit" type="submit">
-            Accedi
-          </button>
+          <button class="btn primary full" id="authSubmit" type="submit">Accedi</button>
         </form>
         <div class="authswitch">
           <button class="btn" id="showSignup" type="button">Crea account</button
-          ><button class="btn" id="showReset" type="button">
-            Recupera password
-          </button>
+          ><button class="btn" id="showReset" type="button">Recupera password</button>
         </div>
         <p class="footnote">
-          I dati finanziari sono associati al tuo account. Non condividere mai
-          password o chiavi segrete.
+          I dati finanziari sono associati al tuo account. Non condividere mai password o chiavi
+          segrete.
         </p>
       </div>
     </div>
@@ -114,12 +98,7 @@
           >
         </button>
         <div class="top-actions">
-          <button
-            id="refreshBtn"
-            class="iconbtn"
-            title="Aggiorna dati"
-            aria-label="Aggiorna dati"
-          >
+          <button id="refreshBtn" class="iconbtn" title="Aggiorna dati" aria-label="Aggiorna dati">
             ↻
           </button>
           <div class="account-menu-wrap">
@@ -149,10 +128,8 @@
       <nav id="desktopNav" class="nav">
         <button data-page="home" class="active">Panoramica</button
         ><button data-page="transactions">Movimenti</button
-        ><button data-page="budgets">Budget</button
-        ><button data-page="recurring">Ricorrenze</button
-        ><button data-page="advice">Consigli</button
-        ><button data-page="spaces">Condivisione</button
+        ><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button
+        ><button data-page="advice">Consigli</button><button data-page="spaces">Condivisione</button
         ><button data-page="shortcut">iPhone</button
         ><button data-page="settings">Impostazioni</button>
       </nav>
@@ -161,14 +138,9 @@
         <div class="space-switcher-icon" aria-hidden="true">◈</div>
         <div class="space-switcher-copy">
           <label for="activeSpaceSelect">Stai visualizzando</label
-          ><span class="space-switcher-hint"
-            >Scegli uno spazio per consultare i tuoi dati</span
-          >
+          ><span class="space-switcher-hint">Scegli uno spazio per consultare i tuoi dati</span>
         </div>
-        <select
-          id="activeSpaceSelect"
-          aria-label="Seleziona lo spazio da visualizzare"
-        ></select>
+        <select id="activeSpaceSelect" aria-label="Seleziona lo spazio da visualizzare"></select>
       </div>
       <div id="globalNotice" class="notice"></div>
       <main>
@@ -188,27 +160,21 @@
                 <span id="goalProgress" class="goal-progress-fill"></span>
               </div>
               <div class="tiny" id="goalCaption">Obiettivo da impostare</div>
-              <button id="editGoalBtn" class="btn small">
-                Imposta obiettivo
-              </button>
+              <button id="editGoalBtn" class="btn small">Imposta obiettivo</button>
             </div>
           </div>
           <div class="panel home-space-actions">
             <div class="home-space-copy">
               <h3>Organizza le tue spese</h3>
               <p class="muted tiny">
-                Scegli come organizzare le spese: personali, condivise o legate
-                a un progetto come una vacanza o un regalo.
+                Scegli come organizzare le spese: personali, condivise o legate a un progetto come
+                una vacanza o un regalo.
               </p>
             </div>
             <div class="home-space-buttons">
               <button class="btn" id="homeCreatePersonalSpace" type="button">
                 ＋ Spazio personale</button
-              ><button
-                class="btn primary"
-                id="homeCreateSharedSpace"
-                type="button"
-              >
+              ><button class="btn primary" id="homeCreateSharedSpace" type="button">
                 ＋ Spazio condiviso</button
               ><button class="btn" id="homeCreateProjectSpace" type="button">
                 ＋ Nuovo progetto
@@ -217,18 +183,15 @@
           </div>
           <div class="stats">
             <div class="stat">
-              <span class="label">Entrate del mese</span
-              ><strong id="incomeTotal">€ 0,00</strong
+              <span class="label">Entrate del mese</span><strong id="incomeTotal">€ 0,00</strong
               ><small>Movimenti registrati</small>
             </div>
             <div class="stat">
-              <span class="label">Uscite del mese</span
-              ><strong id="expenseTotal">€ 0,00</strong
+              <span class="label">Uscite del mese</span><strong id="expenseTotal">€ 0,00</strong
               ><small>Esclusi trasferimenti interni</small>
             </div>
             <div class="stat">
-              <span class="label">Residuo del mese</span
-              ><strong id="monthResidual">€ 0,00</strong
+              <span class="label">Residuo del mese</span><strong id="monthResidual">€ 0,00</strong
               ><small id="residualCaption">Entrate meno uscite</small>
             </div>
           </div>
@@ -236,14 +199,11 @@
             <div class="panel">
               <div class="panelhead">
                 <h3>Movimenti recenti</h3>
-                <button class="btn small" data-goto="transactions">
-                  Tutti
-                </button>
+                <button class="btn small" data-goto="transactions">Tutti</button>
               </div>
               <div id="recentMovements"></div>
               <div class="quick">
-                <button class="btn primary" id="quickExpense">
-                  ＋ Nuova spesa</button
+                <button class="btn primary" id="quickExpense">＋ Nuova spesa</button
                 ><button class="btn" id="quickIncome">＋ Entrata</button>
               </div>
             </div>
@@ -254,8 +214,7 @@
               </div>
               <div id="homeBudgets"></div>
               <div class="notice warn tiny">
-                Il saldo mostrato è teorico: non è collegato automaticamente al
-                saldo bancario.
+                Il saldo mostrato è teorico: non è collegato automaticamente al saldo bancario.
               </div>
             </div>
           </div>
@@ -264,20 +223,15 @@
           <div class="page-title">
             <div>
               <h2>Movimenti</h2>
-              <p class="muted tiny">
-                Ogni movimento resta separato nel registro.
-              </p>
+              <p class="muted tiny">Ogni movimento resta separato nel registro.</p>
             </div>
-            <button id="newTransactionBtn" class="btn primary">
-              ＋ Aggiungi movimento
-            </button>
+            <button id="newTransactionBtn" class="btn primary">＋ Aggiungi movimento</button>
           </div>
           <div class="panel">
             <div class="toolbar">
-              <input
-                id="searchMovements"
-                placeholder="Cerca descrizione o categoria"
-              /><select id="filterType">
+              <input id="searchMovements" placeholder="Cerca descrizione o categoria" /><select
+                id="filterType"
+              >
                 <option value="">Tutti i tipi</option>
                 <option value="expense">Uscite</option>
                 <option value="income">Entrate</option>
@@ -292,21 +246,13 @@
           <div class="page-title">
             <div>
               <h2>Budget</h2>
-              <p class="muted tiny">
-                Confronta i limiti con le uscite registrate.
-              </p>
+              <p class="muted tiny">Confronta i limiti con le uscite registrate.</p>
             </div>
-            <button id="newBudgetBtn" class="btn primary">
-              ＋ Nuovo budget
-            </button>
+            <button id="newBudgetBtn" class="btn primary">＋ Nuovo budget</button>
           </div>
           <div class="panel">
             <div class="toolbar">
-              <input
-                id="budgetMonth"
-                type="month"
-                aria-label="Mese del budget"
-              />
+              <input id="budgetMonth" type="month" aria-label="Mese del budget" />
             </div>
             <div id="budgetsList"></div>
           </div>
@@ -316,19 +262,16 @@
             <div>
               <h2>Rate e ricorrenze</h2>
               <p class="muted tiny">
-                Tieni traccia delle scadenze senza presumere che siano già
-                pagate.
+                Tieni traccia delle scadenze senza presumere che siano già pagate.
               </p>
             </div>
-            <button id="newRecurringBtn" class="btn primary">
-              ＋ Aggiungi
-            </button>
+            <button id="newRecurringBtn" class="btn primary">＋ Aggiungi</button>
           </div>
           <div class="panel">
             <div id="recurringList"></div>
             <div class="notice warn">
-              Le ricorrenze sono promemoria: non generano addebiti automatici e
-              non verificano pagamenti bancari.
+              Le ricorrenze sono promemoria: non generano addebiti automatici e non verificano
+              pagamenti bancari.
             </div>
           </div>
         </section>
@@ -337,8 +280,7 @@
             <div>
               <h2>Consigli</h2>
               <p class="muted tiny">
-                Indicazioni basate sui movimenti registrati, non su dati bancari
-                esterni.
+                Indicazioni basate sui movimenti registrati, non su dati bancari esterni.
               </p>
             </div>
           </div>
@@ -349,8 +291,7 @@
             <div>
               <h2>Spazi condivisi</h2>
               <p class="muted tiny">
-                Per gestire spese personali, condivise o per progetti come
-                regali, casa e vacanze.
+                Per gestire spese personali, condivise o per progetti come regali, casa e vacanze.
               </p>
             </div>
             <button id="newSpaceBtn" class="btn primary">＋ Crea spazio</button>
@@ -358,9 +299,8 @@
           <div class="panel">
             <div id="spacesList"></div>
             <div id="spaceDetail" class="notice">
-              La condivisione richiede le tabelle e le policy indicate nel setup
-              SQL. Gli inviti via email devono essere configurati prima
-              dell'uso.
+              La condivisione richiede le tabelle e le policy indicate nel setup SQL. Gli inviti via
+              email devono essere configurati prima dell'uso.
             </div>
           </div>
         </section>
@@ -369,8 +309,7 @@
             <div>
               <h2>Registra con iPhone</h2>
               <p class="muted tiny">
-                Il modo più rapido per trasformare un pagamento in un movimento
-                Tasca.
+                Il modo più rapido per trasformare un pagamento in un movimento Tasca.
               </p>
             </div>
           </div>
@@ -394,14 +333,7 @@
                   </linearGradient>
                 </defs>
                 <g transform="rotate(-28 32 32)">
-                  <rect
-                    x="10"
-                    y="7"
-                    width="34"
-                    height="48"
-                    rx="11"
-                    fill="url(#shortcutWarm)"
-                  />
+                  <rect x="10" y="7" width="34" height="48" rx="11" fill="url(#shortcutWarm)" />
                   <rect
                     x="24"
                     y="9"
@@ -411,55 +343,40 @@
                     fill="url(#shortcutCool)"
                     opacity=".97"
                   />
-                  <path
-                    d="M28 25h10v-6l10 11-10 11v-6H28z"
-                    fill="#fff"
-                    opacity=".96"
-                  />
+                  <path d="M28 25h10v-6l10 11-10 11v-6H28z" fill="#fff" opacity=".96" />
                 </g>
               </svg>
             </div>
             <div class="eyebrow">TASCA + COMANDI RAPIDI</div>
             <h3>Registra una spesa da Wallet</h3>
             <p>
-              Stiamo preparando il Comando Rapido per acquisire i dati di un
-              pagamento e passarli a Tasca, con una schermata di controllo prima
-              di salvare la spesa.
+              Stiamo preparando il Comando Rapido per acquisire i dati di un pagamento e passarli a
+              Tasca, con una schermata di controllo prima di salvare la spesa.
             </p>
             <div class="notice warn">
-              <strong>Download non ancora disponibile.</strong> Il comando è in
-              fase di verifica: pubblicheremo qui il link d’installazione solo
-              dopo aver completato i test su iPhone, per evitare di proporre
-              un’automazione non affidabile.
+              <strong>Download non ancora disponibile.</strong> Il comando è in fase di verifica:
+              pubblicheremo qui il link d’installazione solo dopo aver completato i test su iPhone,
+              per evitare di proporre un’automazione non affidabile.
             </div>
             <div class="shortcut-steps">
-              <div>
-                <strong>1. Pagamento</strong
-                ><span>Usa Wallet come fai normalmente.</span>
-              </div>
+              <div><strong>1. Pagamento</strong><span>Usa Wallet come fai normalmente.</span></div>
               <div>
                 <strong>2. Comando Rapido</strong
-                ><span
-                  >Il flusso guiderà l’importazione dei dettagli
-                  disponibili.</span
-                >
+                ><span>Il flusso guiderà l’importazione dei dettagli disponibili.</span>
               </div>
               <div>
                 <strong>3. Conferma in Tasca</strong
                 ><span
-                  >Controlla importo e descrizione; i possibili duplicati
-                  vengono segnalati prima del salvataggio.</span
+                  >Controlla importo e descrizione; i possibili duplicati vengono segnalati prima
+                  del salvataggio.</span
                 >
               </div>
             </div>
-            <button id="shortcutInfoBtn" class="btn primary" type="button">
-              Come funzionerà
-            </button>
+            <button id="shortcutInfoBtn" class="btn primary" type="button">Come funzionerà</button>
             <p class="muted tiny">
-              Nota: iOS non consente di leggere in modo universale tutte le
-              notifiche bancarie o i dettagli di ogni pagamento Wallet. La
-              compatibilità verrà indicata chiaramente quando il comando sarà
-              verificato.
+              Nota: iOS non consente di leggere in modo universale tutte le notifiche bancarie o i
+              dettagli di ogni pagamento Wallet. La compatibilità verrà indicata chiaramente quando
+              il comando sarà verificato.
             </p>
           </div>
         </section>
@@ -467,9 +384,7 @@
           <div class="page-title">
             <div>
               <h2>Impostazioni</h2>
-              <p class="muted tiny">
-                Personalizza Tasca e gestisci i tuoi dati.
-              </p>
+              <p class="muted tiny">Personalizza Tasca e gestisci i tuoi dati.</p>
             </div>
           </div>
           <div class="layout">
@@ -477,8 +392,7 @@
               <div class="eyebrow">Aspetto</div>
               <h3>Modalità di visualizzazione</h3>
               <p class="muted tiny">
-                Scegli il tema più comodo. La preferenza viene salvata su questo
-                dispositivo.
+                Scegli il tema più comodo. La preferenza viene salvata su questo dispositivo.
               </p>
               <div class="row settings-inline-row">
                 <span id="themeSettingLabel" class="muted settings-theme-label"
@@ -492,8 +406,8 @@
               <div class="eyebrow">Budget</div>
               <h3>Obiettivo di fine mese</h3>
               <p class="muted tiny">
-                Imposta il saldo residuo che vuoi mantenere a fine mese, senza
-                conteggiarlo due volte come risparmio aggiuntivo.
+                Imposta il saldo residuo che vuoi mantenere a fine mese, senza conteggiarlo due
+                volte come risparmio aggiuntivo.
               </p>
               <button id="settingsGoalBtn" class="btn" type="button">
                 Modifica obiettivo mensile
@@ -503,12 +417,11 @@
               <div class="eyebrow">Dati e account</div>
               <h3>Gestisci i tuoi dati</h3>
               <p class="muted tiny">
-                Esporta movimenti, budget e ricorrenze in formato CSV oppure
-                apri le impostazioni del tuo account.
+                Esporta movimenti, budget e ricorrenze in formato CSV oppure apri le impostazioni
+                del tuo account.
               </p>
               <div class="row settings-actions-row">
-                <button id="settingsExportBtn" class="btn" type="button">
-                  Esporta dati (CSV)</button
+                <button id="settingsExportBtn" class="btn" type="button">Esporta dati (CSV)</button
                 ><button id="settingsAccountBtn" class="btn" type="button">
                   Account e sicurezza
                 </button>
@@ -518,8 +431,7 @@
               <div class="eyebrow">Automazioni</div>
               <h3>Registra con iPhone</h3>
               <p class="muted tiny">
-                Consulta lo stato del Comando Rapido per registrare le spese da
-                iPhone.
+                Consulta lo stato del Comando Rapido per registrare le spese da iPhone.
               </p>
               <button class="btn" type="button" data-goto="shortcut">
                 Apri impostazioni iPhone
