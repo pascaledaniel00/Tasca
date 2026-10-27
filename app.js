@@ -16,6 +16,9 @@ import {
   /* CONFIGURAZIONE: usa solo la chiave pubblica Supabase (publishable/anon). */
   const SUPABASE_URL = 'https://njgmlxyecjyreieqcpwk.supabase.co';
   const SUPABASE_PUBLIC_KEY = 'sb_publishable_U6dgmohD5p7Z5jxcwHLZSg_MoR2cjz1';
+  // URL pubblico del Worker Cloudflare. Inserire l'URL workers.dev dopo la pubblicazione.
+  const AI_WORKER_URL = '';
+
 
   const CATEGORIES = {
     expense: [
@@ -87,6 +90,12 @@ import {
   let shortcutImportRunning = false,
     dataLoadSequence = 0,
     transactionSaving = false;
+  let aiNudgeKey = '',
+    aiNudgeText = '',
+    aiNudgePending = false,
+    aiAdviceKey = '',
+    aiAdviceText = '',
+    aiAdvicePending = false;
   let goal = 40;
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
@@ -282,6 +291,113 @@ import {
       )
       .reduce((s, t) => s + Number(t.amount || 0), 0);
   }
+  function isAIConfigured() {
+    return typeof AI_WORKER_URL === 'string' && AI_WORKER_URL.startsWith('https://') &&
+      !AI_WORKER_URL.includes('INSERISCI') && !AI_WORKER_URL.includes('<');
+  }
+  function getDisplayName() {
+    const meta = (user && user.user_metadata) || {};
+    return String(meta.full_name || meta.name || '').trim() || 'utente';
+  }
+  async function callTascaAI(task, data) {
+    if (!isAIConfigured() || !db || !user) return null;
+    try {
+      const { data: sessionData, error } = await db.auth.getSession();
+      if (error || !sessionData?.session?.access_token) return null;
+      const response = await fetch(AI_WORKER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + sessionData.session.access_token,
+        },
+        body: JSON.stringify({ task, data }),
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      return typeof result.text === 'string' ? result.text.trim().slice(0, 5000) : null;
+    } catch {
+      return null;
+    }
+  }
+  async function requestAINudge(data) {
+    if (!isAIConfigured()) return null;
+    const key = JSON.stringify(data);
+    if (key === aiNudgeKey) return aiNudgeText || null;
+    if (aiNudgePending) return null;
+    aiNudgePending = true;
+    aiNudgeKey = key;
+    try {
+      const text = await callTascaAI('nudge', data);
+      if (text && aiNudgeKey === key) {
+        aiNudgeText = text;
+        return text;
+      }
+      return null;
+    } finally {
+      aiNudgePending = false;
+    }
+  }
+  function buildAdviceSnapshot() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const fromMonth = start.toLocaleDateString('sv-SE').slice(0, 7);
+    const rows = scopedTransactions().filter((t) => txDate(t).slice(0, 7) >= fromMonth);
+    const months = {};
+    rows.forEach((t) => {
+      const month = txDate(t).slice(0, 7);
+      if (!months[month]) months[month] = { month, income: 0, expenses: 0, categories: {}, smallExpensesCount: 0, smallExpensesTotal: 0 };
+      const m = months[month];
+      const amount = Number(t.amount) || 0;
+      if (t.type === 'income') m.income += amount;
+      if (t.type === 'expense') {
+        m.expenses += amount;
+        const category = t.category || 'Da classificare';
+        m.categories[category] = (m.categories[category] || 0) + amount;
+        if (amount <= 5) { m.smallExpensesCount += 1; m.smallExpensesTotal += amount; }
+      }
+    });
+    const historyBudgets = scopedBudgets()
+      .filter((b) => budgetMonth(b) >= fromMonth && budgetMonth(b) <= monthNow())
+      .map((b) => {
+        const month = budgetMonth(b);
+        const spent = rows.filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === month && t.category === b.category)
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        return { month, category: b.category, budget: Number(b.amount) || 0, spent };
+      });
+    return {
+      displayName: getDisplayName(),
+      currentMonth: monthNow(),
+      goal,
+      months: Object.values(months).sort((a, b) => a.month.localeCompare(b.month)),
+      budgets: historyBudgets,
+      recurring: scopedRecurring().filter((r) => planActive(r)).map((r) => ({
+        name: r.name, category: r.category || 'Da classificare', amount: Number(r.amount) || 0, cadence: r.cadence,
+      })).slice(0, 30),
+      dataQualityFlags: {
+        transactionsToVerify: rows.filter((t) => t.status === 'verify').length,
+        monthsOfHistoryAvailable: Object.keys(months).length,
+      },
+    };
+  }
+  async function requestAIAdvice(force = false) {
+    if (!isAIConfigured()) return null;
+    const snapshot = buildAdviceSnapshot();
+    const key = JSON.stringify(snapshot);
+    if (!force && key === aiAdviceKey) return aiAdviceText || null;
+    if (aiAdvicePending) return null;
+    aiAdvicePending = true;
+    aiAdviceKey = key;
+    aiAdviceText = 'Sto analizzando i dati disponibili e lo storico…';
+    try {
+      const text = await callTascaAI('advice', snapshot);
+      if (text && aiAdviceKey === key) aiAdviceText = text;
+      else if (aiAdviceKey === key) aiAdviceText = 'Non sono riuscito a generare i consigli. Riprova tra poco.';
+      renderAdvice();
+      return text;
+    } finally {
+      aiAdvicePending = false;
+    }
+  }
   function renderHome() {
     const s = monthSummary();
     $('heroBalance').textContent = eur(s.residual);
@@ -341,6 +457,23 @@ import {
         message = `Il target di fine mese è ${eur(goal)}: per ora mancano ${eur(goal - s.residual)}. Piccoli passi, senza panico.`;
       }
       playful.textContent = message;
+      requestAINudge({
+        displayName: getDisplayName(),
+        month: monthNow(),
+        day,
+        daysInMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
+        income: s.income,
+        expense: s.expense,
+        residual: s.residual,
+        goal,
+        budgets: bs.map((b) => {
+          const spent = monthBudgetSpend(b);
+          const limit = Number(b.amount) || 0;
+          return { category: b.category, limit, spent, percent: limit > 0 ? Math.round((spent / limit) * 100) : 0 };
+        }),
+      }).then((aiText) => {
+        if (aiText && playful) playful.textContent = aiText;
+      });
     }
     renderDashboardCharts();
   }
@@ -495,12 +628,20 @@ import {
         : 'Controlla periodicamente il registro rispetto all’estratto conto.',
       'warn',
     ]);
+    cards.push([
+      'Consigli IA personalizzati',
+      aiAdviceText || (isAIConfigured()
+        ? 'Sto preparando un’analisi dello storico…'
+        : 'La funzione si attiverà dopo aver pubblicato il Worker cloud gratuito e collegato il suo URL.'),
+      'ai',
+    ]);
     $('adviceList').innerHTML = cards
       .map(
         ([title, body, kind]) =>
-          `<div class="panel"><h3>${esc(title)}</h3><p class="muted">${esc(body)}</p></div>`
+          `<div class="panel"><h3>${esc(title)}</h3><p class="muted" style="white-space:pre-line">${esc(body)}</p></div>`
       )
       .join('');
+    if (isAIConfigured()) requestAIAdvice();
   }
   function renderSpaces() {
     $('spacesList').innerHTML =
@@ -667,6 +808,10 @@ import {
       budgets = bg;
       recurring = rc;
       spaces = sp;
+      aiNudgeKey = '';
+      aiNudgeText = '';
+      aiAdviceKey = '';
+      aiAdviceText = '';
       if (activeSpaceId !== ALL_SPACES && !spaces.some((space) => space.id === activeSpaceId)) {
         activeSpaceId =
           (spaces.find((space) => space.space_type === 'personal') || spaces[0] || {}).id || null;
