@@ -102,22 +102,38 @@ function showAuth(mode){const signup=mode==='signup',reset=mode==='reset';$('aut
 async function authSubmit(e){e.preventDefault();if(!db){showAuthMessage('Configura prima URL e chiave pubblica Supabase nel codice.','error');return;}const mode=$('authForm').dataset.mode,email=$('authEmail').value.trim(),password=$('authPassword').value;try{$('authSubmit').disabled=true;if(mode==='signup'){if(password!==$('authConfirm').value)throw new Error('Le password non coincidono.');const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;showAuthMessage('Registrazione inviata. Se la conferma email è attiva, controlla la posta prima di accedere.');}else if(mode==='reset'){const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;showAuthMessage('Se l’indirizzo è registrato, riceverai le istruzioni via email.');}else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;}}catch(err){showAuthMessage(err.message||'Operazione non riuscita.','error');}finally{$('authSubmit').disabled=false;}}
 function showApp(){ $('authScreen').classList.add('hidden');$('appScreen').classList.remove('hidden');$('mobileNav').classList.remove('hidden');}
 function showLogin(){user=null;$('appScreen').classList.add('hidden');$('mobileNav').classList.add('hidden');$('authScreen').classList.remove('hidden');}
+async function fetchAllRows(queryFactory,pageSize=1000){
+ if(!Number.isInteger(pageSize)||pageSize<1)throw new RangeError('pageSize deve essere un intero positivo.');
+ const rows=[];
+ for(let offset=0;;offset+=pageSize){
+  const {data,error}=await queryFactory().range(offset,offset+pageSize-1);
+  if(error)throw error;
+  const batch=data||[];
+  rows.push(...batch);
+  if(batch.length<pageSize)return rows;
+ }
+}
+
 async function loadData(){
  if(!db||!user)return;
  notice('Aggiornamento dei dati…');
  try{
   const [tx,bg,rc,sp]=await Promise.all([
-   db.from('transactions').select('*').order('occurred_on',{ascending:false}).limit(2000),
-   db.from('budgets').select('*').order('month_start',{ascending:false}).limit(1000),
-   db.from('recurring_plans').select('*').order('next_due_on',{ascending:true}).limit(500),
-   db.from('spaces').select('*').order('created_at',{ascending:false}).limit(100)
+   fetchAllRows(()=>db.from('transactions').select('*').order('occurred_on',{ascending:false})),
+   fetchAllRows(()=>db.from('budgets').select('*').order('month_start',{ascending:false})),
+   fetchAllRows(()=>db.from('recurring_plans').select('*').order('next_due_on',{ascending:true})),
+   fetchAllRows(()=>db.from('spaces').select('*').order('created_at',{ascending:false}))
   ]);
-  for(const r of [tx,bg,rc,sp])if(r.error)throw r.error;
-  transactions=tx.data||[];budgets=bg.data||[];recurring=rc.data||[];spaces=sp.data||[];
-   if(activeSpaceId!==ALL_SPACES&&!spaces.some(s=>s.id===activeSpaceId))activeSpaceId=(spaces.find(s=>s.space_type==='personal')||spaces[0]||{}).id||null;
-   renderAll();notice('');
-   await processShortcutImport();
- }catch(err){notice(`Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`, 'error');}
+  transactions=tx;budgets=bg;recurring=rc;spaces=sp;
+  if(activeSpaceId!==ALL_SPACES&&!spaces.some(space=>space.id===activeSpaceId)){
+   activeSpaceId=(spaces.find(space=>space.space_type==='personal')||spaces[0]||{}).id||null;
+  }
+  renderAll();
+  notice('');
+  await processShortcutImport();
+ }catch(err){
+  notice(`Non riesco a caricare tutti i dati: ${err.message}. Verifica che le tabelle e le policy SQL siano state create.`,'error');
+ }
 }
 function openTransactionForm(t=null,defaultType='expense',spaceId=null){
  editingTransaction=t;transactionSpaceId=t?.space_id||spaceId||activeSpaceId||null;
@@ -192,16 +208,35 @@ async function saveSettlement(spaceId,payment,bulk=false){
  }catch(err){notify('Rimborso non registrato: '+(err.message||'errore database'),'error');}
 }
 async function openSpace(id){
- const s=spaces.find(x=>x.id===id);if(!s)return;selectedSpace=s;activeSpaceId=id;renderSpaceSelector();renderHome();renderTransactions();renderBudgets();renderRecurring();renderAdvice();
- const [tx,sh,st,mem]=await Promise.all([
-  db.from('transactions').select('*').eq('space_id',id).order('occurred_on',{ascending:false}).limit(500),
-  db.from('expense_shares').select('transaction_id,user_id,share_amount').limit(5000),
-  db.from('settlements').select('*').eq('space_id',id).order('paid_on',{ascending:false}).limit(1000),
-  db.from('space_members').select('user_id,role').eq('space_id',id)
- ]);
- for(const q of [tx,sh,st,mem])if(q.error){notify('Non riesco a caricare spese e rimborsi: '+q.error.message,'error');return;}
- const rows=tx.data||[],transactionIds=new Set(rows.map(t=>t.id)),shares=(sh.data||[]).filter(x=>transactionIds.has(x.transaction_id)),settlements=st.data||[],members=mem.data||[];
- const shared=s.space_type!=='personal',canInvite=s.owner_id===user?.id&&shared;
+ const space=spaces.find(item=>item.id===id);
+ if(!space)return;
+ selectedSpace=space;
+ activeSpaceId=id;
+ renderSpaceSelector();
+ renderHome();
+ renderTransactions();
+ renderBudgets();
+ renderRecurring();
+ renderAdvice();
+
+ let rows,shares=[],settlements,members;
+ try{
+  [rows,settlements,members]=await Promise.all([
+   fetchAllRows(()=>db.from('transactions').select('*').eq('space_id',id).order('occurred_on',{ascending:false})),
+   fetchAllRows(()=>db.from('settlements').select('*').eq('space_id',id).order('paid_on',{ascending:false})),
+   fetchAllRows(()=>db.from('space_members').select('user_id,role').eq('space_id',id).order('user_id',{ascending:true}))
+  ]);
+  const transactionIds=rows.map(transaction=>transaction.id);
+  for(let offset=0;offset<transactionIds.length;offset+=100){
+   const batchIds=transactionIds.slice(offset,offset+100);
+   const batchShares=await fetchAllRows(()=>db.from('expense_shares').select('transaction_id,user_id,share_amount').in('transaction_id',batchIds).order('transaction_id',{ascending:true}).order('user_id',{ascending:true}));
+   shares.push(...batchShares);
+  }
+ }catch(err){
+  notify('Non riesco a caricare spese e rimborsi: '+(err.message||'errore database'),'error');
+  return;
+ }
+ const shared=space.space_type!=='personal',canInvite=space.owner_id===user?.id&&shared;
  const memberIds=[...new Set([...members.map(m=>m.user_id),s.owner_id].filter(Boolean))];
  const labels=id=>id===user?.id?'Tu':'Partecipante '+String(id).slice(0,8);
  const eligibleExpenses=rows.filter(t=>t.type==='expense'&&t.status==='confirmed');
@@ -223,7 +258,7 @@ async function openSpace(id){
  '<h3 style="margin-top:14px">Rimborsi da effettuare</h3>'+
  (plan.length?plan.map((p,i)=>'<div class="movement"><div class="movinfo"><strong>'+esc(labels(p.from_user_id))+' → '+esc(labels(p.to_user_id))+'</strong><small>'+eur(p.amount)+'</small></div><button class="btn small" data-confirm-settlement="'+i+'" '+(blocked?'disabled':'')+'>Conferma rimborso</button></div>').join(''):'<p class="tiny muted">Non risultano rimborsi da effettuare.</p>')+
  '<button class="btn terra full" id="confirmAllSettlements" '+(!plan.length||blocked?'disabled':'')+'>Conferma tutti i rimborsi</button><p class="tiny muted">Conferma solo pagamenti realmente effettuati. I rimborsi registrati non verranno riproposti.</p></div>':'';
- $('spaceDetail').innerHTML='<h3>'+esc(s.name)+'</h3><p class="tiny muted">'+(s.space_type==='personal'?'Spazio personale':s.space_type==='trip'?'Spazio progetto':'Spazio condiviso')+'</p>'+
+ $('spaceDetail').innerHTML='<h3>'+esc(space.name)+'</h3><p class="tiny muted">'+(space.space_type==='personal'?'Spazio personale':space.space_type==='trip'?'Spazio progetto':'Spazio condiviso')+'</p>'+
   '<button class="btn primary full" id="addSpaceMovementTop" style="margin:10px 0 16px">＋ Registra una spesa in questo spazio</button>'+
  (canInvite?'<div class="notice">Invita una persona tramite email. Il link è valido 7 giorni ed è utilizzabile solo dall’account con quell’indirizzo.</div><form id="inviteForm" class="formgrid"><div class="field"><label for="inviteEmail">Email della persona</label><input id="inviteEmail" name="email" type="email" maxlength="320" required placeholder="nome@esempio.it"></div><div class="field" style="justify-content:end"><button class="btn primary" type="submit">Crea link d’invito</button></div></form><div id="inviteResult"></div>':'')+
  planHtml+'<h3 style="margin-top:18px">Movimenti dello spazio</h3><div>'+rows.map(t=>movementHtml(t)).join('')+'</div><h3 style="margin-top:18px">Rimborsi registrati</h3>'+
