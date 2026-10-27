@@ -24,7 +24,12 @@ jobs:
       - name: Run finance logic tests
         run: npm test
       - name: Check code formatting
-        run: npm run format:check
+        run: |
+          npm run format:check || {
+            echo '--- Prettier diff for app.js ---'
+            npx --yes prettier@3 app.js | diff -u app.js - || true
+            exit 1
+          }
       - name: Check JavaScript syntax
         run: npm run check
       - name: Build production site
