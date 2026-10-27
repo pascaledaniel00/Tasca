@@ -127,3 +127,25 @@ html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840
 .settings-inline-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .settings-theme-label { margin-right: 12px; }
 .settings-actions-row { gap: 8px; flex-wrap: wrap; }
+
+
+/* Reusable presentation classes for dynamically rendered forms and panels. */
+.u-mt-6 { margin-top: 6px; }
+.u-mt-7 { margin-top: 7px; }
+.u-mt-8 { margin-top: 8px; }
+.u-mt-10 { margin-top: 10px; }
+.u-mt-14 { margin-top: 14px; }
+.u-mt-18 { margin-top: 18px; }
+.u-mb-6 { margin-bottom: 6px; }
+.u-mb-12 { margin-bottom: 12px; }
+.u-mb-14 { margin-bottom: 14px; }
+.u-my-14 { margin: 14px 0; }
+.u-my-16 { margin: 16px 0; }
+.u-space-action { margin: 10px 0 16px; }
+.u-width-auto { width: auto; }
+.u-checkbox { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; }
+.u-flex-option { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0; cursor: pointer; }
+.u-flex-end { display: flex; gap: 8px; justify-content: flex-end; }
+.u-justify-end { justify-content: end; }
+.invite-link-input { width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 11px; }
+.invite-link-input-compact { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
