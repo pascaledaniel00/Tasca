@@ -69,10 +69,10 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
 <div id="appScreen" class="app hidden">
   <header class="top">
     <button id="homeLogoBtn" class="brand-home" type="button" aria-label="Torna alla panoramica" title="Torna alla panoramica"><span class="brand"><span class="logo">T</span><span class="brand-copy"><h1>Tasca</h1><p>Il tuo budget personale</p></span></span></button>
-    <div class="top-actions"><button id="themeToggle" class="iconbtn theme-toggle" type="button" aria-label="Attiva modalità scura" title="Attiva modalità scura"><span id="themeToggleIcon" class="theme-toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.6 8.6 0 1 0 20.2 15.3Z"></path></svg></span></button><button id="refreshBtn" class="iconbtn" title="Aggiorna dati" aria-label="Aggiorna dati">↻</button><div class="account-menu-wrap"><button id="accountBtn" class="iconbtn account-btn" type="button" title="Impostazioni account" aria-label="Apri impostazioni account" aria-expanded="false" aria-controls="accountPopover"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"></path></svg></button><div id="accountPopover" class="account-popover" role="dialog" aria-label="Account e impostazioni"></div></div></div>
+    <div class="top-actions"><button id="refreshBtn" class="iconbtn" title="Aggiorna dati" aria-label="Aggiorna dati">↻</button><div class="account-menu-wrap"><button id="accountBtn" class="iconbtn account-btn" type="button" title="Impostazioni account" aria-label="Apri impostazioni account" aria-expanded="false" aria-controls="accountPopover"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"></path></svg></button><div id="accountPopover" class="account-popover" role="dialog" aria-label="Account e impostazioni"></div></div></div>
   </header>
   <nav id="desktopNav" class="nav">
-    <button data-page="home" class="active">Panoramica</button><button data-page="transactions">Movimenti</button><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button><button data-page="advice">Consigli</button><button data-page="spaces">Condivisione</button><button data-page="shortcut">iPhone</button>
+    <button data-page="home" class="active">Panoramica</button><button data-page="transactions">Movimenti</button><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button><button data-page="advice">Consigli</button><button data-page="spaces">Condivisione</button><button data-page="shortcut">iPhone</button><button data-page="settings">Impostazioni</button>
   </nav>
   <div class="space-switcher">
     <div class="space-switcher-icon" aria-hidden="true">◈</div>
@@ -129,10 +129,19 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
         <p class="muted tiny">Nota: iOS non consente di leggere in modo universale tutte le notifiche bancarie o i dettagli di ogni pagamento Wallet. La compatibilità verrà indicata chiaramente quando il comando sarà verificato.</p>
       </div>
     </section>
+    <section id="page-settings" class="section">
+      <div class="page-title"><div><h2>Impostazioni</h2><p class="muted tiny">Personalizza Tasca e gestisci i tuoi dati.</p></div></div>
+      <div class="layout">
+        <div class="panel"><div class="eyebrow">Aspetto</div><h3>Modalità di visualizzazione</h3><p class="muted tiny">Scegli il tema più comodo. La preferenza viene salvata su questo dispositivo.</p><div class="row" style="align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap"><span id="themeSettingLabel" class="muted">Tema attuale: chiaro</span><button id="themeModeToggle" class="btn primary" type="button">Attiva modalità scura</button></div></div>
+        <div class="panel"><div class="eyebrow">Budget</div><h3>Obiettivo di fine mese</h3><p class="muted tiny">Imposta il saldo residuo che vuoi mantenere a fine mese, senza conteggiarlo due volte come risparmio aggiuntivo.</p><button id="settingsGoalBtn" class="btn" type="button">Modifica obiettivo mensile</button></div>
+        <div class="panel"><div class="eyebrow">Dati e account</div><h3>Gestisci i tuoi dati</h3><p class="muted tiny">Esporta movimenti, budget e ricorrenze in formato CSV oppure apri le impostazioni del tuo account.</p><div class="row" style="gap:8px;flex-wrap:wrap"><button id="settingsExportBtn" class="btn" type="button">Esporta dati (CSV)</button><button id="settingsAccountBtn" class="btn" type="button">Account e sicurezza</button></div></div>
+        <div class="panel"><div class="eyebrow">Automazioni</div><h3>Registra con iPhone</h3><p class="muted tiny">Consulta lo stato del Comando Rapido per registrare le spese da iPhone.</p><button class="btn" type="button" data-goto="shortcut">Apri impostazioni iPhone</button></div>
+      </div>
+    </section>
   </main>
 </div>
 <nav id="mobileNav" class="bottomnav">
-  <button data-page="home" class="active"><span>⌂</span>Home</button><button data-page="transactions"><span>↕</span>Movimenti</button><button data-page="budgets"><span>◷</span>Budget</button><button data-page="advice"><span>✦</span>Consigli</button><button data-page="spaces"><span>♧</span>Spazi</button><button data-page="shortcut"><span>↗</span>iPhone</button>
+  <button data-page="home" class="active"><span>⌂</span>Home</button><button data-page="transactions"><span>↕</span>Movimenti</button><button data-page="budgets"><span>◷</span>Budget</button><button data-page="advice"><span>✦</span>Consigli</button><button data-page="spaces"><span>♧</span>Spazi</button><button data-page="settings"><span>⚙</span>Impost.</button>
 </nav>
 <div id="modal" class="modal" role="dialog" aria-modal="true"><div class="modalcard"><div class="modalhead"><h3 id="modalTitle">Nuovo elemento</h3><button id="modalClose" class="iconbtn" aria-label="Chiudi">✕</button></div><div id="modalBody"></div></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
@@ -162,9 +171,10 @@ let goal = 40;
 try { goal = Math.max(0,Number(localStorage.getItem('tasca_monthly_goal') ?? 40)); } catch {}
 function applyTheme(theme){
   const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';
-  const btn=$('themeToggle'),icon=$('themeToggleIcon'),meta=$('themeColorMeta');
-  if(btn){btn.setAttribute('aria-label',dark?'Attiva modalità chiara':'Attiva modalità scura');btn.title=dark?'Attiva modalità chiara':'Attiva modalità scura';}
-  if(icon)icon.innerHTML=dark?'<span class="sun-glyph"></span>':'<svg viewBox="0 0 24 24" width="24" height="24"><path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.6 8.6 0 1 0 20.2 15.3Z"></path></svg>';
+  const meta=$('themeColorMeta');
+  const label=$('themeSettingLabel'),button=$('themeModeToggle');
+  if(label)label.textContent='Tema attuale: '+(dark?'scuro':'chiaro');
+  if(button)button.textContent=dark?'Attiva modalità chiara':'Attiva modalità scura';
   if(meta)meta.content=dark?'#121916':'#173D32';
 }
 function initTheme(){let saved='light';try{saved=localStorage.getItem('tasca_theme')||'light';}catch{}if(saved!=='dark'&&saved!=='light')saved='light';applyTheme(saved);}
@@ -415,7 +425,10 @@ function openAccountSettings(){
 }
 
 function initNavigation(){
- $('themeToggle').addEventListener('click',toggleTheme);
+ $('themeModeToggle').addEventListener('click',toggleTheme);
+ $('settingsGoalBtn').addEventListener('click',openGoalForm);
+ $('settingsExportBtn').addEventListener('click',exportPersonalData);
+ $('settingsAccountBtn').addEventListener('click',()=>{closeAccountPopover();openAccountSettings();});
  $('homeLogoBtn').addEventListener('click',()=>showPage('home'));$('accountBtn').addEventListener('click',()=>{if($('accountPopover').classList.contains('open'))closeAccountPopover();else openAccountSettings();});
  document.addEventListener('click',e=>{if($('accountPopover').classList.contains('open')&&!e.target.closest('.account-menu-wrap'))closeAccountPopover();});
  $('shortcutInfoBtn').addEventListener('click',()=>openModal('Comando Rapido per iPhone',`<div class="account-settings"><p>Il link d’installazione verrà aggiunto qui dopo la verifica completa del flusso su iPhone.</p><p class="muted tiny">La versione finale dovrà essere testata almeno su apertura del link, passaggio dei dati, scelta dello spazio, gestione dei duplicati e conferma del salvataggio. Fino ad allora il download resta disattivato.</p><button class="btn primary full" id="shortcutCloseInfo" type="button">Ho capito</button></div>`));
