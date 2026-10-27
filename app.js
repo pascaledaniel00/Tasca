@@ -2074,6 +2074,15 @@ import {
     $('budgetMonth').value = monthNow();
     $('filterMonth').value = monthNow();
     initNavigation();
+    $('refreshAIAdviceBtn')?.addEventListener('click', () => {
+      if (!isAIConfigured()) {
+        notify('Prima collega l’URL del Worker Cloudflare nel file app.js.', 'warn');
+        return;
+      }
+      aiAdviceText = 'Sto aggiornando i consigli sullo storico…';
+      renderAdvice();
+      requestAIAdvice(true);
+    });
     if (!validConfig() || !window.supabase) {
       showAuthMessage(
         'Prima di accedere, inserisci URL e chiave pubblica del progetto Supabase nel codice.',
