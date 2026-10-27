@@ -197,18 +197,53 @@
           </div>
           <section class="dashboard-charts" aria-label="Grafici del mese">
             <article class="panel chart-card chart-trend-card">
-              <div class="panelhead"><div><h3>Andamento mensile</h3><p class="muted tiny">Ultimi sei mesi</p></div><div class="chart-key"><span><i class="key-dot income"></i>Entrate</span><span><i class="key-dot expense"></i>Uscite</span></div></div>
-              <div id="spendingTrendChart" class="trend-chart" role="img" aria-label="Confronto mensile tra entrate e uscite"></div>
+              <div class="panelhead">
+                <div>
+                  <h3>Andamento mensile</h3>
+                  <p class="muted tiny">Ultimi sei mesi</p>
+                </div>
+                <div class="chart-key">
+                  <span><i class="key-dot income"></i>Entrate</span>
+                  <span><i class="key-dot expense"></i>Uscite</span>
+                </div>
+              </div>
+              <div
+                id="spendingTrendChart"
+                class="trend-chart"
+                role="img"
+                aria-label="Confronto mensile tra entrate e uscite"
+              ></div>
             </article>
             <article class="panel chart-card">
-              <div class="panelhead"><div><h3>Dove spendi</h3><p class="muted tiny">Distribuzione delle uscite del mese</p></div></div>
+              <div class="panelhead">
+                <div>
+                  <h3>Dove spendi</h3>
+                  <p class="muted tiny">Distribuzione delle uscite del mese</p>
+                </div>
+              </div>
               <div class="category-chart-layout">
-                <div id="categoryDonut" class="donut-chart" role="img" aria-label="Distribuzione delle uscite"><div><strong id="categoryDonutTotal">€ 0,00</strong><small>totale uscite</small></div></div>
+                <div
+                  id="categoryDonut"
+                  class="donut-chart"
+                  role="img"
+                  aria-label="Distribuzione delle uscite"
+                >
+                  <div>
+                    <strong id="categoryDonutTotal">€ 0,00</strong>
+                    <small>totale uscite</small>
+                  </div>
+                </div>
                 <div id="categoryLegend" class="chart-legend"></div>
               </div>
             </article>
             <article class="panel chart-card chart-budget-card">
-              <div class="panelhead"><div><h3>Budget sotto controllo</h3><p class="muted tiny">Spesa rispetto ai limiti impostati</p></div><button class="btn small" data-goto="budgets">Gestisci</button></div>
+              <div class="panelhead">
+                <div>
+                  <h3>Budget sotto controllo</h3>
+                  <p class="muted tiny">Spesa rispetto ai limiti impostati</p>
+                </div>
+                <button class="btn small" data-goto="budgets">Gestisci</button>
+              </div>
               <div id="budgetComparisonChart" class="chart-budget-list"></div>
             </article>
           </section>
