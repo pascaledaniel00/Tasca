@@ -1219,7 +1219,9 @@ import {
           ? 'Spazio progetto'
           : 'Spazio condiviso') +
       '</p>' +
-      '<button class="btn primary full u-space-action" id="addSpaceMovementTop">＋ Registra una spesa in questo spazio</button>' +
+      '<button class="btn primary full u-space-action" id="addSpaceMovementTop" data-add-space-movement data-space-id="' +
+      esc(id) +
+      '">＋ Registra una spesa in questo spazio</button>' +
       (canInvite
         ? '<div class="notice">Invita una persona tramite email. Il link è valido 7 giorni ed è utilizzabile solo dall’account con quell’indirizzo.</div><form id="inviteForm" class="formgrid"><div class="field"><label for="inviteEmail">Email della persona</label><input id="inviteEmail" name="email" type="email" maxlength="320" required placeholder="nome@esempio.it"></div><div class="field u-justify-end"><button class="btn primary" type="submit">Crea link d’invito</button></div></form><div id="inviteResult"></div>'
         : '') +
@@ -1243,18 +1245,6 @@ import {
         .join('') ||
         emptyHtml('Nessun rimborso registrato', 'I rimborsi confermati compariranno qui.')) +
       '<p class="tiny muted">I nomi dei partecipanti non sono disponibili nelle tabelle attuali; per ora vengono mostrati identificativi abbreviati.</p>';
-    // Gestione del click tramite delegazione globale.
-    const addExpenseButton = $('addSpaceMovementTop');
-    if (addExpenseButton)
-      addExpenseButton.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        try {
-          openTransactionForm(null, 'expense', id);
-        } catch (err) {
-          notify('Errore apertura spesa: ' + (err.message || err), 'error');
-        }
-      });
     document
       .querySelectorAll('[data-confirm-settlement]')
       .forEach((b) =>
@@ -1649,6 +1639,21 @@ import {
     $('showReset').addEventListener('click', () => showAuth('reset'));
     $('authForm').addEventListener('submit', authSubmit);
     document.addEventListener('click', (e) => {
+      const addSpaceMovement = e.target.closest('[data-add-space-movement]');
+      if (addSpaceMovement) {
+        e.preventDefault();
+        const spaceId = addSpaceMovement.dataset.spaceId;
+        if (!spaceId || !spaces.some((space) => space.id === spaceId)) {
+          notify('Non riesco a identificare lo spazio per questa spesa. Riapri lo spazio e riprova.', 'error');
+          return;
+        }
+        try {
+          openTransactionForm(null, 'expense', spaceId);
+        } catch (err) {
+          notify('Errore apertura spesa: ' + (err.message || err), 'error');
+        }
+        return;
+      }
       const b = e.target.closest('[data-edit-tx]');
       if (b) {
         const t = transactions.find((x) => x.id === b.dataset.editTx);
