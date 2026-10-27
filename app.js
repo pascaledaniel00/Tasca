@@ -1,3 +1,5 @@
+import { budgetComparison, categoryBreakdown, monthlyTrend, summarizeTransactions } from './finance-core.js';
+
 (() => {
   'use strict';
 
@@ -240,21 +242,8 @@
   function monthRows(month) {
     return scopedTransactions().filter((t) => txDate(t).slice(0, 7) === month);
   }
-  function sums(rows) {
-    return rows.reduce(
-      (s, t) => {
-        const n = Number(t.amount) || 0;
-        if (t.type === 'income' || t.type === 'refund') s.income += n;
-        else if (t.type === 'expense') s.expense += n;
-        else if (t.type === 'transfer') s.transfer += n;
-        return s;
-      },
-      { income: 0, expense: 0, transfer: 0 }
-    );
-  }
   function monthSummary(month = monthNow()) {
-    const s = sums(monthRows(month));
-    return { ...s, residual: s.income - s.expense };
+    return summarizeTransactions(monthRows(month));
   }
   function fmtDate(s) {
     if (!s) return '—';
@@ -326,12 +315,20 @@
     const month = monthNow();
     const trend = monthlyTrend(rows, month, 6);
     const maxTrend = Math.max(1, ...trend.flatMap((item) => [item.income, item.expense]));
-    $('spendingTrendChart').innerHTML = trend.map((item) => {
-      const label = new Date(item.month + '-15T12:00:00').toLocaleDateString('it-IT', { month: 'short' });
-      const incomeHeight = item.income > 0 ? Math.max(3, (item.income / maxTrend) * 100) : 0;
-      const expenseHeight = item.expense > 0 ? Math.max(3, (item.expense / maxTrend) * 100) : 0;
-      return `<div class="trend-month" aria-label="${esc(label)}: entrate ${eur(item.income)}, uscite ${eur(item.expense)}"><div class="trend-bars"><span class="trend-bar income" style="height:${incomeHeight}%"></span><span class="trend-bar expense" style="height:${expenseHeight}%"></span></div><span class="trend-label">${esc(label)}</span></div>`;
-    }).join('');
+
+    $('spendingTrendChart').innerHTML = trend
+      .map((item) => {
+        const label = new Date(item.month + '-15T12:00:00').toLocaleDateString('it-IT', {
+          month: 'short',
+        });
+        const incomeHeight =
+          item.income > 0 ? Math.max(3, (item.income / maxTrend) * 100) : 0;
+        const expenseHeight =
+          item.expense > 0 ? Math.max(3, (item.expense / maxTrend) * 100) : 0;
+        return `<div class="trend-month" aria-label="${esc(label)}: entrate ${eur(item.income)}, uscite ${eur(item.expense)}"><div class="trend-bars"><span class="trend-bar income" style="height:${incomeHeight}%"></span><span class="trend-bar expense" style="height:${expenseHeight}%"></span></div><span class="trend-label">${esc(label)}</span></div>`;
+      })
+      .join('');
+
     const categories = categoryBreakdown(rows, month, 5);
     const categoryTotal = categories.reduce((sum, item) => sum + item.amount, 0);
     const palette = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5', '--chart-6'];
@@ -342,20 +339,39 @@
       return `var(${palette[index % palette.length]}) ${start}deg ${angle}deg`;
     });
     const donut = $('categoryDonut');
-    donut.style.background = categoryTotal > 0 && segments.length
-      ? `conic-gradient(${segments.join(', ')})`
-      : 'var(--line)';
-    donut.setAttribute('aria-label', categoryTotal > 0 ? 'Distribuzione delle uscite per categoria' : 'Nessuna uscita registrata nel mese');
+    donut.style.background =
+      categoryTotal > 0 && segments.length
+        ? `conic-gradient(${segments.join(', ')})`
+        : 'var(--line)';
+    donut.setAttribute(
+      'aria-label',
+      categoryTotal > 0
+        ? 'Distribuzione delle uscite per categoria'
+        : 'Nessuna uscita registrata nel mese'
+    );
     $('categoryDonutTotal').textContent = eur(categoryTotal);
-    $('categoryLegend').innerHTML = categories.map((item, index) => {
-      const percent = categoryTotal > 0 ? (item.amount / categoryTotal) * 100 : 0;
-      return `<div class="chart-legend-row"><span class="legend-dot" style="--dot-color:var(${palette[index % palette.length]})"></span><span class="legend-name">${esc(item.category)}</span><strong>${eur(item.amount)}</strong><small>${Math.round(percent)}%</small></div>`;
-    }).join('') || emptyHtml('Nessuna uscita', 'Le categorie compariranno dopo aver registrato le spese.');
+    $('categoryLegend').innerHTML =
+      categories
+        .map((item, index) => {
+          const percent = categoryTotal > 0 ? (item.amount / categoryTotal) * 100 : 0;
+          return `<div class="chart-legend-row"><span class="legend-dot" style="--dot-color:var(${palette[index % palette.length]})"></span><span class="legend-name">${esc(item.category)}</span><strong>${eur(item.amount)}</strong><small>${Math.round(percent)}%</small></div>`;
+        })
+        .join('') ||
+      emptyHtml('Nessuna uscita', 'Le categorie compariranno dopo aver registrato le spese.');
+
     const comparisons = budgetComparison(scopedBudgets(), rows, month, 4);
-    $('budgetComparisonChart').innerHTML = comparisons.map((item) => {
-      const percent = Math.max(0, Math.min(100, item.percent));
-      return `<div class="chart-budget-row"><div class="chart-budget-head"><span>${esc(item.category)}</span><strong>${eur(item.spent)} <small>/ ${eur(item.amount)}</small></strong></div><div class="budgetbar"><span class="${item.percent > 100 ? 'over' : ''}" style="width:${percent}%"></span></div><div class="chart-budget-foot ${item.remaining < 0 ? 'over-text' : ''}">${item.remaining < 0 ? 'Superato di ' + eur(Math.abs(item.remaining)) : 'Residuo ' + eur(item.remaining)} · ${Math.round(item.percent)}%</div></div>`;
-    }).join('') || emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
+    $('budgetComparisonChart').innerHTML =
+      comparisons
+        .map((item) => {
+          const percent = Math.max(0, Math.min(100, item.percent));
+          const status =
+            item.remaining < 0
+              ? 'Superato di ' + eur(Math.abs(item.remaining))
+              : 'Residuo ' + eur(item.remaining);
+          return `<div class="chart-budget-row"><div class="chart-budget-head"><span>${esc(item.category)}</span><strong>${eur(item.spent)} <small>/ ${eur(item.amount)}</small></strong></div><div class="budgetbar"><span class="${item.percent > 100 ? 'over' : ''}" style="width:${percent}%"></span></div><div class="chart-budget-foot ${item.remaining < 0 ? 'over-text' : ''}">${status} · ${Math.round(item.percent)}%</div></div>`;
+        })
+        .join('') ||
+      emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
   function renderTransactions() {
     const query = $('searchMovements').value.trim().toLowerCase(),
