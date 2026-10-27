@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { budgetComparison, categoryBreakdown, monthlyTrend, summarizeTransactions } from '../finance-core.js';
+import {
+  budgetComparison,
+  categoryBreakdown,
+  monthlyTrend,
+  summarizeTransactions,
+} from '../finance-core.js';
 
 test('riepilogo separa entrate, uscite e trasferimenti', () => {
   assert.deepEqual(
@@ -17,11 +22,15 @@ test('riepilogo separa entrate, uscite e trasferimenti', () => {
 
 test('andamento mensile include mesi senza movimenti e ignora trasferimenti', () => {
   assert.deepEqual(
-    monthlyTrend([
-      { type: 'expense', amount: 25, occurred_on: '2026-08-10' },
-      { type: 'income', amount: 1000, occurred_on: '2026-10-02' },
-      { type: 'transfer', amount: 300, occurred_on: '2026-10-03' },
-    ], '2026-10', 3),
+    monthlyTrend(
+      [
+        { type: 'expense', amount: 25, occurred_on: '2026-08-10' },
+        { type: 'income', amount: 1000, occurred_on: '2026-10-02' },
+        { type: 'transfer', amount: 300, occurred_on: '2026-10-03' },
+      ],
+      '2026-10',
+      3
+    ),
     [
       { month: '2026-08', income: 0, expense: 25 },
       { month: '2026-09', income: 0, expense: 0 },
@@ -52,10 +61,34 @@ test('confronto budget rispetta spazio, categoria e mese', () => {
   const result = budgetComparison(
     [{ space_id: 'home', category: 'Alimentari', month_start: '2026-10-01', amount: 100 }],
     [
-      { space_id: 'home', type: 'expense', category: 'Alimentari', amount: 125, occurred_on: '2026-10-03' },
-      { space_id: 'other', type: 'expense', category: 'Alimentari', amount: 80, occurred_on: '2026-10-04' },
-      { space_id: 'home', type: 'expense', category: 'Alimentari', amount: 20, occurred_on: '2026-09-04' },
-      { space_id: 'home', type: 'transfer', category: 'Alimentari', amount: 50, occurred_on: '2026-10-04' },
+      {
+        space_id: 'home',
+        type: 'expense',
+        category: 'Alimentari',
+        amount: 125,
+        occurred_on: '2026-10-03',
+      },
+      {
+        space_id: 'other',
+        type: 'expense',
+        category: 'Alimentari',
+        amount: 80,
+        occurred_on: '2026-10-04',
+      },
+      {
+        space_id: 'home',
+        type: 'expense',
+        category: 'Alimentari',
+        amount: 20,
+        occurred_on: '2026-09-04',
+      },
+      {
+        space_id: 'home',
+        type: 'transfer',
+        category: 'Alimentari',
+        amount: 50,
+        occurred_on: '2026-10-04',
+      },
     ],
     '2026-10'
   );
