@@ -58,3 +58,25 @@ button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}.ap
 .shortcut-mark:after{right:9px;bottom:6px;background:linear-gradient(160deg,#52d9bd 0%,#3d8ee8 52%,#6657cf 100%);z-index:-2}
 .shortcut-mark span{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;font-size:27px;font-weight:800;color:#fff;text-shadow:0 1px 4px #34305b55}
 html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840,#242a40);box-shadow:0 8px 20px #0003}
+
+
+/* Rifinitura schermata iPhone: stessa larghezza delle altre sezioni dell'app. */
+#page-shortcut{display:none;width:100%;max-width:none;min-width:0}
+#page-shortcut.active{display:block;width:100%}
+#page-shortcut .page-title,
+#page-shortcut .shortcut-hero{width:100%;max-width:none;min-width:0}
+#page-shortcut .shortcut-hero{display:block;box-sizing:border-box}
+#page-shortcut .shortcut-hero > *{max-width:100%}
+#page-shortcut .shortcut-hero > p{max-width:760px}
+.shortcut-mark{display:grid;place-items:center;flex:0 0 58px;width:58px;height:58px;padding:5px;border-radius:17px}
+.shortcut-mark:before,.shortcut-mark:after{content:none}
+.shortcut-mark svg{display:block;width:100%;height:100%;overflow:visible}
+html[data-theme="dark"] .shortcut-mark{background:linear-gradient(145deg,#292840,#242a40)}
+@media(min-width:721px){
+  main,#page-shortcut{width:100%;max-width:none}
+  #page-shortcut .shortcut-hero{width:100%}
+}
+@media(max-width:720px){
+  #page-shortcut .shortcut-hero{padding:clamp(16px,4vw,24px)}
+  #page-shortcut .shortcut-steps{grid-template-columns:1fr}
+}
