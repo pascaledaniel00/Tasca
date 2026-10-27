@@ -21,6 +21,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Run finance logic tests
+        run: npm test
       - name: Check code formatting
         run: npm run format:check
       - name: Check JavaScript syntax
