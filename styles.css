@@ -2580,3 +2580,31 @@ html[data-theme='dark'] {
     padding: 15px;
   }
 }
+
+
+/* Checkbox "Ricordami" e messaggio contestuale del budget */
+.remember-login {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 4px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.remember-login input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--g);
+  flex: 0 0 auto;
+}
+.budget-nudge {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--gs);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
