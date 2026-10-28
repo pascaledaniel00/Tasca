@@ -343,7 +343,9 @@ import {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    // I quiz devono passare rapidamente alle domande verificate se il modello è lento.
+    const timeoutMs = task === 'quiz' ? 15000 : 45000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       let response;
@@ -1119,47 +1121,56 @@ import {
   }
 
   async function startQuiz() {
-    const category = $('quizCategory').value;
-    const difficulty = Number($('quizDifficulty').value) || 1;
-    const context = buildQuizContext(category);
     const btn = $('startQuizBtn');
+    if (!btn || btn.disabled) return;
     btn.disabled = true;
     btn.textContent = 'Preparo le domande…';
-    let questions = null;
-    let source = 'verified';
-    if (isAIConfigured()) {
-      try {
-        const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
-        const validated = validateAIQuiz(generated, { category, count: 5 });
-        if (validated) {
-          questions = validated.questions;
-          source = 'ai';
-        } else {
+    try {
+      const category = $('quizCategory').value;
+      const difficulty = Number($('quizDifficulty').value) || 1;
+      const context = buildQuizContext(category);
+      let questions = null;
+      let source = 'verified';
+      if (isAIConfigured()) {
+        try {
+          const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
+          const validated = validateAIQuiz(generated, { category, count: 5 });
+          if (validated) {
+            questions = validated.questions;
+            source = 'ai';
+          } else {
+            $('quizNotice').className = 'notice warn';
+            $('quizNotice').textContent =
+              'La risposta IA non ha superato i controlli: useremo domande verificate.';
+          }
+        } catch (error) {
+          console.warn('Tasca quiz IA:', error.message);
           $('quizNotice').className = 'notice warn';
           $('quizNotice').textContent =
-            'La risposta IA non ha superato i controlli: useremo domande verificate.';
+            'Quiz personalizzato non disponibile: useremo domande verificate.';
         }
-      } catch (error) {
-        console.warn('Tasca quiz IA:', error.message);
-        $('quizNotice').className = 'notice warn';
-        $('quizNotice').textContent =
-          'Quiz personalizzato non disponibile: useremo domande verificate.';
       }
+      if (!questions) {
+        questions = selectVerifiedQuestions({ category, count: 5, difficulty });
+        source = 'verified';
+      }
+      quizQuestions = questions;
+      quizSource = source;
+      quizAnswers = {};
+      quizIndex = 0;
+      quizAttemptKey = globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID()
+        : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+      renderQuizQuestion();
+    } catch (error) {
+      console.error('Tasca quiz: avvio non riuscito', error);
+      $('quizNotice').className = 'notice warn';
+      $('quizNotice').textContent =
+        'Non riesco ad avviare il quiz. Riprova; se il problema continua, aggiorna la pagina.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Inizia il quiz';
     }
-    if (!questions) {
-      questions = selectVerifiedQuestions({ category, count: 5, difficulty });
-      source = 'verified';
-    }
-    quizQuestions = questions;
-    quizSource = source;
-    quizAnswers = {};
-    quizIndex = 0;
-    quizAttemptKey = crypto.randomUUID
-      ? crypto.randomUUID()
-      : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-    btn.disabled = false;
-    btn.textContent = 'Inizia il quiz';
-    renderQuizQuestion();
   }
 
   async function createQuizFingerprint(questions) {
