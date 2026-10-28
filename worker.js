@@ -81,12 +81,19 @@ export default {
     }
 
     const task = body && body.task;
-    if (!['nudge', 'advice', 'quiz'].includes(task) || !body.data || typeof body.data !== 'object') {
+    if (
+      !['nudge', 'advice', 'quiz'].includes(task) ||
+      !body.data ||
+      typeof body.data !== 'object'
+    ) {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
     const maxTokens = task === 'nudge' ? 56 : task === 'quiz' ? 1100 : 650;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
-    const prompt = JSON.stringify(body.data).slice(0, task === 'nudge' ? 7000 : task === 'quiz' ? 6000 : 18000);
+    const prompt = JSON.stringify(body.data).slice(
+      0,
+      task === 'nudge' ? 7000 : task === 'quiz' ? 6000 : 18000
+    );
 
     try {
       const result = await env.AI.run(
@@ -124,7 +131,11 @@ export default {
           allowedOrigin
         );
       }
-      return json({ text: text.slice(0, task === 'nudge' ? 500 : task === 'quiz' ? 9000 : 5000) }, 200, allowedOrigin);
+      return json(
+        { text: text.slice(0, task === 'nudge' ? 500 : task === 'quiz' ? 9000 : 5000) },
+        200,
+        allowedOrigin
+      );
     } catch (error) {
       // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
       const message = String(error?.message || '');

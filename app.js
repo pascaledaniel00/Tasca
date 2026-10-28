@@ -9,7 +9,15 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
-import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerifiedQuestions, validateAIQuiz, QUIZ_CATEGORIES } from './quiz-core.js';
+import {
+  calculateQuizXP,
+  getQuizBadges,
+  getQuizLevel,
+  scoreQuiz,
+  selectVerifiedQuestions,
+  validateAIQuiz,
+  QUIZ_CATEGORIES,
+} from './quiz-core.js';
 
 (() => {
   'use strict';
@@ -838,10 +846,12 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     return html.join('');
   }
 
-
   async function loadQuizHistory() {
     if (!db || !user) return;
-    const { data, error } = await db.from('quiz_attempts').select('*').order('completed_at', { ascending: false });
+    const { data, error } = await db
+      .from('quiz_attempts')
+      .select('*')
+      .order('completed_at', { ascending: false });
     if (error) {
       quizSchemaReady = false;
       quizAttempts = [];
@@ -854,62 +864,167 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
   }
 
   function quizTotals() {
-    return quizAttempts.reduce((totals, attempt) => ({
-      xp: totals.xp + (Number(attempt.xp_earned) || 0),
-      correct: totals.correct + (Number(attempt.correct_answers) || 0),
-      questions: totals.questions + (Number(attempt.total_questions) || 0),
-    }), { xp: 0, correct: 0, questions: 0 });
+    return quizAttempts.reduce(
+      (totals, attempt) => ({
+        xp: totals.xp + (Number(attempt.xp_earned) || 0),
+        correct: totals.correct + (Number(attempt.correct_answers) || 0),
+        questions: totals.questions + (Number(attempt.total_questions) || 0),
+      }),
+      { xp: 0, correct: 0, questions: 0 }
+    );
   }
 
   function renderQuizHome() {
-    const home = $('quizHome'), play = $('quizPlay'), result = $('quizResult');
+    const home = $('quizHome'),
+      play = $('quizPlay'),
+      result = $('quizResult');
     if (!home || !play || !result) return;
     home.classList.remove('hidden');
     play.classList.add('hidden');
     result.classList.add('hidden');
     if (!quizSchemaReady) {
       $('quizNotice').className = 'notice warn';
-      $('quizNotice').textContent = 'Per salvare XP, livelli e badge, completa prima la configurazione SQL dei quiz in Supabase. Le altre funzioni di Tasca continuano a funzionare.';
+      $('quizNotice').textContent =
+        'Per salvare XP, livelli e badge, completa prima la configurazione SQL dei quiz in Supabase. Le altre funzioni di Tasca continuano a funzionare.';
     } else {
       $('quizNotice').className = 'notice';
       $('quizNotice').textContent = '';
     }
     const totals = quizTotals();
     const level = getQuizLevel(totals.xp);
-    const next = [{ level: 2, minXP: 100 }, { level: 3, minXP: 250 }, { level: 4, minXP: 500 }, { level: 5, minXP: 900 }].find((item) => totals.xp < item.minXP);
-    const progress = next ? Math.min(100, Math.round((totals.xp - level.minXP) / (next.minXP - level.minXP) * 100)) : 100;
+    const next = [
+      { level: 2, minXP: 100 },
+      { level: 3, minXP: 250 },
+      { level: 4, minXP: 500 },
+      { level: 5, minXP: 900 },
+    ].find((item) => totals.xp < item.minXP);
+    const progress = next
+      ? Math.min(100, Math.round(((totals.xp - level.minXP) / (next.minXP - level.minXP)) * 100))
+      : 100;
     $('quizStats').innerHTML = [
-      ['XP totali', totals.xp, next ? progress + '% verso il livello successivo' : 'Livello massimo raggiunto'],
-      ['Livello ' + level.level, level.title, next ? (next.minXP - totals.xp) + ' XP al prossimo livello' : 'Hai raggiunto il livello massimo'],
+      [
+        'XP totali',
+        totals.xp,
+        next ? progress + '% verso il livello successivo' : 'Livello massimo raggiunto',
+      ],
+      [
+        'Livello ' + level.level,
+        level.title,
+        next
+          ? next.minXP - totals.xp + ' XP al prossimo livello'
+          : 'Hai raggiunto il livello massimo',
+      ],
       ['Quiz completati', quizAttempts.length, totals.questions + ' domande affrontate'],
-    ].map(([label, value, note]) => '<div class="stat"><span class="label">' + esc(label) + '</span><strong>' + esc(value) + '</strong><small>' + esc(note) + '</small></div>').join('');
+    ]
+      .map(
+        ([label, value, note]) =>
+          '<div class="stat"><span class="label">' +
+          esc(label) +
+          '</span><strong>' +
+          esc(value) +
+          '</strong><small>' +
+          esc(note) +
+          '</small></div>'
+      )
+      .join('');
     const badges = getQuizBadges(quizAttempts);
-    $('quizBadges').innerHTML = badges.length ? badges.map((badge) => '<div class="quiz-badge"><span>' + badge.icon + '</span><strong>' + esc(badge.name) + '</strong><small>' + esc(badge.description) + '</small></div>').join('') : '<p class="muted tiny">Il primo badge ti aspetta: completa un quiz per sbloccarlo.</p>';
+    $('quizBadges').innerHTML = badges.length
+      ? badges
+          .map(
+            (badge) =>
+              '<div class="quiz-badge"><span>' +
+              badge.icon +
+              '</span><strong>' +
+              esc(badge.name) +
+              '</strong><small>' +
+              esc(badge.description) +
+              '</small></div>'
+          )
+          .join('')
+      : '<p class="muted tiny">Il primo badge ti aspetta: completa un quiz per sbloccarlo.</p>';
     const challengeItems = [
-      { title: 'Prima missione', note: quizAttempts.length ? 'Completata: hai già iniziato il percorso.' : 'Completa il tuo primo quiz.', done: quizAttempts.length >= 1 },
-      { title: 'Cinque sessioni', note: quizAttempts.length + ' di 5 quiz completati.', done: quizAttempts.length >= 5 },
-      { title: 'Allenamento completo', note: totals.questions + ' di 25 domande affrontate.', done: totals.questions >= 25 },
-      { title: 'Almeno 80% di precisione', note: totals.questions ? Math.round(totals.correct / totals.questions * 100) + '% di risposte corrette nello storico.' : 'Completa le prime domande per misurare i progressi.', done: totals.questions > 0 && totals.correct / totals.questions >= 0.8 },
+      {
+        title: 'Prima missione',
+        note: quizAttempts.length
+          ? 'Completata: hai già iniziato il percorso.'
+          : 'Completa il tuo primo quiz.',
+        done: quizAttempts.length >= 1,
+      },
+      {
+        title: 'Cinque sessioni',
+        note: quizAttempts.length + ' di 5 quiz completati.',
+        done: quizAttempts.length >= 5,
+      },
+      {
+        title: 'Allenamento completo',
+        note: totals.questions + ' di 25 domande affrontate.',
+        done: totals.questions >= 25,
+      },
+      {
+        title: 'Almeno 80% di precisione',
+        note: totals.questions
+          ? Math.round((totals.correct / totals.questions) * 100) +
+            '% di risposte corrette nello storico.'
+          : 'Completa le prime domande per misurare i progressi.',
+        done: totals.questions > 0 && totals.correct / totals.questions >= 0.8,
+      },
     ];
-    $('quizChallenges').innerHTML = challengeItems.map((item) => '<div class="quiz-challenge ' + (item.done ? 'is-done' : '') + '"><span class="quiz-challenge-check">' + (item.done ? '✓' : '○') + '</span><div><strong>' + esc(item.title) + '</strong><small>' + esc(item.note) + '</small></div></div>').join('');
+    $('quizChallenges').innerHTML = challengeItems
+      .map(
+        (item) =>
+          '<div class="quiz-challenge ' +
+          (item.done ? 'is-done' : '') +
+          '"><span class="quiz-challenge-check">' +
+          (item.done ? '✓' : '○') +
+          '</span><div><strong>' +
+          esc(item.title) +
+          '</strong><small>' +
+          esc(item.note) +
+          '</small></div></div>'
+      )
+      .join('');
   }
 
   function buildQuizContext(category) {
     // Invia solo aggregati per categoria e mese: mai descrizioni, metodi di pagamento o righe grezze.
-    if (isAllSpaces()) return { personalizationAvailable: false, reason: 'Tutti gli spazi sono selezionati; usa esempi generici.' };
+    if (isAllSpaces())
+      return {
+        personalizationAvailable: false,
+        reason: 'Tutti gli spazi sono selezionati; usa esempi generici.',
+      };
     const month = monthNow();
-    const expenses = scopedTransactions().filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === month);
+    const expenses = scopedTransactions().filter(
+      (t) => t.type === 'expense' && txDate(t).slice(0, 7) === month
+    );
     const totals = {};
     expenses.forEach((t) => {
       const key = t.category || 'Da classificare';
       totals[key] = (totals[key] || 0) + (Number(t.amount) || 0);
     });
-    const topCategories = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([label, amount]) => ({ category: label, spentEUR: Math.round(amount / 5) * 5 }));
-    const budgetSummary = scopedBudgets().filter((b) => String(b.month_start || '').slice(0, 7) === month).map((b) => {
-      const spent = expenses.filter((t) => t.category === b.category).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      return { category: b.category, budgetEUR: Math.round((Number(b.amount) || 0) / 5) * 5, spentEUR: Math.round(spent / 5) * 5 };
-    }).slice(0, 5);
-    return { personalizationAvailable: topCategories.length > 0 || budgetSummary.length > 0, month, topCategories, budgetSummary, selectedTopic: category };
+    const topCategories = Object.entries(totals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([label, amount]) => ({ category: label, spentEUR: Math.round(amount / 5) * 5 }));
+    const budgetSummary = scopedBudgets()
+      .filter((b) => String(b.month_start || '').slice(0, 7) === month)
+      .map((b) => {
+        const spent = expenses
+          .filter((t) => t.category === b.category)
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        return {
+          category: b.category,
+          budgetEUR: Math.round((Number(b.amount) || 0) / 5) * 5,
+          spentEUR: Math.round(spent / 5) * 5,
+        };
+      })
+      .slice(0, 5);
+    return {
+      personalizationAvailable: topCategories.length > 0 || budgetSummary.length > 0,
+      month,
+      topCategories,
+      budgetSummary,
+      selectedTopic: category,
+    };
   }
 
   function renderQuizQuestion() {
@@ -923,12 +1038,74 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     const answer = quizAnswers[q.id];
     const isAnswered = answer !== undefined;
     const isCorrect = answer === q.correctValues[0];
-    play.innerHTML = '<div class="quiz-question-head"><button id="quizExitBtn" class="btn small" type="button">← Esci</button><span class="muted tiny">Domanda ' + (quizIndex + 1) + ' di ' + quizQuestions.length + '</span></div><div class="quiz-progress"><span style="width:' + progress + '%"></span></div><div class="eyebrow">' + esc((QUIZ_CATEGORIES.find((item) => item.id === q.category) || {}).label || 'Educazione finanziaria') + ' · ' + (quizSource === 'ai' ? 'Personalizzato IA' : 'Domanda verificata') + '</div><h3 class="quiz-question-title">' + esc(q.question) + '</h3><div class="quiz-options">' + q.options.map((option) => '<button class="quiz-option ' + (isAnswered && option.value === answer ? (isCorrect ? 'is-correct' : 'is-wrong') : '') + '" type="button" data-quiz-answer="' + esc(option.value) + '" ' + (isAnswered ? 'disabled' : '') + '><span>' + esc(option.value) + '</span><strong>' + esc(option.label) + '</strong></button>').join('') + '</div>' + (isAnswered ? '<div class="quiz-feedback ' + (isCorrect ? 'is-correct' : 'is-wrong') + '"><strong>' + (isCorrect ? 'Esatto!' : 'Non proprio') + '</strong><p>' + esc(q.explanation || q.options.find((option) => option.value === q.correctValues[0])?.feedback || 'Rivedi il concetto e riprova nel prossimo quiz.') + '</p>' + (!isCorrect ? '<small>Risposta corretta: ' + esc((q.options.find((option) => option.value === q.correctValues[0]) || {}).label || q.correctValues[0]) + '</small>' : '') + '</div><button id="quizNextBtn" class="btn primary full" type="button">' + (quizIndex + 1 === quizQuestions.length ? 'Vedi il risultato' : 'Prossima domanda') + '</button>' : '<div class="quiz-hint"><details><summary>Mostra un indizio</summary><p>' + esc(q.hint || 'Ragiona sulle condizioni indicate nella domanda.') + '</p></details></div>') + '<p class="muted tiny">Le risposte servono per imparare; non modificano i tuoi movimenti o il budget.</p>';
-    play.querySelectorAll('[data-quiz-answer]').forEach((button) => button.addEventListener('click', () => {
-      if (quizAnswers[q.id] !== undefined) return;
-      quizAnswers[q.id] = button.dataset.quizAnswer;
-      renderQuizQuestion();
-    }));
+    play.innerHTML =
+      '<div class="quiz-question-head"><button id="quizExitBtn" class="btn small" type="button">← Esci</button><span class="muted tiny">Domanda ' +
+      (quizIndex + 1) +
+      ' di ' +
+      quizQuestions.length +
+      '</span></div><div class="quiz-progress"><span style="width:' +
+      progress +
+      '%"></span></div><div class="eyebrow">' +
+      esc(
+        (QUIZ_CATEGORIES.find((item) => item.id === q.category) || {}).label ||
+          'Educazione finanziaria'
+      ) +
+      ' · ' +
+      (quizSource === 'ai' ? 'Personalizzato IA' : 'Domanda verificata') +
+      '</div><h3 class="quiz-question-title">' +
+      esc(q.question) +
+      '</h3><div class="quiz-options">' +
+      q.options
+        .map(
+          (option) =>
+            '<button class="quiz-option ' +
+            (isAnswered && option.value === answer ? (isCorrect ? 'is-correct' : 'is-wrong') : '') +
+            '" type="button" data-quiz-answer="' +
+            esc(option.value) +
+            '" ' +
+            (isAnswered ? 'disabled' : '') +
+            '><span>' +
+            esc(option.value) +
+            '</span><strong>' +
+            esc(option.label) +
+            '</strong></button>'
+        )
+        .join('') +
+      '</div>' +
+      (isAnswered
+        ? '<div class="quiz-feedback ' +
+          (isCorrect ? 'is-correct' : 'is-wrong') +
+          '"><strong>' +
+          (isCorrect ? 'Esatto!' : 'Non proprio') +
+          '</strong><p>' +
+          esc(
+            q.explanation ||
+              q.options.find((option) => option.value === q.correctValues[0])?.feedback ||
+              'Rivedi il concetto e riprova nel prossimo quiz.'
+          ) +
+          '</p>' +
+          (!isCorrect
+            ? '<small>Risposta corretta: ' +
+              esc(
+                (q.options.find((option) => option.value === q.correctValues[0]) || {}).label ||
+                  q.correctValues[0]
+              ) +
+              '</small>'
+            : '') +
+          '</div><button id="quizNextBtn" class="btn primary full" type="button">' +
+          (quizIndex + 1 === quizQuestions.length ? 'Vedi il risultato' : 'Prossima domanda') +
+          '</button>'
+        : '<div class="quiz-hint"><details><summary>Mostra un indizio</summary><p>' +
+          esc(q.hint || 'Ragiona sulle condizioni indicate nella domanda.') +
+          '</p></details></div>') +
+      '<p class="muted tiny">Le risposte servono per imparare; non modificano i tuoi movimenti o il budget.</p>';
+    play.querySelectorAll('[data-quiz-answer]').forEach((button) =>
+      button.addEventListener('click', () => {
+        if (quizAnswers[q.id] !== undefined) return;
+        quizAnswers[q.id] = button.dataset.quizAnswer;
+        renderQuizQuestion();
+      })
+    );
     $('quizNextBtn')?.addEventListener('click', () => {
       quizIndex += 1;
       if (quizIndex >= quizQuestions.length) finishQuiz();
@@ -959,12 +1136,14 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
           source = 'ai';
         } else {
           $('quizNotice').className = 'notice warn';
-          $('quizNotice').textContent = 'La risposta IA non ha superato i controlli: useremo domande verificate.';
+          $('quizNotice').textContent =
+            'La risposta IA non ha superato i controlli: useremo domande verificate.';
         }
       } catch (error) {
         console.warn('Tasca quiz IA:', error.message);
         $('quizNotice').className = 'notice warn';
-        $('quizNotice').textContent = 'Quiz personalizzato non disponibile: useremo domande verificate.';
+        $('quizNotice').textContent =
+          'Quiz personalizzato non disponibile: useremo domande verificate.';
       }
     }
     if (!questions) {
@@ -975,7 +1154,9 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     quizSource = source;
     quizAnswers = {};
     quizIndex = 0;
-    quizAttemptKey = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+    quizAttemptKey = crypto.randomUUID
+      ? crypto.randomUUID()
+      : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
     btn.disabled = false;
     btn.textContent = 'Inizia il quiz';
     renderQuizQuestion();
@@ -985,16 +1166,39 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     if (quizSaving || !quizQuestions.length) return;
     quizSaving = true;
     const score = scoreQuiz(quizQuestions, quizAnswers);
-    const xp = calculateQuizXP({ correct: score.correct, total: score.total, firstCompletion: quizAttempts.length === 0 });
+    const xp = calculateQuizXP({
+      correct: score.correct,
+      total: score.total,
+      firstCompletion: quizAttempts.length === 0,
+    });
     const source = quizSource;
     const category = $('quizCategory').value;
     const difficulty = Number($('quizDifficulty').value) || 1;
-    const payload = { user_id: user.id, attempt_key: quizAttemptKey, category, difficulty, correct_answers: score.correct, total_questions: score.total, percent: score.percent, xp_earned: xp, source };
+    const payload = {
+      user_id: user.id,
+      attempt_key: quizAttemptKey,
+      category,
+      difficulty,
+      correct_answers: score.correct,
+      total_questions: score.total,
+      percent: score.percent,
+      xp_earned: xp,
+      source,
+    };
     const result = $('quizResult');
     $('quizHome').classList.add('hidden');
     $('quizPlay').classList.add('hidden');
     result.classList.remove('hidden');
-    result.innerHTML = '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' + score.correct + ' su ' + score.total + ' risposte corrette</h3><p class="muted">' + score.percent + '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' + xp + ' XP</strong><span>Hai completato una nuova sessione di apprendimento.</span></div><p class="muted tiny">Salvataggio dei progressi…</p>';
+    result.innerHTML =
+      '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' +
+      score.correct +
+      ' su ' +
+      score.total +
+      ' risposte corrette</h3><p class="muted">' +
+      score.percent +
+      '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' +
+      xp +
+      ' XP</strong><span>Hai completato una nuova sessione di apprendimento.</span></div><p class="muted tiny">Salvataggio dei progressi…</p>';
     try {
       const { data, error } = await db.from('quiz_attempts').insert(payload).select('*').single();
       if (error) {
@@ -1005,13 +1209,77 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
       quizSchemaReady = true;
       const level = getQuizLevel(quizTotals().xp);
       const badges = getQuizBadges(quizAttempts);
-      result.innerHTML = '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' + score.correct + ' su ' + score.total + ' risposte corrette</h3><p class="muted">' + score.percent + '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' + xp + ' XP</strong><span>Livello ' + level.level + ' · ' + esc(level.title) + '</span></div><div class="quiz-result-review">' + score.details.map((detail, index) => '<div class="quiz-review-row"><span class="' + (detail.correct ? 'review-correct' : 'review-wrong') + '">' + (detail.correct ? '✓' : '×') + '</span><div><strong>' + esc(quizQuestions[index].question) + '</strong><small>' + (detail.correct ? 'Risposta corretta' : 'Risposta corretta: ' + esc((quizQuestions[index].options.find((option) => option.value === detail.correctValue) || {}).label || detail.correctValue)) + '</small></div></div>').join('') + '</div><div class="quiz-result-badges">' + badges.slice(-3).map((badge) => '<span class="quiz-result-badge">' + badge.icon + ' ' + esc(badge.name) + '</span>').join('') + '</div><button id="quizAgainBtn" class="btn primary full" type="button">Fai un altro quiz</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
-      $('quizAgainBtn').addEventListener('click', () => { quizQuestions = []; quizAnswers = {}; renderQuizHome(); startQuiz(); });
-      $('quizHomeBtn').addEventListener('click', () => { quizQuestions = []; quizAnswers = {}; renderQuizHome(); });
+      result.innerHTML =
+        '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' +
+        score.correct +
+        ' su ' +
+        score.total +
+        ' risposte corrette</h3><p class="muted">' +
+        score.percent +
+        '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' +
+        xp +
+        ' XP</strong><span>Livello ' +
+        level.level +
+        ' · ' +
+        esc(level.title) +
+        '</span></div><div class="quiz-result-review">' +
+        score.details
+          .map(
+            (detail, index) =>
+              '<div class="quiz-review-row"><span class="' +
+              (detail.correct ? 'review-correct' : 'review-wrong') +
+              '">' +
+              (detail.correct ? '✓' : '×') +
+              '</span><div><strong>' +
+              esc(quizQuestions[index].question) +
+              '</strong><small>' +
+              (detail.correct
+                ? 'Risposta corretta'
+                : 'Risposta corretta: ' +
+                  esc(
+                    (
+                      quizQuestions[index].options.find(
+                        (option) => option.value === detail.correctValue
+                      ) || {}
+                    ).label || detail.correctValue
+                  )) +
+              '</small></div></div>'
+          )
+          .join('') +
+        '</div><div class="quiz-result-badges">' +
+        badges
+          .slice(-3)
+          .map(
+            (badge) =>
+              '<span class="quiz-result-badge">' + badge.icon + ' ' + esc(badge.name) + '</span>'
+          )
+          .join('') +
+        '</div><button id="quizAgainBtn" class="btn primary full" type="button">Fai un altro quiz</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
+      $('quizAgainBtn').addEventListener('click', () => {
+        quizQuestions = [];
+        quizAnswers = {};
+        renderQuizHome();
+        startQuiz();
+      });
+      $('quizHomeBtn').addEventListener('click', () => {
+        quizQuestions = [];
+        quizAnswers = {};
+        renderQuizHome();
+      });
     } catch (error) {
-      result.innerHTML += '<div class="notice error">Il risultato è calcolato, ma non è stato salvato: ' + esc(error.message || 'errore di salvataggio') + '. I punti non verranno aggiunti finché il salvataggio non riesce.</div><button id="quizRetrySaveBtn" class="btn primary full" type="button">Riprova a salvare</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
-      $('quizRetrySaveBtn').addEventListener('click', async () => { quizSaving = false; await finishQuiz(); });
-      $('quizHomeBtn').addEventListener('click', () => { quizQuestions = []; quizAnswers = {}; renderQuizHome(); });
+      result.innerHTML +=
+        '<div class="notice error">Il risultato è calcolato, ma non è stato salvato: ' +
+        esc(error.message || 'errore di salvataggio') +
+        '. I punti non verranno aggiunti finché il salvataggio non riesce.</div><button id="quizRetrySaveBtn" class="btn primary full" type="button">Riprova a salvare</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
+      $('quizRetrySaveBtn').addEventListener('click', async () => {
+        quizSaving = false;
+        await finishQuiz();
+      });
+      $('quizHomeBtn').addEventListener('click', () => {
+        quizQuestions = [];
+        quizAnswers = {};
+        renderQuizHome();
+      });
     } finally {
       quizSaving = false;
     }
