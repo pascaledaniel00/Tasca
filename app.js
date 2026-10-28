@@ -496,16 +496,7 @@ import {
         residual: s.residual,
         goal,
         daysLeft: Math.max(0, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - day),
-        recentLargeExpenses: scopedTransactions()
-          .filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
-          .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
-          .slice(0, 3)
-          .map((t) => ({
-            description: String(t.description || t.category || 'Spesa').slice(0, 80),
-            category: t.category || 'Da classificare',
-            amount: Number(t.amount) || 0,
-            date: txDate(t),
-          })),
+        recentLargeExpenses,
         budgets: bs.map((b) => {
           const spent = monthBudgetSpend(b);
           const limit = Number(b.amount) || 0;
