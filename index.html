@@ -10,7 +10,7 @@
     />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261028-3" />
+    <link rel="stylesheet" href="styles.css?v=20261028-5" />
     <link rel="stylesheet" href="mobile-nav-fix.css" />
   </head>
   <body>
@@ -133,7 +133,7 @@
         <button data-page="home" class="active">Home</button
         ><button data-page="transactions">Movimenti</button
         ><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button
-        ><button data-page="advice">Consigli</button><button data-page="spaces">Condivisione</button
+        ><button data-page="advice">Consigli</button><button data-page="quiz">Quiz</button><button data-page="spaces">Condivisione</button
         ><button data-page="shortcut">Comando Rapido</button
         ><button data-page="settings">Impostazioni</button>
       </nav>
@@ -353,6 +353,63 @@
           </div>
           <div id="adviceList" class="layout"></div>
         </section>
+        <section id="page-quiz" class="section">
+          <div class="page-title">
+            <div>
+              <h2>Benessere finanziario</h2>
+              <p class="muted tiny">Impara a gestire meglio il denaro, una domanda alla volta.</p>
+            </div>
+          </div>
+          <div id="quizHome" class="quiz-home">
+            <div class="quiz-hero panel">
+              <div class="quiz-hero-mark" aria-hidden="true">✦</div>
+              <div>
+                <div class="eyebrow">La tua palestra finanziaria</div>
+                <h3>Piccoli quiz, decisioni più consapevoli.</h3>
+                <p class="muted">Cinque domande, spiegazioni chiare e progressi che si accumulano. I quiz non modificano il tuo registro finanziario.</p>
+              </div>
+            </div>
+            <div id="quizStats" class="stats quiz-stats"></div>
+            <div class="panel">
+              <div class="panelhead"><h3>Scegli il tuo percorso</h3><span class="muted tiny">5 domande · 2–3 minuti</span></div>
+              <div class="quiz-controls">
+                <div class="field">
+                  <label for="quizCategory">Argomento</label>
+                  <select id="quizCategory">
+                    <option value="all">Percorso misto</option>
+                    <option value="budget">Budget personale</option>
+                    <option value="saving">Risparmio</option>
+                    <option value="debt">Rate e debiti</option>
+                    <option value="spending">Spese quotidiane</option>
+                    <option value="banking">Banche e pagamenti</option>
+                    <option value="economy">Economia di base</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="quizDifficulty">Difficoltà</label>
+                  <select id="quizDifficulty">
+                    <option value="1">Base</option>
+                    <option value="2">Intermedia</option>
+                    <option value="3">Avanzata</option>
+                  </select>
+                </div>
+              </div>
+              <button id="startQuizBtn" class="btn primary full" type="button">Inizia il quiz</button>
+              <p class="muted tiny u-mt-10">Le domande personalizzate usano soltanto riepiloghi pertinenti del budget e delle spese, mai l’intero registro o le descrizioni degli acquisti.</p>
+              <div id="quizNotice" class="notice" role="status"></div>
+            </div>
+            <div class="panel">
+              <div class="panelhead"><h3>Badge conquistati</h3><span class="muted tiny">Premiamo l’apprendimento</span></div>
+              <div id="quizBadges" class="quiz-badges"></div>
+            </div>
+            <div class="panel">
+              <div class="panelhead"><h3>Le tue sfide</h3></div>
+              <div id="quizChallenges" class="quiz-challenges"></div>
+            </div>
+          </div>
+          <div id="quizPlay" class="panel quiz-play hidden"></div>
+          <div id="quizResult" class="panel quiz-result hidden"></div>
+        </section>
         <section id="page-spaces" class="section">
           <div class="page-title">
             <div>
@@ -522,6 +579,7 @@
       ><button data-page="transactions"><span>↕</span>Movimenti</button
       ><button data-page="budgets"><span>◷</span>Budget</button
       ><button data-page="advice"><span>✦</span>Consigli</button
+      ><button data-page="quiz"><span>★</span>Quiz</button
       ><button data-page="spaces"><span>♧</span>Spazi</button
       ><button data-page="settings"><span>⚙</span>Impost.</button>
     </nav>
@@ -535,6 +593,6 @@
       </div>
     </div>
     <div id="toast" class="toast hidden" role="status"></div>
-    <script type="module" src="app.js?v=20261028-3"></script>
+    <script type="module" src="app.js?v=20261028-5"></script>
   </body>
 </html>
