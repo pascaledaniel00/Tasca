@@ -92,12 +92,34 @@ export default {
         ],
         max_tokens: maxTokens,
         temperature: task === 'nudge' ? 0.75 : 0.25,
-      });
-      const text = String(result?.response || result?.result?.response || '').trim();
-      if (!text) return json({ error: 'Il modello non ha restituito testo.' }, 502, allowedOrigin);
+        chat_template_kwargs: { enable_thinking: false },
+      }, { rejectIfBusy: true });
+      // Supporta i formati di risposta restituiti dalle diverse versioni del binding.
+      const text = String(
+        result?.response ||
+        result?.result?.response ||
+        result?.choices?.[0]?.message?.content ||
+        result?.result?.choices?.[0]?.message?.content ||
+        ''
+      ).trim();
+      if (!text) {
+        return json({
+          error: 'Il modello ha risposto senza testo utilizzabile.',
+          diagnostic: 'Formato della risposta IA non riconosciuto.',
+          responseKeys: Object.keys(result || {}).join(', ').slice(0, 200),
+        }, 502, allowedOrigin);
+      }
       return json({ text: text.slice(0, task === 'nudge' ? 500 : 5000) }, 200, allowedOrigin);
-    } catch {
-      return json({ error: 'Servizio IA temporaneamente non disponibile.' }, 503, allowedOrigin);
+    } catch (error) {
+      // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
+      const message = String(error?.message || '');
+      const busy = /busy|capacity|429|temporar/i.test(message);
+      return json({
+        error: busy
+          ? 'Il modello IA è momentaneamente occupato. Riprova tra qualche secondo.'
+          : 'Servizio IA temporaneamente non disponibile.',
+        diagnostic: message.slice(0, 240) || 'Errore del provider IA senza dettagli.',
+      }, busy ? 503 : 502, allowedOrigin);
     }
   },
 };
