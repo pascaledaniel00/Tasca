@@ -575,6 +575,48 @@ import {
           amount: Number(t.amount) || 0,
           date: txDate(t),
         }));
+      const frequentItems = (() => {
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 5, 1);
+        const fromMonth = cutoff.toLocaleDateString('sv-SE').slice(0, 7);
+        const grouped = new Map();
+        scopedTransactions()
+          .filter(
+            (t) =>
+              t.type === 'expense' &&
+              txDate(t).slice(0, 7) >= fromMonth &&
+              String(t.description || '').trim()
+          )
+          .forEach((t) => {
+            const description = String(t.description).trim().replace(/\\s+/g, ' ');
+            const key = description
+              .normalize('NFD')
+              .replace(/[\\u0300-\\u036f]/g, '')
+              .toLocaleLowerCase('it-IT')
+              .replace(/[^a-z0-9 ]/g, '')
+              .trim();
+            if (!key) return;
+            const item = grouped.get(key) || {
+              description: description.slice(0, 80),
+              count: 0,
+              total: 0,
+              category: t.category || 'Da classificare',
+            };
+            item.count += 1;
+            item.total += Number(t.amount) || 0;
+            grouped.set(key, item);
+          });
+        return [...grouped.values()]
+          .filter((item) => item.count >= 2)
+          .sort((x, y) => y.count - x.count || y.total - x.total)
+          .slice(0, 5)
+          .map((item) => ({
+            description: item.description,
+            count: item.count,
+            total: Math.round(item.total * 100) / 100,
+            category: item.category,
+          }));
+      })();
       const exceptional = recentLargeExpenses.find((t) => t.amount >= 1000);
       let message =
         'Movimenti sotto controllo: continua a registrare anche le spese piccole, così il saldo racconta la situazione reale.';
@@ -610,6 +652,7 @@ import {
           new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - day
         ),
         recentLargeExpenses,
+        frequentItems,
         budgets: bs.map((b) => {
           const spent = monthBudgetSpend(b);
           const limit = Number(b.amount) || 0;
