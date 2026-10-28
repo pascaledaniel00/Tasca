@@ -297,7 +297,7 @@ export default {
     }
     const quizCount = task === 'quiz' ? Math.max(1, Math.min(15, Number(body.data.count) || 5)) : 5;
     const maxTokens =
-      task === 'nudge' ? 96 : task === 'quiz' ? Math.min(6500, 900 + quizCount * 380) : 1200;
+      task === 'nudge' ? 96 : task === 'quiz' ? (quizCount <= 5 ? 1800 : 6500) : 1200;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
     const prompt = JSON.stringify(body.data).slice(
       0,
