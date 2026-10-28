@@ -7,3 +7,6 @@ binding = "AI"
 
 [vars]
 SUPABASE_URL = "https://njgmlxyecjyreieqcpwk.supabase.co"
+
+[triggers]
+crons = ["0 0,1 * * 0"]
