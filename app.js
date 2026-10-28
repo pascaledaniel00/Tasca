@@ -942,11 +942,6 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
   }
 
   async function startQuiz() {
-    if (!quizSchemaReady) {
-      $('quizNotice').className = 'notice warn';
-      $('quizNotice').textContent = 'La funzione è pronta, ma prima devi applicare la migrazione SQL inclusa nel repository Supabase. Nessun altro dato verrà modificato.';
-      return;
-    }
     const category = $('quizCategory').value;
     const difficulty = Number($('quizDifficulty').value) || 1;
     const context = buildQuizContext(category);
@@ -1019,9 +1014,6 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
       $('quizHomeBtn').addEventListener('click', () => { quizQuestions = []; quizAnswers = {}; renderQuizHome(); });
     } finally {
       quizSaving = false;
-      quizQuestions = [];
-      quizAnswers = {};
-      if (page === 'quiz') renderQuizHome();
     }
   }
 
