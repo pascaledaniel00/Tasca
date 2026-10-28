@@ -1,7 +1,11 @@
 /* Correzione anteprima mobile: il backdrop deve restare dietro al menu laterale. */
 @media (max-width: 720px) {
-  #navBackdrop.open { z-index: 24; }
-  #desktopNav { z-index: 25; }
+  #navBackdrop.open {
+    z-index: 24;
+  }
+  #desktopNav {
+    z-index: 25;
+  }
 }
 
 /* Mobile-first hardening: prevent accidental horizontal page drift while scrolling. */
@@ -160,7 +164,6 @@ video {
     flex: 0 0 auto;
   }
 }
-
 
 /* Home: align the two lower dashboard cards and their headings consistently. */
 #page-home .layout {

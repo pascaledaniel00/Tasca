@@ -19,7 +19,6 @@ import {
   // URL pubblico del Worker Cloudflare. Inserire l'URL workers.dev dopo la pubblicazione.
   const AI_WORKER_URL = 'https://tasca.pascaledaniel00.workers.dev';
 
-
   const CATEGORIES = {
     expense: [
       'Casa e affitto',
@@ -292,8 +291,12 @@ import {
       .reduce((s, t) => s + Number(t.amount || 0), 0);
   }
   function isAIConfigured() {
-    return typeof AI_WORKER_URL === 'string' && AI_WORKER_URL.startsWith('https://') &&
-      !AI_WORKER_URL.includes('INSERISCI') && !AI_WORKER_URL.includes('<');
+    return (
+      typeof AI_WORKER_URL === 'string' &&
+      AI_WORKER_URL.startsWith('https://') &&
+      !AI_WORKER_URL.includes('INSERISCI') &&
+      !AI_WORKER_URL.includes('<')
+    );
   }
   function getDisplayName() {
     const meta = (user && user.user_metadata) || {};
@@ -341,26 +344,27 @@ import {
         if (error?.name === 'AbortError') {
           throw new Error('La richiesta IA ha superato 45 secondi. Riprova tra poco.');
         }
-        throw new Error('Non riesco a raggiungere il servizio IA. Verifica la connessione o l’indirizzo del Worker.');
+        throw new Error(
+          'Non riesco a raggiungere il servizio IA. Verifica la connessione o l’indirizzo del Worker.'
+        );
       }
 
       let result = {};
       try {
         result = await response.json();
       } catch {
-        throw new Error('Il Worker ha restituito una risposta non leggibile (HTTP ' + response.status + ').');
+        throw new Error(
+          'Il Worker ha restituito una risposta non leggibile (HTTP ' + response.status + ').'
+        );
       }
 
       if (!response.ok) {
-        const details = typeof result.error === 'string'
-          ? result.error
-          : 'errore HTTP ' + response.status;
-        const diagnostic = typeof result.diagnostic === 'string'
-          ? ' Dettaglio: ' + result.diagnostic
-          : '';
-        const keys = typeof result.responseKeys === 'string'
-          ? ' Campi ricevuti: ' + result.responseKeys
-          : '';
+        const details =
+          typeof result.error === 'string' ? result.error : 'errore HTTP ' + response.status;
+        const diagnostic =
+          typeof result.diagnostic === 'string' ? ' Dettaglio: ' + result.diagnostic : '';
+        const keys =
+          typeof result.responseKeys === 'string' ? ' Campi ricevuti: ' + result.responseKeys : '';
         throw new Error(details + diagnostic + keys);
       }
 
@@ -402,7 +406,15 @@ import {
     const months = {};
     rows.forEach((t) => {
       const month = txDate(t).slice(0, 7);
-      if (!months[month]) months[month] = { month, income: 0, expenses: 0, categories: {}, smallExpensesCount: 0, smallExpensesTotal: 0 };
+      if (!months[month])
+        months[month] = {
+          month,
+          income: 0,
+          expenses: 0,
+          categories: {},
+          smallExpensesCount: 0,
+          smallExpensesTotal: 0,
+        };
       const m = months[month];
       const amount = Number(t.amount) || 0;
       if (t.type === 'income') m.income += amount;
@@ -410,7 +422,10 @@ import {
         m.expenses += amount;
         const category = t.category || 'Da classificare';
         m.categories[category] = (m.categories[category] || 0) + amount;
-        if (amount <= 5) { m.smallExpensesCount += 1; m.smallExpensesTotal += amount; }
+        if (amount <= 5) {
+          m.smallExpensesCount += 1;
+          m.smallExpensesTotal += amount;
+        }
       }
     });
     const compactMonths = Object.values(months)
@@ -423,7 +438,13 @@ import {
           month: m.month,
           income: Math.round(m.income * 100) / 100,
           expenses: Math.round(m.expenses * 100) / 100,
-          categories: Object.fromEntries(keep.map(([name, amount]) => [name, Math.round(amount * 100) / 100]).concat(otherTotal > 0 ? [['Altre categorie', Math.round(otherTotal * 100) / 100]] : [])),
+          categories: Object.fromEntries(
+            keep
+              .map(([name, amount]) => [name, Math.round(amount * 100) / 100])
+              .concat(
+                otherTotal > 0 ? [['Altre categorie', Math.round(otherTotal * 100) / 100]] : []
+              )
+          ),
           smallExpensesCount: m.smallExpensesCount,
           smallExpensesTotal: Math.round(m.smallExpensesTotal * 100) / 100,
         };
@@ -432,9 +453,18 @@ import {
       .filter((b) => budgetMonth(b) >= fromMonth && budgetMonth(b) <= monthNow())
       .map((b) => {
         const month = budgetMonth(b);
-        const spent = rows.filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === month && t.category === b.category)
+        const spent = rows
+          .filter(
+            (t) =>
+              t.type === 'expense' && txDate(t).slice(0, 7) === month && t.category === b.category
+          )
           .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-        return { month, category: String(b.category || 'Da classificare').slice(0, 70), budget: Number(b.amount) || 0, spent };
+        return {
+          month,
+          category: String(b.category || 'Da classificare').slice(0, 70),
+          budget: Number(b.amount) || 0,
+          spent,
+        };
       })
       .slice(-80);
     return {
@@ -443,9 +473,15 @@ import {
       goal,
       months: compactMonths,
       budgets: historyBudgets,
-      recurring: scopedRecurring().filter((r) => planActive(r)).map((r) => ({
-        name: String(r.name || 'Ricorrenza').slice(0, 70), category: String(r.category || 'Da classificare').slice(0, 70), amount: Number(r.amount) || 0, cadence: r.cadence,
-      })).slice(0, 20),
+      recurring: scopedRecurring()
+        .filter((r) => planActive(r))
+        .map((r) => ({
+          name: String(r.name || 'Ricorrenza').slice(0, 70),
+          category: String(r.category || 'Da classificare').slice(0, 70),
+          amount: Number(r.amount) || 0,
+          cadence: r.cadence,
+        }))
+        .slice(0, 20),
       dataQualityFlags: {
         transactionsToVerify: rows.filter((t) => t.status === 'verify').length,
         monthsOfHistoryAvailable: Object.keys(months).length,
@@ -464,7 +500,8 @@ import {
     try {
       const text = await callTascaAI('advice', snapshot);
       if (text && aiAdviceKey === key) aiAdviceText = text;
-      else if (aiAdviceKey === key) aiAdviceText = 'Il servizio IA non ha restituito consigli. Riprova tra poco.';
+      else if (aiAdviceKey === key)
+        aiAdviceText = 'Il servizio IA non ha restituito consigli. Riprova tra poco.';
       renderAdvice();
       return text;
     } catch (error) {
@@ -522,7 +559,10 @@ import {
     const playful = $('homeBudgetNudge');
     if (playful) {
       const pressured = bs
-        .map((b) => ({ category: b.category, pct: Number(b.amount) > 0 ? (monthBudgetSpend(b) / Number(b.amount)) * 100 : 0 }))
+        .map((b) => ({
+          category: b.category,
+          pct: Number(b.amount) > 0 ? (monthBudgetSpend(b) / Number(b.amount)) * 100 : 0,
+        }))
         .sort((a, b) => b.pct - a.pct)[0];
       const day = new Date().getDate();
       const recentLargeExpenses = scopedTransactions()
@@ -536,12 +576,17 @@ import {
           date: txDate(t),
         }));
       const exceptional = recentLargeExpenses.find((t) => t.amount >= 1000);
-      let message = 'Movimenti sotto controllo: continua a registrare anche le spese piccole, così il saldo racconta la situazione reale.';
+      let message =
+        'Movimenti sotto controllo: continua a registrare anche le spese piccole, così il saldo racconta la situazione reale.';
       if (exceptional) {
-        message = s.residual < 0
-          ? `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” pesa sul mese: con il saldo in rosso, stop alle spese non essenziali.`
-          : `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” è l’eccezione del mese: tienila presente prima di altre uscite.`;
-      } else if (s.residual < 0 && day >= new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - 3) {
+        message =
+          s.residual < 0
+            ? `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” pesa sul mese: con il saldo in rosso, stop alle spese non essenziali.`
+            : `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” è l’eccezione del mese: tienila presente prima di altre uscite.`;
+      } else if (
+        s.residual < 0 &&
+        day >= new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - 3
+      ) {
         message = `Saldo mensile in rosso a ${day} del mese: per questi ultimi giorni, niente spese non essenziali.`;
       } else if (pressured && pressured.pct >= 100) {
         message = `Budget “${pressured.category}” superato: congela le spese di questa categoria fino al prossimo mese.`;
@@ -560,12 +605,20 @@ import {
         expense: s.expense,
         residual: s.residual,
         goal,
-        daysLeft: Math.max(0, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - day),
+        daysLeft: Math.max(
+          0,
+          new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - day
+        ),
         recentLargeExpenses,
         budgets: bs.map((b) => {
           const spent = monthBudgetSpend(b);
           const limit = Number(b.amount) || 0;
-          return { category: b.category, limit, spent, percent: limit > 0 ? Math.round((spent / limit) * 100) : 0 };
+          return {
+            category: b.category,
+            limit,
+            spent,
+            percent: limit > 0 ? Math.round((spent / limit) * 100) : 0,
+          };
         }),
       }).then((aiText) => {
         if (aiText && playful) playful.textContent = aiText;
@@ -682,7 +735,9 @@ import {
       );
   }
   function formatAIAdvice(text) {
-    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+    const lines = String(text ?? '')
+      .replace(/\r\n?/g, '\n')
+      .split('\n');
     const html = [];
     let listType = '';
 
@@ -690,8 +745,7 @@ import {
       if (listType) html.push(`</${listType}>`);
       listType = '';
     };
-    const formatInline = (value) =>
-      esc(value).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const formatInline = (value) => esc(value).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
     lines.forEach((rawLine) => {
       const line = rawLine.trim();
@@ -771,17 +825,16 @@ import {
     ]);
     cards.push([
       'Consigli IA personalizzati',
-      aiAdviceText || (isAIConfigured()
-        ? 'Sto preparando un’analisi dello storico…'
-        : 'La funzione si attiverà dopo aver pubblicato il Worker cloud gratuito e collegato il suo URL.'),
+      aiAdviceText ||
+        (isAIConfigured()
+          ? 'Sto preparando un’analisi dello storico…'
+          : 'La funzione si attiverà dopo aver pubblicato il Worker cloud gratuito e collegato il suo URL.'),
       'ai',
     ]);
     $('adviceList').innerHTML = cards
       .map(([title, body, kind]) => {
         const isAIAdvice = kind === 'ai';
-        const content = isAIAdvice
-          ? formatAIAdvice(body)
-          : `<p class="muted">${esc(body)}</p>`;
+        const content = isAIAdvice ? formatAIAdvice(body) : `<p class="muted">${esc(body)}</p>`;
         return `<div class="panel advice-card${isAIAdvice ? ' advice-ai-card' : ''}"><h3>${esc(title)}</h3><div class="${isAIAdvice ? 'ai-advice-content' : 'advice-card-content'}">${content}</div></div>`;
       })
       .join('');
@@ -2022,9 +2075,17 @@ import {
 
   function clearShortcutParams() {
     const url = new URL(location.href);
-    ['finanze', 'amount', 'description', 'merchant', 'date', 'category', 'method', 'type', 'space'].forEach(
-      (k) => url.searchParams.delete(k)
-    );
+    [
+      'finanze',
+      'amount',
+      'description',
+      'merchant',
+      'date',
+      'category',
+      'method',
+      'type',
+      'space',
+    ].forEach((k) => url.searchParams.delete(k));
     history.replaceState({}, document.title, url.pathname + url.search + url.hash);
   }
   async function processShortcutImport() {
@@ -2075,14 +2136,13 @@ import {
     // Il Comando Rapido può passare space=personal/personale oppure space=shared/condiviso.
     // Se il parametro manca, manteniamo la selezione tradizionale tra tutti gli spazi.
     const requestedSpace = normalizeCategory(params.get('space'));
-    const requestedSpaceType =
-      ['personal', 'personale'].includes(requestedSpace)
-        ? 'personal'
-        : ['shared', 'condiviso'].includes(requestedSpace)
-          ? 'shared'
-          : ['trip', 'viaggio', 'progetto/viaggio'].includes(requestedSpace)
-            ? 'trip'
-            : null;
+    const requestedSpaceType = ['personal', 'personale'].includes(requestedSpace)
+      ? 'personal'
+      : ['shared', 'condiviso'].includes(requestedSpace)
+        ? 'shared'
+        : ['trip', 'viaggio', 'progetto/viaggio'].includes(requestedSpace)
+          ? 'trip'
+          : null;
     if (requestedSpace && !requestedSpaceType) {
       notify('Spazio del Comando Rapido non riconosciuto. Usa Personale o Condiviso.', 'error');
       clearShortcutParams();
