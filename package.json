@@ -7,8 +7,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check": "node --check app.js",
-    "format:check": "npx --yes prettier@3 --check package.json .prettierrc.json .github/workflows/quality.yml finance-core.js tests/finance-core.test.js",
+    "check": "node --check app.js && node --check finance-core.js && node --check worker.js && node --check tests/finance-core.test.js",
+    "format": "npx --yes prettier@3 --write app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js tests/finance-core.test.js worker.js mobile-nav-fix.css wrangler.toml",
+    "format:check": "npx --yes prettier@3 --check app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js tests/finance-core.test.js worker.js mobile-nav-fix.css wrangler.toml",
     "test": "node --test"
   },
   "devDependencies": {
