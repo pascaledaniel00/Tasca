@@ -681,6 +681,51 @@ import {
         'Aggiungi abbonamenti, rate e pagamenti previsti.'
       );
   }
+  function formatAIAdvice(text) {
+    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+    const html = [];
+    let listType = '';
+
+    const closeList = () => {
+      if (listType) html.push(`</${listType}>`);
+      listType = '';
+    };
+    const formatInline = (value) =>
+      esc(value).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    lines.forEach((rawLine) => {
+      const line = rawLine.trim();
+      if (!line) {
+        closeList();
+        return;
+      }
+
+      const heading = line.match(/^#{1,3}\s+(.+)$/);
+      const boldHeading = line.match(/^\*\*(.+)\*\*$/);
+      const bullet = line.match(/^[-*•]\s+(.+)$/);
+      const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+
+      if (heading || boldHeading) {
+        closeList();
+        html.push(`<h4>${formatInline((heading || boldHeading)[1])}</h4>`);
+      } else if (bullet || numbered) {
+        const nextType = bullet ? 'ul' : 'ol';
+        if (listType !== nextType) {
+          closeList();
+          listType = nextType;
+          html.push(`<${listType}>`);
+        }
+        html.push(`<li>${formatInline((bullet || numbered)[1])}</li>`);
+      } else {
+        closeList();
+        html.push(`<p>${formatInline(line)}</p>`);
+      }
+    });
+
+    closeList();
+    return html.join('');
+  }
+
   function renderAdvice() {
     const s = monthSummary(),
       rows = monthRows(monthNow()).filter((t) => t.type === 'expense'),
@@ -732,10 +777,13 @@ import {
       'ai',
     ]);
     $('adviceList').innerHTML = cards
-      .map(
-        ([title, body, kind]) =>
-          `<div class="panel"><h3>${esc(title)}</h3><p class="muted" style="white-space:pre-line">${esc(body)}</p></div>`
-      )
+      .map(([title, body, kind]) => {
+        const isAIAdvice = kind === 'ai';
+        const content = isAIAdvice
+          ? formatAIAdvice(body)
+          : `<p class="muted">${esc(body)}</p>`;
+        return `<div class="panel advice-card${isAIAdvice ? ' advice-ai-card' : ''}"><h3>${esc(title)}</h3><div class="${isAIAdvice ? 'ai-advice-content' : 'advice-card-content'}">${content}</div></div>`;
+      })
       .join('');
     if (isAIConfigured() && !aiAdvicePending && !aiAdviceText) requestAIAdvice();
   }
