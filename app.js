@@ -17,7 +17,7 @@ import {
   selectVerifiedQuestions,
   validateAIQuiz,
   QUIZ_CATEGORIES,
-} from './quiz-core.js?v=20261028-2';
+} from './quiz-core.js?v=20261028-3';
 
 (() => {
   'use strict';
