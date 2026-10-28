@@ -412,8 +412,8 @@ import {
     }
 
     const controller = new AbortController();
-    // I quiz devono passare rapidamente alle domande verificate se il modello è lento.
-    const timeoutMs = task === 'quiz' ? 45000 : 45000;
+    // Mantiene una finestra ragionevole per la generazione; gli errori non-quota non attivano il fallback verificato.
+    const timeoutMs = 45000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -456,7 +456,9 @@ import {
           typeof result.diagnostic === 'string' ? ' Dettaglio: ' + result.diagnostic : '';
         const keys =
           typeof result.responseKeys === 'string' ? ' Campi ricevuti: ' + result.responseKeys : '';
-        throw new Error(details + diagnostic + keys);
+        const error = new Error(details + diagnostic + keys);
+        error.code = typeof result.code === 'string' ? result.code : '';
+        throw error;
       }
 
       if (typeof result.text !== 'string' || !result.text.trim()) {
@@ -1234,31 +1236,37 @@ import {
       const difficulty = Number($('quizDifficulty').value) || 1;
       const context = buildQuizContext(category);
       let questions = null;
-      let source = 'verified';
-      if (isAIConfigured()) {
-        try {
-          const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
-          const validated = validateAIQuiz(generated, { category, count: 5 });
-          if (validated) {
-            questions = validated.questions;
-            source = 'ai';
-          } else {
-            $('quizNotice').className = 'notice warn';
-            $('quizNotice').textContent =
-              'La risposta IA non ha superato i controlli: useremo domande verificate.';
-          }
-        } catch (error) {
-          console.warn('Tasca quiz IA:', error.message);
+      let source = 'ai';
+      let quotaExhausted = false;
+      if (!isAIConfigured()) {
+        throw new Error('Il servizio IA non è configurato: verifica l’URL del Worker.');
+      }
+      try {
+        const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
+        const validated = validateAIQuiz(generated, { category, count: 5 });
+        if (validated) {
+          questions = validated.questions;
+          source = 'ai';
+        } else {
+          throw new Error('La risposta IA non ha superato i controlli di qualità. Riprova.');
+        }
+      } catch (error) {
+        console.warn('Tasca quiz IA:', error.message);
+        quotaExhausted = error?.code === 'QUOTA_EXHAUSTED';
+        if (quotaExhausted) {
+          questions = selectVerifiedQuestions({ category, count: 5, difficulty });
+          source = 'verified';
           $('quizNotice').className = 'notice warn';
           $('quizNotice').textContent =
-            'Quiz IA non disponibile (' +
+            'Quota IA esaurita: per oggi usiamo le domande verificate.';
+        } else {
+          $('quizNotice').className = 'notice warn';
+          $('quizNotice').textContent =
+            'Non sono riuscito a generare il quiz con l’IA: ' +
             String(error?.message || 'errore non specificato') +
-            '). Per non bloccarti, useremo domande verificate.';
+            ' Riprova tra poco.';
+          return;
         }
-      }
-      if (!questions) {
-        questions = selectVerifiedQuestions({ category, count: 5, difficulty });
-        source = 'verified';
       }
       quizQuestions = questions;
       quizSource = source;
