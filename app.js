@@ -1248,7 +1248,9 @@ import {
           questions = validated.questions;
           source = 'ai';
         } else {
-          const reason = validated?.validationError || 'La risposta IA non ha superato i controlli di qualità per una causa non identificata.';
+          const reason =
+            validated?.validationError ||
+            'La risposta IA non ha superato i controlli di qualità per una causa non identificata.';
           console.warn('Tasca quiz: validazione IA fallita:', reason);
           throw new Error('Controllo qualità: ' + reason);
         }
