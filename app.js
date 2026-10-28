@@ -981,6 +981,17 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     renderQuizQuestion();
   }
 
+  async function createQuizFingerprint(questions) {
+    const canonical = questions.map((question) => String(question.question || '').normalize('NFKC').trim().toLocaleLowerCase('it-IT')).sort().join('\n');
+    if (globalThis.crypto?.subtle) {
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+    let hash = 2166136261;
+    for (let i = 0; i < canonical.length; i += 1) hash = Math.imul(hash ^ canonical.charCodeAt(i), 16777619);
+    return 'fnv-' + (hash >>> 0).toString(16).padStart(8, '0');
+  }
+
   async function finishQuiz() {
     if (quizSaving || !quizQuestions.length) return;
     quizSaving = true;
@@ -989,7 +1000,8 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     const source = quizSource;
     const category = $('quizCategory').value;
     const difficulty = Number($('quizDifficulty').value) || 1;
-    const payload = { user_id: user.id, attempt_key: quizAttemptKey, category, difficulty, correct_answers: score.correct, total_questions: score.total, percent: score.percent, xp_earned: xp, source };
+    const questionFingerprint = await createQuizFingerprint(quizQuestions);
+    const payload = { user_id: user.id, attempt_key: quizAttemptKey, question_fingerprint: questionFingerprint, category, difficulty, correct_answers: score.correct, total_questions: score.total, percent: score.percent, xp_earned: xp, source };
     const result = $('quizResult');
     $('quizHome').classList.add('hidden');
     $('quizPlay').classList.add('hidden');
@@ -998,7 +1010,7 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     try {
       const { data, error } = await db.from('quiz_attempts').insert(payload).select('*').single();
       if (error) {
-        if (error.code === '23505') throw new Error('Questa sessione risulta già registrata.');
+        if (error.code === '23505') throw new Error('Hai già completato questa combinazione di domande: scegli un altro percorso per guadagnare XP con nuovi contenuti.');
         throw error;
       }
       quizAttempts.unshift(data);
