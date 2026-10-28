@@ -2608,3 +2608,54 @@ html[data-theme='dark'] {
   font-size: 13px;
   line-height: 1.5;
 }
+
+
+/* Tasca AI budget nudge — box più leggibile e riconoscibile */
+.budget-nudge {
+  position: relative;
+  display: block;
+  margin: 14px 0 0;
+  padding: 15px 16px 15px 46px;
+  border: 1px solid color-mix(in srgb, var(--g) 24%, var(--line));
+  border-left: 4px solid var(--g);
+  border-radius: 14px;
+  background: linear-gradient(115deg, var(--gs), color-mix(in srgb, var(--white) 88%, var(--gs)));
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--g) 7%, transparent);
+  overflow-wrap: anywhere;
+}
+.budget-nudge::before {
+  content: '✦';
+  position: absolute;
+  top: 14px;
+  left: 15px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--g) 12%, transparent);
+  color: var(--g);
+  font-size: 13px;
+  line-height: 1;
+}
+html[data-theme='dark'] .budget-nudge {
+  background: linear-gradient(115deg, color-mix(in srgb, var(--g) 14%, var(--white)), color-mix(in srgb, var(--white) 3%, var(--gs)));
+  border-color: color-mix(in srgb, var(--g) 38%, var(--line));
+  box-shadow: 0 5px 18px #0002;
+}
+@media (max-width: 460px) {
+  .budget-nudge {
+    padding: 13px 13px 13px 42px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .budget-nudge::before {
+    top: 12px;
+    left: 12px;
+  }
+}
