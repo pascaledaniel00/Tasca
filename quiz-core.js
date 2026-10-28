@@ -37,8 +37,21 @@ export function selectVerifiedQuestions({ category = 'all', count = 5, difficult
 export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
   let data = value;
   if (typeof data === 'string') {
-    const cleaned = data.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '');
-    try { data = JSON.parse(cleaned); } catch { return null; }
+    // I modelli possono aggiungere blocchi di ragionamento o testo attorno al JSON.
+    // Estraiamo il primo oggetto JSON completo prima di applicare i controlli rigorosi.
+    let cleaned = data
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+    try {
+      data = JSON.parse(cleaned);
+    } catch {
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start < 0 || end <= start) return null;
+      try { data = JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
+    }
   }
   if (!data || !Array.isArray(data.questions) || data.questions.length !== count) return null;
   const allowed = new Set(QUIZ_CATEGORIES.map((item) => item.id));
