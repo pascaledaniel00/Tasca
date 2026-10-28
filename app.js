@@ -300,30 +300,77 @@ import {
     return String(meta.full_name || meta.name || '').trim() || 'utente';
   }
   async function callTascaAI(task, data) {
-    if (!isAIConfigured() || !db || !user) return null;
+    if (!isAIConfigured()) {
+      throw new Error('Il servizio IA non è configurato: manca l’URL del Worker.');
+    }
+    if (!db || !user) {
+      throw new Error('Non risulti autenticato. Esci da Tasca e accedi di nuovo.');
+    }
+
+    let sessionData;
     try {
-      const { data: sessionData, error } = await db.auth.getSession();
-      if (error || !sessionData?.session?.access_token) return null;
-      const response = await fetch(AI_WORKER_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + sessionData.session.access_token,
-        },
-        body: JSON.stringify({ task, data }),
-      });
-      let result = {};
-      try { result = await response.json(); } catch {}
-      if (!response.ok) {
-        const details = typeof result.error === 'string' ? result.error : 'errore HTTP ' + response.status;
-        throw new Error(details);
-      }
-      if (typeof result.text !== 'string' || !result.text.trim()) {
-        throw new Error('Il servizio IA non ha restituito testo.');
-      }
-      return result.text.trim().slice(0, 5000);
+      const sessionResult = await db.auth.getSession();
+      if (sessionResult.error) throw sessionResult.error;
+      sessionData = sessionResult.data;
     } catch (error) {
-      throw new Error(error?.message || 'Connessione al servizio IA non riuscita.');
+      throw new Error('Non riesco a verificare la sessione. Prova a uscire e accedere di nuovo.');
+    }
+
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('La sessione di accesso è scaduta. Esci da Tasca e accedi di nuovo.');
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    try {
+      let response;
+      try {
+        response = await fetch(AI_WORKER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + accessToken,
+          },
+          body: JSON.stringify({ task, data }),
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          throw new Error('La richiesta IA ha superato 45 secondi. Riprova tra poco.');
+        }
+        throw new Error('Non riesco a raggiungere il servizio IA. Verifica la connessione o l’indirizzo del Worker.');
+      }
+
+      let result = {};
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('Il Worker ha restituito una risposta non leggibile (HTTP ' + response.status + ').');
+      }
+
+      if (!response.ok) {
+        const details = typeof result.error === 'string'
+          ? result.error
+          : 'errore HTTP ' + response.status;
+        const diagnostic = typeof result.diagnostic === 'string'
+          ? ' Dettaglio: ' + result.diagnostic
+          : '';
+        const keys = typeof result.responseKeys === 'string'
+          ? ' Campi ricevuti: ' + result.responseKeys
+          : '';
+        throw new Error(details + diagnostic + keys);
+      }
+
+      if (typeof result.text !== 'string' || !result.text.trim()) {
+        throw new Error('Il Worker ha risposto, ma non ha restituito consigli testuali.');
+      }
+
+      return result.text.trim().slice(0, 5000);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
   async function requestAINudge(data) {
@@ -421,8 +468,10 @@ import {
       renderAdvice();
       return text;
     } catch (error) {
+      const message = error?.message || 'errore di connessione';
+      console.warn('Tasca: richiesta dei consigli IA non riuscita:', message);
       if (aiAdviceKey === key) {
-        aiAdviceText = 'Consigli IA non disponibili: ' + (error?.message || 'errore di connessione') + '. Verifica il Worker Cloudflare e il collegamento al sito.';
+        aiAdviceText = 'Consigli IA non disponibili: ' + message;
       }
       renderAdvice();
       return null;
