@@ -37,12 +37,10 @@ export function selectVerifiedQuestions({ category = 'all', count = 5, difficult
 export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
   let data = value;
   if (typeof data === 'string') {
-    // I modelli possono aggiungere blocchi di ragionamento o testo attorno al JSON.
-    // Estraiamo il primo oggetto JSON completo prima di applicare i controlli rigorosi.
     let cleaned = data
-      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/i, '')
+      .replace(/<think>[\\s\\S]*?<\\/think>/gi, '')
+      .replace(/^\\s*```(?:json)?\\s*/i, '')
+      .replace(/\\s*```\\s*$/i, '')
       .trim();
     try {
       data = JSON.parse(cleaned);
@@ -53,25 +51,53 @@ export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
       try { data = JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
     }
   }
+  if (Array.isArray(data)) data = { questions: data };
   if (!data || !Array.isArray(data.questions) || data.questions.length !== count) return null;
   const allowed = new Set(QUIZ_CATEGORIES.map((item) => item.id));
   const seen = new Set();
-  for (const q of data.questions) {
-    if (!q || typeof q.question !== 'string' || q.question.length < 12 || q.question.length > 500) return null;
+  const questions = [];
+  for (const raw of data.questions) {
+    if (!raw || typeof raw !== 'object') return null;
+    const q = { ...raw };
+    // Compatibilità con varianti comuni del formato prodotto dai modelli.
+    if (typeof q.question !== 'string') q.question = q.text || q.prompt || '';
+    if (!q.category && category !== 'all') q.category = category;
+    if (!q.category && category === 'all') q.category = 'budget';
     if (!allowed.has(q.category) || (category !== 'all' && q.category !== category)) return null;
-    if (!Array.isArray(q.options) || q.options.length !== 4 || !Array.isArray(q.correctValues) || q.correctValues.length !== 1) return null;
-    const values = new Set();
-    for (const option of q.options) {
-      if (!option || typeof option.value !== 'string' || typeof option.label !== 'string' || option.label.length > 160 || !option.label.trim()) return null;
-      values.add(option.value);
+    if (typeof q.question !== 'string' || q.question.trim().length < 12 || q.question.length > 500) return null;
+    if (!Array.isArray(q.options)) return null;
+    q.options = q.options.map((option, index) => {
+      if (typeof option === 'string') return { value: String.fromCharCode(65 + index), label: option };
+      if (!option || typeof option !== 'object') return null;
+      const label = option.label ?? option.text ?? option.content;
+      const value = option.value ?? option.id ?? option.key ?? String.fromCharCode(65 + index);
+      return typeof label === 'string' ? { value: String(value), label: label.trim() } : null;
+    });
+    if (q.options.length !== 4 || q.options.some((option) => !option || !option.label || option.label.length > 160)) return null;
+    const optionValues = new Set(q.options.map((option) => option.value));
+    if (optionValues.size !== 4) return null;
+    let correct = q.correctValues;
+    if (!Array.isArray(correct)) {
+      const answer = q.correctValue ?? q.correctAnswer ?? q.correct_answer ?? q.answer ?? q.correctOption;
+      if (answer !== undefined && answer !== null) {
+        const answerText = String(typeof answer === 'object' ? answer.value ?? answer.label ?? '' : answer).trim();
+        const byValue = q.options.find((option) => option.value === answerText);
+        const byLabel = q.options.find((option) => option.label.toLocaleLowerCase('it-IT') === answerText.toLocaleLowerCase('it-IT'));
+        const byLetter = q.options.find((option, index) => String.fromCharCode(65 + index) === answerText.toUpperCase());
+        correct = [(byValue || byLabel || byLetter)?.value || ''];
+      }
     }
-    if (values.size !== 4 || !values.has(q.correctValues[0])) return null;
-    if (typeof q.explanation !== 'string' || q.explanation.length < 8 || typeof q.hint !== 'string' || !q.hint.trim()) return null;
+    if (!Array.isArray(correct) || correct.length !== 1 || !optionValues.has(String(correct[0]))) return null;
+    q.correctValues = [String(correct[0])];
+    if (typeof q.explanation !== 'string') q.explanation = q.explanationText || q.rationale || '';
+    if (typeof q.hint !== 'string') q.hint = q.indice || q.clue || '';
+    if (q.explanation.trim().length < 8 || !q.hint.trim()) return null;
     const signature = q.question.trim().toLocaleLowerCase('it-IT');
     if (seen.has(signature)) return null;
     seen.add(signature);
+    questions.push(q);
   }
-  return { questions: data.questions.map((q, i) => ({ ...q, id: 'ai-' + i + '-' + Date.now(), difficulty: Number(q.difficulty) || 1 })) };
+  return { questions: questions.map((q, i) => ({ ...q, id: 'ai-' + i + '-' + Date.now(), difficulty: Number(q.difficulty) || 1 })) };
 }
 export function scoreQuiz(questions, answers) {
   const details = questions.map((question) => ({ id: question.id, correct: answers[question.id] === question.correctValues[0], selected: answers[question.id] ?? null, correctValue: question.correctValues[0] }));
