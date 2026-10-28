@@ -857,7 +857,9 @@ import {
   function readLocalQuizAttempts() {
     try {
       const saved = JSON.parse(localStorage.getItem(localQuizStorageKey()) || '[]');
-      return Array.isArray(saved) ? saved.filter((item) => item && item.id && item.user_id === user?.id) : [];
+      return Array.isArray(saved)
+        ? saved.filter((item) => item && item.id && item.user_id === user?.id)
+        : [];
     } catch {
       return [];
     }
@@ -1337,7 +1339,9 @@ import {
       const message = String(error?.message || 'errore di salvataggio');
       if (message.startsWith('Hai già completato questa combinazione')) {
         result.innerHTML +=
-          '<div class="notice warn">' + esc(message) + '</div><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
+          '<div class="notice warn">' +
+          esc(message) +
+          '</div><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
       } else {
         const localAttempt = {
           id: 'local-' + quizAttemptKey,
@@ -1353,18 +1357,41 @@ import {
           const level = getQuizLevel(quizTotals().xp);
           result.innerHTML =
             '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' +
-            score.correct + ' su ' + score.total + ' risposte corrette</h3><p class="muted">' +
-            score.percent + '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' +
-            xp + ' XP</strong><span>Livello ' + level.level + ' · ' + esc(level.title) +
+            score.correct +
+            ' su ' +
+            score.total +
+            ' risposte corrette</h3><p class="muted">' +
+            score.percent +
+            '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' +
+            xp +
+            ' XP</strong><span>Livello ' +
+            level.level +
+            ' · ' +
+            esc(level.title) +
             '</span></div><div class="notice warn">Progressi salvati su questo dispositivo. La sincronizzazione cloud richiede la configurazione della tabella quiz in Supabase.</div><div class="quiz-result-review">' +
-            score.details.map((detail, index) =>
-              '<div class="quiz-review-row"><span class="' + (detail.correct ? 'review-correct' : 'review-wrong') +
-              '">' + (detail.correct ? '✓' : '×') + '</span><div><strong>' +
-              esc(quizQuestions[index].question) + '</strong><small>' +
-              (detail.correct ? 'Risposta corretta' : 'Risposta corretta: ' +
-                esc((quizQuestions[index].options.find((option) => option.value === detail.correctValue) || {}).label || detail.correctValue)) +
-              '</small></div></div>'
-            ).join('') +
+            score.details
+              .map(
+                (detail, index) =>
+                  '<div class="quiz-review-row"><span class="' +
+                  (detail.correct ? 'review-correct' : 'review-wrong') +
+                  '">' +
+                  (detail.correct ? '✓' : '×') +
+                  '</span><div><strong>' +
+                  esc(quizQuestions[index].question) +
+                  '</strong><small>' +
+                  (detail.correct
+                    ? 'Risposta corretta'
+                    : 'Risposta corretta: ' +
+                      esc(
+                        (
+                          quizQuestions[index].options.find(
+                            (option) => option.value === detail.correctValue
+                          ) || {}
+                        ).label || detail.correctValue
+                      )) +
+                  '</small></div></div>'
+              )
+              .join('') +
             '</div><button id="quizAgainBtn" class="btn primary full" type="button">Fai un altro quiz</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
           $('quizAgainBtn').addEventListener('click', () => {
             quizQuestions = [];
