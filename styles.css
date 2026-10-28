@@ -2659,3 +2659,76 @@ html[data-theme='dark'] .budget-nudge {
     left: 12px;
   }
 }
+
+
+/* Promemoria IA: scheda autonoma, allineata alla larghezza della dashboard. */
+.budget-nudge-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 4px 16px #173d3208;
+}
+.budget-nudge-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.budget-nudge-icon {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--gs);
+  color: var(--g);
+  font-size: 16px;
+}
+.budget-nudge-tag {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.budget-nudge-card .budget-nudge {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0 0;
+  padding: 0 0 0 13px;
+  border: 0;
+  border-left: 3px solid var(--g);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.65;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.budget-nudge-card .budget-nudge::before { content: none; }
+html[data-theme='dark'] .budget-nudge-card {
+  background: var(--white);
+  box-shadow: 0 4px 16px #0002;
+}
+@media (max-width: 460px) {
+  .budget-nudge-card { padding: 14px; border-radius: 14px; }
+  .budget-nudge-heading { gap: 7px; }
+  .budget-nudge-tag { padding: 3px 6px; font-size: 9px; }
+  .budget-nudge-card .budget-nudge { font-size: 13px; line-height: 1.55; }
+}
