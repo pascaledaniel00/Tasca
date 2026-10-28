@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "vite": "^6.0.0"
+  },
+  "overrides": {
+    "rollup": "4.65.1"
   }
 }
