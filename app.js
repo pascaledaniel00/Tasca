@@ -841,7 +841,7 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
 
   async function loadQuizHistory() {
     if (!db || !user) return;
-    const { data, error } = await db.from('quiz_attempts').select('*').order('completed_at', { ascending: false }).limit(100);
+    const { data, error } = await db.from('quiz_attempts').select('*').order('completed_at', { ascending: false });
     if (error) {
       quizSchemaReady = false;
       quizAttempts = [];
