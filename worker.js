@@ -29,15 +29,23 @@ function json(data, status, origin) {
   });
 }
 
-
 const QUIZ_CATEGORIES = ['budget', 'saving', 'debt', 'spending', 'banking', 'economy'];
 const QUIZ_WEEKLY_TARGET = 15;
 
 function romeParts(date = new Date()) {
-  return Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Rome', weekday: 'short', hour: '2-digit', hourCycle: 'h23',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(date).map((p) => [p.type, p.value]));
+  return Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Rome',
+      weekday: 'short',
+      hour: '2-digit',
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(date)
+      .map((p) => [p.type, p.value])
+  );
 }
 function romeWeekStart(date = new Date()) {
   const p = romeParts(date);
@@ -46,7 +54,8 @@ function romeWeekStart(date = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 async function bankRequest(env, path, options = {}) {
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('Secret Supabase per archivio quiz mancante.');
+  if (!env.SUPABASE_SERVICE_ROLE_KEY)
+    throw new Error('Secret Supabase per archivio quiz mancante.');
   return fetch(env.SUPABASE_URL.replace(/\/$/, '') + path, {
     ...options,
     headers: {
@@ -59,63 +68,127 @@ async function bankRequest(env, path, options = {}) {
 }
 function validBankQuestions(text, category) {
   let parsed;
-  try { parsed = JSON.parse(String(text).replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '')); }
-  catch {
-    const s = String(text).indexOf('{'), e = String(text).lastIndexOf('}');
+  try {
+    parsed = JSON.parse(
+      String(text)
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/, '')
+    );
+  } catch {
+    const s = String(text).indexOf('{'),
+      e = String(text).lastIndexOf('}');
     if (s < 0 || e <= s) return [];
-    try { parsed = JSON.parse(String(text).slice(s, e + 1)); } catch { return []; }
+    try {
+      parsed = JSON.parse(String(text).slice(s, e + 1));
+    } catch {
+      return [];
+    }
   }
   const seen = new Set();
-  return (Array.isArray(parsed?.questions) ? parsed.questions : []).filter((q) => {
-    if (!q || q.category !== category || typeof q.question !== 'string' || q.question.trim().length < 12 ||
-      !Array.isArray(q.options) || q.options.length !== 4 || !Array.isArray(q.correctValues) ||
-      q.correctValues.length !== 1 || typeof q.explanation !== 'string' || q.explanation.trim().length < 8 ||
-      typeof q.hint !== 'string' || !q.hint.trim()) return false;
-    const vals = new Set(q.options.map((o) => o?.value));
-    if (vals.size !== 4 || q.options.some((o) => !o || typeof o.label !== 'string' || !o.label.trim()) ||
-      !vals.has(q.correctValues[0])) return false;
-    const sig = q.question.trim().toLocaleLowerCase('it-IT');
-    if (seen.has(sig)) return false;
-    seen.add(sig);
-    return true;
-  }).slice(0, 15).map((q) => ({
-    category, difficulty: Math.max(1, Math.min(3, Number(q.difficulty) || 1)),
-    question: q.question.trim(),
-    options: q.options.map((o) => ({ value: String(o.value), label: o.label.trim() })),
-    correctValues: [String(q.correctValues[0])],
-    explanation: q.explanation.trim().slice(0, 300), hint: q.hint.trim().slice(0, 200),
-  }));
+  return (Array.isArray(parsed?.questions) ? parsed.questions : [])
+    .filter((q) => {
+      if (
+        !q ||
+        q.category !== category ||
+        typeof q.question !== 'string' ||
+        q.question.trim().length < 12 ||
+        !Array.isArray(q.options) ||
+        q.options.length !== 4 ||
+        !Array.isArray(q.correctValues) ||
+        q.correctValues.length !== 1 ||
+        typeof q.explanation !== 'string' ||
+        q.explanation.trim().length < 8 ||
+        typeof q.hint !== 'string' ||
+        !q.hint.trim()
+      )
+        return false;
+      const vals = new Set(q.options.map((o) => o?.value));
+      if (
+        vals.size !== 4 ||
+        q.options.some((o) => !o || typeof o.label !== 'string' || !o.label.trim()) ||
+        !vals.has(q.correctValues[0])
+      )
+        return false;
+      const sig = q.question.trim().toLocaleLowerCase('it-IT');
+      if (seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
+    })
+    .slice(0, 15)
+    .map((q) => ({
+      category,
+      difficulty: Math.max(1, Math.min(3, Number(q.difficulty) || 1)),
+      question: q.question.trim(),
+      options: q.options.map((o) => ({ value: String(o.value), label: o.label.trim() })),
+      correctValues: [String(q.correctValues[0])],
+      explanation: q.explanation.trim().slice(0, 300),
+      hint: q.hint.trim().slice(0, 200),
+    }));
 }
 async function prepareWeeklyQuestions(env, scheduledTime) {
   if (!env.AI || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('Preparazione quiz saltata: verificare binding AI, URL Supabase e secret SUPABASE_SERVICE_ROLE_KEY.');
+    console.error(
+      'Preparazione quiz saltata: verificare binding AI, URL Supabase e secret SUPABASE_SERVICE_ROLE_KEY.'
+    );
     return;
   }
   const weekStart = romeWeekStart(new Date(scheduledTime));
   for (const category of QUIZ_CATEGORIES) {
     try {
-      const existingResponse = await bankRequest(env,
-        `/rest/v1/quiz_question_bank?select=id&week_start=eq.${weekStart}&category=eq.${category}`);
-      if (!existingResponse.ok) { console.error('Archivio quiz non leggibile:', existingResponse.status); continue; }
+      const existingResponse = await bankRequest(
+        env,
+        `/rest/v1/quiz_question_bank?select=id&week_start=eq.${weekStart}&category=eq.${category}`
+      );
+      if (!existingResponse.ok) {
+        console.error('Archivio quiz non leggibile:', existingResponse.status);
+        continue;
+      }
       if ((await existingResponse.json()).length >= QUIZ_WEEKLY_TARGET) continue;
       const result = await env.AI.run(MODEL_NUDGE, {
         messages: [
           { role: 'system', content: SYSTEM_PROMPTS.quiz },
-          { role: 'user', content: JSON.stringify({ category, difficulty: 2, count: 15, context: 'Domande settimanali Tasca con difficoltà mista da 1 a 3.' }) },
+          {
+            role: 'user',
+            content: JSON.stringify({
+              category,
+              difficulty: 2,
+              count: 15,
+              context: 'Domande settimanali Tasca con difficoltà mista da 1 a 3.',
+            }),
+          },
         ],
-        max_tokens: 6500, temperature: 0.15,
-        chat_template_kwargs: { enable_thinking: false }, reasoning_effort: 'low',
+        max_tokens: 6500,
+        temperature: 0.15,
+        chat_template_kwargs: { enable_thinking: false },
+        reasoning_effort: 'low',
       });
-      const raw = String(result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || '');
+      const raw = String(
+        result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || ''
+      );
       const questions = validBankQuestions(raw, category);
-      if (!questions.length) { console.error('Nessuna domanda valida generata per:', category); continue; }
+      if (!questions.length) {
+        console.error('Nessuna domanda valida generata per:', category);
+        continue;
+      }
       const rows = questions.map((question) => ({
-        week_start: weekStart, category, question,
-        fingerprint: question.question.trim().toLocaleLowerCase('it-IT').replace(/\s+/g, ' ').slice(0, 240),
+        week_start: weekStart,
+        category,
+        question,
+        fingerprint: question.question
+          .trim()
+          .toLocaleLowerCase('it-IT')
+          .replace(/\s+/g, ' ')
+          .slice(0, 240),
       }));
-      const saved = await bankRequest(env, '/rest/v1/quiz_question_bank?on_conflict=week_start,fingerprint', {
-        method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(rows),
-      });
+      const saved = await bankRequest(
+        env,
+        '/rest/v1/quiz_question_bank?on_conflict=week_start,fingerprint',
+        {
+          method: 'POST',
+          headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+          body: JSON.stringify(rows),
+        }
+      );
       if (!saved.ok) console.error('Salvataggio quiz non riuscito:', category, saved.status);
     } catch (error) {
       const message = String(error?.message || error);
@@ -196,11 +269,15 @@ export default {
       if (QUIZ_CATEGORIES.includes(category)) {
         try {
           const weekStart = romeWeekStart(new Date());
-          const cachedResponse = await bankRequest(env,
-            `/rest/v1/quiz_question_bank?select=question&week_start=eq.${weekStart}&category=eq.${category}&order=created_at.asc&limit=15`);
+          const cachedResponse = await bankRequest(
+            env,
+            `/rest/v1/quiz_question_bank?select=question&week_start=eq.${weekStart}&category=eq.${category}&order=created_at.asc&limit=15`
+          );
           if (cachedResponse.ok) {
             const rows = await cachedResponse.json();
-            const questions = rows.map((row) => row.question).filter((q) => q && q.category === category);
+            const questions = rows
+              .map((row) => row.question)
+              .filter((q) => q && q.category === category);
             if (questions.length >= count) {
               const difficulty = Number(body.data.difficulty) || 1;
               let pool = questions.filter((q) => Number(q.difficulty) <= difficulty + 1);
@@ -211,12 +288,16 @@ export default {
             }
           }
         } catch (error) {
-          console.error('Lettura archivio quiz non riuscita; uso generazione normale:', String(error?.message || error).slice(0, 120));
+          console.error(
+            'Lettura archivio quiz non riuscita; uso generazione normale:',
+            String(error?.message || error).slice(0, 120)
+          );
         }
       }
     }
     const quizCount = task === 'quiz' ? Math.max(1, Math.min(15, Number(body.data.count) || 5)) : 5;
-    const maxTokens = task === 'nudge' ? 96 : task === 'quiz' ? Math.min(6500, 900 + quizCount * 380) : 1200;
+    const maxTokens =
+      task === 'nudge' ? 96 : task === 'quiz' ? Math.min(6500, 900 + quizCount * 380) : 1200;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
     const prompt = JSON.stringify(body.data).slice(
       0,
