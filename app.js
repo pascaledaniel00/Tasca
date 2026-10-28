@@ -366,23 +366,39 @@ import {
         if (amount <= 5) { m.smallExpensesCount += 1; m.smallExpensesTotal += amount; }
       }
     });
+    const compactMonths = Object.values(months)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((m) => {
+        const ranked = Object.entries(m.categories).sort((a, b) => b[1] - a[1]);
+        const keep = ranked.slice(0, 8);
+        const otherTotal = ranked.slice(8).reduce((sum, item) => sum + item[1], 0);
+        return {
+          month: m.month,
+          income: Math.round(m.income * 100) / 100,
+          expenses: Math.round(m.expenses * 100) / 100,
+          categories: Object.fromEntries(keep.map(([name, amount]) => [name, Math.round(amount * 100) / 100]).concat(otherTotal > 0 ? [['Altre categorie', Math.round(otherTotal * 100) / 100]] : [])),
+          smallExpensesCount: m.smallExpensesCount,
+          smallExpensesTotal: Math.round(m.smallExpensesTotal * 100) / 100,
+        };
+      });
     const historyBudgets = scopedBudgets()
       .filter((b) => budgetMonth(b) >= fromMonth && budgetMonth(b) <= monthNow())
       .map((b) => {
         const month = budgetMonth(b);
         const spent = rows.filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === month && t.category === b.category)
           .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-        return { month, category: b.category, budget: Number(b.amount) || 0, spent };
-      });
+        return { month, category: String(b.category || 'Da classificare').slice(0, 70), budget: Number(b.amount) || 0, spent };
+      })
+      .slice(-80);
     return {
       displayName: getDisplayName(),
       currentMonth: monthNow(),
       goal,
-      months: Object.values(months).sort((a, b) => a.month.localeCompare(b.month)),
+      months: compactMonths,
       budgets: historyBudgets,
       recurring: scopedRecurring().filter((r) => planActive(r)).map((r) => ({
-        name: r.name, category: r.category || 'Da classificare', amount: Number(r.amount) || 0, cadence: r.cadence,
-      })).slice(0, 30),
+        name: String(r.name || 'Ricorrenza').slice(0, 70), category: String(r.category || 'Da classificare').slice(0, 70), amount: Number(r.amount) || 0, cadence: r.cadence,
+      })).slice(0, 20),
       dataQualityFlags: {
         transactionsToVerify: rows.filter((t) => t.status === 'verify').length,
         monthsOfHistoryAvailable: Object.keys(months).length,
