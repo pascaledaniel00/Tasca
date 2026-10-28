@@ -96,19 +96,16 @@ export default {
     );
 
     try {
-      const result = await env.AI.run(
-        model,
-        {
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPTS[task] },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: maxTokens,
-          temperature: task === 'nudge' ? 0.75 : task === 'quiz' ? 0.15 : 0.25,
-          chat_template_kwargs: { enable_thinking: false },
-          ...(task === 'nudge' || task === 'quiz' ? { reasoning_effort: 'low' } : {}),
-        },
-      );
+      const result = await env.AI.run(model, {
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPTS[task] },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: maxTokens,
+        temperature: task === 'nudge' ? 0.75 : task === 'quiz' ? 0.15 : 0.25,
+        chat_template_kwargs: { enable_thinking: false },
+        ...(task === 'nudge' || task === 'quiz' ? { reasoning_effort: 'low' } : {}),
+      });
       // Supporta i formati di risposta restituiti dalle diverse versioni del binding.
       const text = String(
         result?.response ||
@@ -139,7 +136,9 @@ export default {
       // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
       const message = String(error?.message || '');
       const quotaExhausted =
-        /quota|daily.{0,30}(limit|usage|exceed)|(?:limit|exceed).{0,30}daily|neurons?.{0,30}(limit|exceed)|(?:limit|exceed).{0,30}neurons?|resource exhausted|billing.{0,30}limit/i.test(message);
+        /quota|daily.{0,30}(limit|usage|exceed)|(?:limit|exceed).{0,30}daily|neurons?.{0,30}(limit|exceed)|(?:limit|exceed).{0,30}neurons?|resource exhausted|billing.{0,30}limit/i.test(
+          message
+        );
       const busy = /busy|capacity|temporar|overloaded/i.test(message);
       return json(
         {

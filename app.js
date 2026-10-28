@@ -1257,8 +1257,7 @@ import {
           questions = selectVerifiedQuestions({ category, count: 5, difficulty });
           source = 'verified';
           $('quizNotice').className = 'notice warn';
-          $('quizNotice').textContent =
-            'Quota IA esaurita: per oggi usiamo le domande verificate.';
+          $('quizNotice').textContent = 'Quota IA esaurita: per oggi usiamo le domande verificate.';
         } else {
           $('quizNotice').className = 'notice warn';
           $('quizNotice').textContent =
