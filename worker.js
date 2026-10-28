@@ -88,11 +88,11 @@ export default {
     ) {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
-    const maxTokens = task === 'nudge' ? 56 : task === 'quiz' ? 1100 : 650;
+    const maxTokens = task === 'nudge' ? 96 : task === 'quiz' ? 3600 : 1200;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
     const prompt = JSON.stringify(body.data).slice(
       0,
-      task === 'nudge' ? 7000 : task === 'quiz' ? 6000 : 18000
+      task === 'nudge' ? 7000 : task === 'quiz' ? 4500 : 18000
     );
 
     try {
@@ -104,7 +104,7 @@ export default {
             { role: 'user', content: prompt },
           ],
           max_tokens: maxTokens,
-          temperature: task === 'nudge' ? 0.75 : task === 'quiz' ? 0.2 : 0.25,
+          temperature: task === 'nudge' ? 0.75 : task === 'quiz' ? 0.15 : 0.25,
           chat_template_kwargs: { enable_thinking: false },
           ...(task === 'nudge' || task === 'quiz' ? { reasoning_effort: 'low' } : {}),
         },
