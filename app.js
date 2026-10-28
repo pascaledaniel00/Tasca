@@ -956,7 +956,13 @@ import {
       quizSchemaReady = true;
       quizAttempts = [...(data || [])];
     }
-    if (page === 'quiz') renderQuizHome();
+    // Il caricamento asincrono dello storico non deve azzerare un quiz in corso.
+    // Ripristina la sessione salvata se la pagina è stata ricaricata.
+    if (page === 'quiz' && !quizSaving) {
+      if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
+      else if (restoreQuizSession()) renderQuizQuestion();
+      else renderQuizHome();
+    }
   }
 
   function quizTotals() {
