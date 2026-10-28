@@ -2725,6 +2725,26 @@ html[data-theme='dark'] .budget-nudge {
 .budget-nudge-card .budget-nudge::before {
   content: none;
 }
+.budget-nudge-card .budget-nudge.is-loading {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+.nudge-loader {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid color-mix(in srgb, var(--g) 18%, transparent);
+  border-top-color: var(--g);
+  border-radius: 50%;
+  animation: nudge-spin 0.75s linear infinite;
+}
+@keyframes nudge-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nudge-loader { animation-duration: 2s; }
+}
 html[data-theme='dark'] .budget-nudge-card {
   background: var(--white);
   box-shadow: 0 4px 16px #0002;
