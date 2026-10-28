@@ -41,3 +41,16 @@ Workers AI include una quota gratuita giornaliera di Neurons; il limite può ess
 - Vengono inviati al modello il nome visualizzato, i totali mensili aggregati, i totali per categoria, budget storici e ricorrenze attive; non vengono inviati email, password, token o descrizioni individuali dei movimenti.
 - I calcoli finanziari restano nel codice; il modello scrive i commenti e interpreta i riepiloghi.
 - Se l'IA non è configurata o il servizio non risponde, Tasca continua a mostrare il commento locale e i consigli statistici già presenti; i quiz passano alle domande verificate.
+
+
+## Archivio quiz settimanale (90 domande massimo)
+
+Il Worker è predisposto per preparare fino a 15 domande per ciascuna delle 6 categorie (90 in totale), la domenica alle 02:00 ora italiana. La preparazione avviene in background; il quiz interattivo continua a poter usare l'IA normale o le domande verificate. Se una categoria fallisce o la quota viene esaurita, le domande già salvate restano disponibili. La quota gratuita non è garantita: il limite di 90 è un massimo, non una promessa di generazione completa.
+
+Prima dell'attivazione:
+1. Esegui una volta lo script `supabase/migrations/20261028_quiz_question_bank.sql` nel SQL Editor del progetto Supabase.
+2. In Cloudflare Workers, aggiungi `SUPABASE_SERVICE_ROLE_KEY` come **secret** del Worker (mai come variabile pubblica e mai in GitHub). Usa la chiave segreta del progetto Supabase; non usare la chiave publishable. Il secret è necessario soltanto al Worker per scrivere/leggere l'archivio privato.
+3. Pubblica il Worker aggiornato con la configurazione `wrangler.toml`, che contiene il cron settimanale. I cron sono pianificati in UTC e il Worker verifica l'ora `Europe/Rome`, compresi i cambi stagionali.
+4. Controlla i log del Worker dopo la prima esecuzione e verifica che `quiz_question_bank` contenga domande per la settimana corrente.
+
+Il codice sorgente nel repository non significa che il Worker sia già pubblicato, che la migrazione sia stata eseguita o che il secret sia configurato. Non attivare un piano a pagamento per risolvere eventuali limiti di quota.
