@@ -2740,10 +2740,14 @@ html[data-theme='dark'] .budget-nudge {
   animation: nudge-spin 0.75s linear infinite;
 }
 @keyframes nudge-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .nudge-loader { animation-duration: 2s; }
+  .nudge-loader {
+    animation-duration: 2s;
+  }
 }
 html[data-theme='dark'] .budget-nudge-card {
   background: var(--white);
