@@ -124,7 +124,7 @@ export default {
           allowedOrigin
         );
       }
-      return json({ text: text.slice(0, task === 'nudge' ? 500 : 5000) }, 200, allowedOrigin);
+      return json({ text: text.slice(0, task === 'nudge' ? 500 : task === 'quiz' ? 9000 : 5000) }, 200, allowedOrigin);
     } catch (error) {
       // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
       const message = String(error?.message || '');
