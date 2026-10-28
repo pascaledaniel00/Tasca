@@ -7,7 +7,8 @@
  * - SUPABASE_URL (secret/variable)
  * - SUPABASE_ANON_KEY (secret/variable; public project key)
  */
-const MODEL = '@cf/google/gemma-4-26b-a4b-it';
+const MODEL_NUDGE = '@cf/zai-org/glm-4.7-flash';
+const MODEL_ADVICE = '@cf/google/gemma-4-26b-a4b-it';
 const ALLOWED_ORIGINS = new Set(['https://pascaledaniel00.github.io']);
 
 const SYSTEM_PROMPTS = {
@@ -82,12 +83,13 @@ export default {
     if (!['nudge', 'advice'].includes(task) || !body.data || typeof body.data !== 'object') {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
-    const maxTokens = task === 'nudge' ? 100 : 650;
+    const maxTokens = task === 'nudge' ? 56 : 650;
+    const model = task === 'nudge' ? MODEL_NUDGE : MODEL_ADVICE;
     const prompt = JSON.stringify(body.data).slice(0, task === 'nudge' ? 7000 : 18000);
 
     try {
       const result = await env.AI.run(
-        MODEL,
+        model,
         {
           messages: [
             { role: 'system', content: SYSTEM_PROMPTS[task] },
