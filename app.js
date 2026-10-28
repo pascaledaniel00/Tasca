@@ -312,11 +312,18 @@ import {
         },
         body: JSON.stringify({ task, data }),
       });
-      if (!response.ok) return null;
-      const result = await response.json();
-      return typeof result.text === 'string' ? result.text.trim().slice(0, 5000) : null;
-    } catch {
-      return null;
+      let result = {};
+      try { result = await response.json(); } catch {}
+      if (!response.ok) {
+        const details = typeof result.error === 'string' ? result.error : 'errore HTTP ' + response.status;
+        throw new Error(details);
+      }
+      if (typeof result.text !== 'string' || !result.text.trim()) {
+        throw new Error('Il servizio IA non ha restituito testo.');
+      }
+      return result.text.trim().slice(0, 5000);
+    } catch (error) {
+      throw new Error(error?.message || 'Connessione al servizio IA non riuscita.');
     }
   }
   async function requestAINudge(data) {
@@ -332,6 +339,9 @@ import {
         aiNudgeText = text;
         return text;
       }
+      return null;
+    } catch (error) {
+      console.warn('Tasca AI frase budget:', error.message);
       return null;
     } finally {
       aiNudgePending = false;
@@ -391,9 +401,15 @@ import {
     try {
       const text = await callTascaAI('advice', snapshot);
       if (text && aiAdviceKey === key) aiAdviceText = text;
-      else if (aiAdviceKey === key) aiAdviceText = 'Non sono riuscito a generare i consigli. Riprova tra poco.';
+      else if (aiAdviceKey === key) aiAdviceText = 'Il servizio IA non ha restituito consigli. Riprova tra poco.';
       renderAdvice();
       return text;
+    } catch (error) {
+      if (aiAdviceKey === key) {
+        aiAdviceText = 'Consigli IA non disponibili: ' + (error?.message || 'errore di connessione') + '. Verifica il Worker Cloudflare e il collegamento al sito.';
+      }
+      renderAdvice();
+      return null;
     } finally {
       aiAdvicePending = false;
     }
@@ -641,7 +657,7 @@ import {
           `<div class="panel"><h3>${esc(title)}</h3><p class="muted" style="white-space:pre-line">${esc(body)}</p></div>`
       )
       .join('');
-    if (isAIConfigured()) requestAIAdvice();
+    if (isAIConfigured() && !aiAdvicePending && !aiAdviceText) requestAIAdvice();
   }
   function renderSpaces() {
     $('spacesList').innerHTML =
