@@ -1149,7 +1149,8 @@ import {
           console.warn('Tasca quiz IA:', error.message);
           $('quizNotice').className = 'notice warn';
           $('quizNotice').textContent =
-            'Quiz IA non disponibile (' + String(error?.message || 'errore non specificato') +
+            'Quiz IA non disponibile (' +
+            String(error?.message || 'errore non specificato') +
             '). Per non bloccarti, useremo domande verificate.';
         }
       }
