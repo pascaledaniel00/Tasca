@@ -71,7 +71,7 @@ export default {
     let body;
     try {
       const raw = await request.text();
-      if (raw.length > 24000) return json({ error: 'Richiesta troppo grande.' }, 413, allowedOrigin);
+      if (raw.length > 60000) return json({ error: 'Richiesta troppo grande.' }, 413, allowedOrigin);
       body = JSON.parse(raw);
     } catch {
       return json({ error: 'Richiesta JSON non valida.' }, 400, allowedOrigin);
@@ -82,7 +82,7 @@ export default {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
     const maxTokens = task === 'nudge' ? 100 : 650;
-    const prompt = JSON.stringify(body.data).slice(0, task === 'nudge' ? 7000 : 20000);
+    const prompt = JSON.stringify(body.data).slice(0, task === 'nudge' ? 7000 : 18000);
 
     try {
       const result = await env.AI.run(MODEL, {
