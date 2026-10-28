@@ -460,17 +460,30 @@ import {
         .map((b) => ({ category: b.category, pct: Number(b.amount) > 0 ? (monthBudgetSpend(b) / Number(b.amount)) * 100 : 0 }))
         .sort((a, b) => b.pct - a.pct)[0];
       const day = new Date().getDate();
-      let message = 'Ogni euro registrato è un piccolo passo verso un budget più chiaro. Anche il caffè conta!';
-      if (pressured && pressured.pct >= 100) {
-        message = pressured.category.toLowerCase().includes('bar') || pressured.category.toLowerCase().includes('cene')
-          ? 'Ehm… qui il budget ha già dato tutto. Gli smiski possono aspettare il mese prossimo 😅'
-          : `Ops: hai già superato il budget “${pressured.category}”. Facciamo respirare questa categoria fino a fine mese.`;
-      } else if (pressured && pressured.pct >= 75 && day <= 10) {
-        message = `Ehi! Siamo già al ${Math.round(pressured.pct)}% del budget “${pressured.category}” e il mese è appena iniziato. Gli smiski possono aspettare 😄`;
-      } else if (pressured && pressured.pct >= 75) {
-        message = `Occhio al budget “${pressured.category}”: sei al ${Math.round(pressured.pct)}%. Un piccolo rallentamento ora può salvare il residuo di fine mese.`;
+      const recentLargeExpenses = scopedTransactions()
+        .filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
+        .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
+        .slice(0, 3)
+        .map((t) => ({
+          description: String(t.description || t.category || 'Spesa').slice(0, 80),
+          category: t.category || 'Da classificare',
+          amount: Number(t.amount) || 0,
+          date: txDate(t),
+        }));
+      const exceptional = recentLargeExpenses.find((t) => t.amount >= 1000);
+      let message = 'Movimenti sotto controllo: continua a registrare anche le spese piccole, così il saldo racconta la situazione reale.';
+      if (exceptional) {
+        message = s.residual < 0
+          ? `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” pesa sul mese: con il saldo in rosso, stop alle spese non essenziali.`
+          : `La spesa da ${eur(exceptional.amount)} per “${exceptional.description}” è l’eccezione del mese: tienila presente prima di altre uscite.`;
+      } else if (s.residual < 0 && day >= new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - 3) {
+        message = `Saldo mensile in rosso a ${day} del mese: per questi ultimi giorni, niente spese non essenziali.`;
+      } else if (pressured && pressured.pct >= 100) {
+        message = `Budget “${pressured.category}” superato: congela le spese di questa categoria fino al prossimo mese.`;
       } else if (s.residual < goal) {
-        message = `Il target di fine mese è ${eur(goal)}: per ora mancano ${eur(goal - s.residual)}. Piccoli passi, senza panico.`;
+        message = `Il residuo è ${eur(s.residual)}: per raggiungere il tuo obiettivo di ${eur(goal)} mancano ${eur(goal - s.residual)}.`;
+      } else if (pressured && pressured.pct >= 75) {
+        message = `Attenzione al budget “${pressured.category}”: sei al ${Math.round(pressured.pct)}%. Valuta le prossime uscite prima di spendere.`;
       }
       playful.textContent = message;
       requestAINudge({
