@@ -98,6 +98,7 @@ export default {
           max_tokens: maxTokens,
           temperature: task === 'nudge' ? 0.75 : 0.25,
           chat_template_kwargs: { enable_thinking: false },
+          ...(task === 'nudge' ? { reasoning_effort: 'low' } : {}),
         },
         { rejectIfBusy: true }
       );
