@@ -132,17 +132,20 @@ import {
     const key = quizSessionStorageKey();
     if (!key || !quizQuestions.length || quizIndex >= quizQuestions.length || quizSaving) return;
     try {
-      localStorage.setItem(key, JSON.stringify({
-        userId: user.id,
-        questions: quizQuestions,
-        answers: quizAnswers,
-        index: quizIndex,
-        source: quizSource,
-        attemptKey: quizAttemptKey,
-        category: $('quizCategory')?.value || 'budget',
-        difficulty: Number($('quizDifficulty')?.value) || 1,
-        savedAt: Date.now(),
-      }));
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          userId: user.id,
+          questions: quizQuestions,
+          answers: quizAnswers,
+          index: quizIndex,
+          source: quizSource,
+          attemptKey: quizAttemptKey,
+          category: $('quizCategory')?.value || 'budget',
+          difficulty: Number($('quizDifficulty')?.value) || 1,
+          savedAt: Date.now(),
+        })
+      );
     } catch (error) {
       console.warn('Tasca: non riesco a salvare localmente la sessione quiz.', error);
     }
@@ -152,17 +155,26 @@ import {
     if (!key || quizQuestions.length) return Boolean(quizQuestions.length);
     try {
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
-      if (!saved || saved.userId !== user?.id || !Array.isArray(saved.questions) ||
-          !saved.questions.length || !Number.isInteger(saved.index) ||
-          saved.index < 0 || saved.index >= saved.questions.length ||
-          !saved.answers || typeof saved.answers !== 'object') return false;
+      if (
+        !saved ||
+        saved.userId !== user?.id ||
+        !Array.isArray(saved.questions) ||
+        !saved.questions.length ||
+        !Number.isInteger(saved.index) ||
+        saved.index < 0 ||
+        saved.index >= saved.questions.length ||
+        !saved.answers ||
+        typeof saved.answers !== 'object'
+      )
+        return false;
       quizQuestions = saved.questions;
       quizAnswers = saved.answers;
       quizIndex = saved.index;
       quizSource = saved.source === 'ai' ? 'ai' : 'verified';
       quizAttemptKey = typeof saved.attemptKey === 'string' ? saved.attemptKey : null;
       if ($('quizCategory') && saved.category) $('quizCategory').value = saved.category;
-      if ($('quizDifficulty') && saved.difficulty) $('quizDifficulty').value = String(saved.difficulty);
+      if ($('quizDifficulty') && saved.difficulty)
+        $('quizDifficulty').value = String(saved.difficulty);
       return true;
     } catch (error) {
       console.warn('Tasca: sessione quiz salvata non leggibile.', error);
