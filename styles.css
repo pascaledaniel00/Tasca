@@ -2838,3 +2838,14 @@ html[data-theme='dark'] .advice-ai-card {
     padding-left: 20px;
   }
 }
+
+
+/* Il riquadro dei consigli IA occupa tutta la larghezza disponibile. */
+#adviceList {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.advice-ai-card {
+  width: 100%;
+  box-sizing: border-box;
+}
