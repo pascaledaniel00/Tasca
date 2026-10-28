@@ -1,6 +1,6 @@
 # Attivazione dell'IA cloud di Tasca
 
-Tasca usa Cloudflare Workers AI per due funzioni: commenti brevi sul ritmo di spesa e consigli seri basati sullo storico. Il modello configurato è `@cf/google/gemma-4-26b-a4b-it`. Il Worker verifica la sessione Supabase prima di eseguire una richiesta e non contiene chiavi privilegiate.
+Tasca usa Cloudflare Workers AI per tre funzioni: promemoria brevi sul ritmo di spesa, consigli seri basati sullo storico e generazione di quiz finanziari. I promemoria e i quiz usano `@cf/zai-org/glm-4.7-flash`; i consigli approfonditi usano `@cf/google/gemma-4-26b-a4b-it`. Il Worker verifica la sessione Supabase prima di eseguire una richiesta e non contiene chiavi privilegiate.
 
 ## 1. Pubblicare il Worker su Cloudflare
 
@@ -17,10 +17,9 @@ Non inserire mai una chiave `service_role` di Supabase nel Worker o nel browser.
 
 ## 2. Collegare Tasca al Worker
 
-1. Apri `app.js` nel repository.
-2. Cerca la riga `const AI_WORKER_URL = '';`.
-3. Inserisci tra gli apici l'URL completo assegnato da Cloudflare, ad esempio `const AI_WORKER_URL = 'https://tasca-ai.<tuo-sottodominio>.workers.dev';` sostituendo il sottodominio con quello reale.
-4. Salva la modifica su `main` e attendi la pubblicazione GitHub Pages.
+1. Verifica che `AI_WORKER_URL` in `app.js` corrisponda all'URL `workers.dev` assegnato al Worker.
+2. Pubblica il Worker aggiornato da `worker.js` (per esempio con `npx wrangler deploy`, se Wrangler è già configurato) e attendi che Cloudflare confermi il deployment.
+3. Se l'URL del Worker è cambiato, aggiorna `AI_WORKER_URL` in `app.js`, salva su `main` e attendi la pubblicazione GitHub Pages.
 
 L'URL del Worker non è una chiave segreta. L'accesso al servizio è comunque subordinato a una sessione valida di Tasca.
 
@@ -29,6 +28,7 @@ L'URL del Worker non è una chiave segreta. L'accesso al servizio è comunque su
 - Accedi a Tasca da `https://pascaledaniel00.github.io/Tasca/`.
 - Controlla il commento sotto il budget: con l'IA attiva viene generato in italiano sulla base del nome e dei numeri del mese.
 - Apri **Consigli**: l'IA analizzerà i dati aggregati degli ultimi sei mesi disponibili e le ricorrenze attive.
+- Apri **Quiz** e avvia un percorso: se la generazione IA non riesce, Tasca usa il banco di domande verificate.
 - Usa **Rigenera consigli IA** per richiedere una nuova analisi.
 
 ## Piano gratuito e limiti
@@ -40,4 +40,4 @@ Workers AI include una quota gratuita giornaliera di Neurons; il limite può ess
 - Il Worker verifica il token di sessione tramite Supabase Auth.
 - Vengono inviati al modello il nome visualizzato, i totali mensili aggregati, i totali per categoria, budget storici e ricorrenze attive; non vengono inviati email, password, token o descrizioni individuali dei movimenti.
 - I calcoli finanziari restano nel codice; il modello scrive i commenti e interpreta i riepiloghi.
-- Se l'IA non è configurata o il servizio non risponde, Tasca continua a mostrare il commento locale e i consigli statistici già presenti.
+- Se l'IA non è configurata o il servizio non risponde, Tasca continua a mostrare il commento locale e i consigli statistici già presenti; i quiz passano alle domande verificate.
