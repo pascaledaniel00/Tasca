@@ -116,6 +116,59 @@ import {
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
   } catch {}
+
+  // Mantiene in locale la sessione quiz per riprenderla anche dopo una navigazione o un refresh.
+  // La chiave è separata per account, così non si mescolano sessioni di utenti diversi.
+  function quizSessionStorageKey() {
+    return user?.id ? 'tasca_quiz_session:' + user.id : null;
+  }
+  function clearQuizSession() {
+    try {
+      const key = quizSessionStorageKey();
+      if (key) localStorage.removeItem(key);
+    } catch {}
+  }
+  function persistQuizSession() {
+    const key = quizSessionStorageKey();
+    if (!key || !quizQuestions.length || quizIndex >= quizQuestions.length || quizSaving) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        userId: user.id,
+        questions: quizQuestions,
+        answers: quizAnswers,
+        index: quizIndex,
+        source: quizSource,
+        attemptKey: quizAttemptKey,
+        category: $('quizCategory')?.value || 'budget',
+        difficulty: Number($('quizDifficulty')?.value) || 1,
+        savedAt: Date.now(),
+      }));
+    } catch (error) {
+      console.warn('Tasca: non riesco a salvare localmente la sessione quiz.', error);
+    }
+  }
+  function restoreQuizSession() {
+    const key = quizSessionStorageKey();
+    if (!key || quizQuestions.length) return Boolean(quizQuestions.length);
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!saved || saved.userId !== user?.id || !Array.isArray(saved.questions) ||
+          !saved.questions.length || !Number.isInteger(saved.index) ||
+          saved.index < 0 || saved.index >= saved.questions.length ||
+          !saved.answers || typeof saved.answers !== 'object') return false;
+      quizQuestions = saved.questions;
+      quizAnswers = saved.answers;
+      quizIndex = saved.index;
+      quizSource = saved.source === 'ai' ? 'ai' : 'verified';
+      quizAttemptKey = typeof saved.attemptKey === 'string' ? saved.attemptKey : null;
+      if ($('quizCategory') && saved.category) $('quizCategory').value = saved.category;
+      if ($('quizDifficulty') && saved.difficulty) $('quizDifficulty').value = String(saved.difficulty);
+      return true;
+    } catch (error) {
+      console.warn('Tasca: sessione quiz salvata non leggibile.', error);
+      return false;
+    }
+  }
   function applyTheme(theme) {
     const dark = theme === 'dark';
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -168,7 +221,11 @@ import {
       .querySelectorAll('[data-page]')
       .forEach((x) => x.classList.toggle('active', x.dataset.page === name));
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (name === 'quiz') renderQuizHome();
+    if (name === 'quiz') {
+      if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
+      else if (restoreQuizSession()) renderQuizQuestion();
+      else renderQuizHome();
+    }
   }
   function openModal(title, html) {
     $('modalTitle').textContent = title;
@@ -1058,6 +1115,7 @@ import {
   function renderQuizQuestion() {
     const q = quizQuestions[quizIndex];
     if (!q) return finishQuiz();
+    persistQuizSession();
     $('quizHome').classList.add('hidden');
     $('quizResult').classList.add('hidden');
     const play = $('quizPlay');
@@ -1140,8 +1198,10 @@ import {
       else renderQuizQuestion();
     });
     $('quizExitBtn')?.addEventListener('click', () => {
+      clearQuizSession();
       quizQuestions = [];
       quizAnswers = {};
+      quizIndex = 0;
       renderQuizHome();
     });
   }
@@ -1230,6 +1290,7 @@ import {
 
   async function finishQuiz() {
     if (quizSaving || !quizQuestions.length) return;
+    clearQuizSession();
     quizSaving = true;
     const score = scoreQuiz(quizQuestions, quizAnswers);
     const xp = calculateQuizXP({
@@ -1587,6 +1648,7 @@ import {
     $('mobileNav').classList.remove('hidden');
   }
   function showLogin() {
+    clearQuizSession();
     dataLoadSequence += 1;
     user = null;
     transactions = [];
