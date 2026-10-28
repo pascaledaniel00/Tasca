@@ -637,7 +637,9 @@ import {
       } else if (pressured && pressured.pct >= 75) {
         message = `Attenzione al budget “${pressured.category}”: sei al ${Math.round(pressured.pct)}%. Valuta le prossime uscite prima di spendere.`;
       }
-      playful.textContent = message;
+      playful.classList.add('is-loading');
+      playful.setAttribute('aria-label', 'Generazione del promemoria IA in corso');
+      playful.innerHTML = '<span class="nudge-loader" aria-hidden="true"></span>';
       requestAINudge({
         displayName: getDisplayName(),
         month: monthNow(),
@@ -664,7 +666,10 @@ import {
           };
         }),
       }).then((aiText) => {
-        if (aiText && playful) playful.textContent = aiText;
+        if (!playful) return;
+        playful.classList.remove('is-loading');
+        playful.removeAttribute('aria-label');
+        playful.textContent = aiText || message;
       });
     }
     renderDashboardCharts();
