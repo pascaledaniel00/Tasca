@@ -344,7 +344,7 @@ import {
 
     const controller = new AbortController();
     // I quiz devono passare rapidamente alle domande verificate se il modello è lento.
-    const timeoutMs = task === 'quiz' ? 15000 : 45000;
+    const timeoutMs = task === 'quiz' ? 45000 : 45000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -1149,7 +1149,8 @@ import {
           console.warn('Tasca quiz IA:', error.message);
           $('quizNotice').className = 'notice warn';
           $('quizNotice').textContent =
-            'Quiz personalizzato non disponibile: useremo domande verificate.';
+            'Quiz IA non disponibile (' + String(error?.message || 'errore non specificato') +
+            '). Per non bloccarti, useremo domande verificate.';
         }
       }
       if (!questions) {
