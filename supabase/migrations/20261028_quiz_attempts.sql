@@ -4,6 +4,7 @@ create table if not exists public.quiz_attempts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   attempt_key uuid not null,
+  question_fingerprint text not null,
   category text not null check (category in ('all','budget','saving','debt','spending','banking','economy')),
   difficulty smallint not null check (difficulty between 1 and 3),
   correct_answers smallint not null check (correct_answers >= 0),
@@ -13,6 +14,7 @@ create table if not exists public.quiz_attempts (
   source text not null check (source in ('verified','ai','mixed')),
   completed_at timestamptz not null default now(),
   constraint quiz_attempts_unique_attempt unique (user_id, attempt_key),
+  constraint quiz_attempts_unique_question_set unique (user_id, question_fingerprint),
   constraint quiz_attempts_score_consistent check (
     correct_answers <= total_questions
     and percent = round((correct_answers::numeric / total_questions::numeric) * 100)::smallint
