@@ -7,7 +7,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -15,17 +19,34 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Automatically format project files
+        run: npm run format
+      - name: Verify formatting
+        run: npm run format:check
       - name: Run finance logic tests
         run: npm test
-      - name: Check code formatting
-        run: npm run format:check
       - name: Check JavaScript syntax
         run: npm run check
       - name: Build production site
         run: npm run build
+      - name: Save formatting fixes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js tests/finance-core.test.js worker.js mobile-nav-fix.css wrangler.toml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-format project files"
+            git push
+          else
+            echo "Nessuna correzione di formattazione da salvare."
+          fi
