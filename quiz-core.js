@@ -38,9 +38,9 @@ export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
   let data = value;
   if (typeof data === 'string') {
     let cleaned = data
-      .replace(/<think>[\\s\\S]*?<\\/think>/gi, '')
-      .replace(/^\\s*```(?:json)?\\s*/i, '')
-      .replace(/\\s*```\\s*$/i, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^\s*```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
       .trim();
     try {
       data = JSON.parse(cleaned);
