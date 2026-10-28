@@ -88,7 +88,7 @@ export default {
     ) {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
-    const maxTokens = task === 'nudge' ? 96 : task === 'quiz' ? 2800 : 1200;
+    const maxTokens = task === 'nudge' ? 96 : task === 'quiz' ? 1800 : 1200;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
     const prompt = JSON.stringify(body.data).slice(
       0,
@@ -108,7 +108,6 @@ export default {
           chat_template_kwargs: { enable_thinking: false },
           ...(task === 'nudge' || task === 'quiz' ? { reasoning_effort: 'low' } : {}),
         },
-        { rejectIfBusy: true }
       );
       // Supporta i formati di risposta restituiti dalle diverse versioni del binding.
       const text = String(
@@ -139,15 +138,20 @@ export default {
     } catch (error) {
       // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
       const message = String(error?.message || '');
-      const busy = /busy|capacity|429|temporar/i.test(message);
+      const quotaExhausted =
+        /quota|daily.{0,30}(limit|usage|exceed)|(?:limit|exceed).{0,30}daily|neurons?.{0,30}(limit|exceed)|(?:limit|exceed).{0,30}neurons?|resource exhausted|billing.{0,30}limit/i.test(message);
+      const busy = /busy|capacity|temporar|overloaded/i.test(message);
       return json(
         {
-          error: busy
-            ? 'Il modello IA è momentaneamente occupato. Riprova tra qualche secondo.'
-            : 'Servizio IA temporaneamente non disponibile.',
+          code: quotaExhausted ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'AI_PROVIDER_ERROR',
+          error: quotaExhausted
+            ? 'La quota giornaliera gratuita dell’IA potrebbe essere esaurita.'
+            : busy
+              ? 'Il modello IA è momentaneamente occupato. Riprova tra qualche secondo.'
+              : 'Servizio IA temporaneamente non disponibile.',
           diagnostic: message.slice(0, 240) || 'Errore del provider IA senza dettagli.',
         },
-        busy ? 503 : 502,
+        quotaExhausted ? 429 : busy ? 503 : 502,
         allowedOrigin
       );
     }
