@@ -1196,6 +1196,8 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
     budgets = [];
     recurring = [];
     spaces = [];
+    quizAttempts = [];
+    quizSchemaReady = false;
     activeSpaceId = null;
     selectedSpace = null;
     transactionSpaceId = null;
