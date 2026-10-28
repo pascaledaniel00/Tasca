@@ -1162,6 +1162,30 @@ import {
     renderQuizQuestion();
   }
 
+  async function createQuizFingerprint(questions) {
+    const canonical = questions
+      .map((question) =>
+        String(question.question || '')
+          .normalize('NFKC')
+          .trim()
+          .toLocaleLowerCase('it-IT')
+      )
+      .sort()
+      .join('\n');
+    if (globalThis.crypto?.subtle) {
+      try {
+        const digest = await globalThis.crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(canonical)
+        );
+        return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+      } catch {}
+    }
+    let hash = 2166136261;
+    for (let i = 0; i < canonical.length; i += 1) hash = Math.imul(hash ^ canonical.charCodeAt(i), 16777619);
+    return 'fnv-' + (hash >>> 0).toString(16).padStart(8, '0');
+  }
+
   async function finishQuiz() {
     if (quizSaving || !quizQuestions.length) return;
     quizSaving = true;
@@ -1202,7 +1226,7 @@ import {
     try {
       const { data, error } = await db.from('quiz_attempts').insert(payload).select('*').single();
       if (error) {
-        if (error.code === '23505') throw new Error('Questa sessione risulta già registrata.');
+        if (error.code === '23505') throw new Error('Hai già completato questa combinazione di domande: scegli un altro percorso per guadagnare XP con nuovi contenuti.');
         throw error;
       }
       quizAttempts.unshift(data);
