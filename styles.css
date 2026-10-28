@@ -2732,3 +2732,109 @@ html[data-theme='dark'] .budget-nudge-card {
   .budget-nudge-tag { padding: 3px 6px; font-size: 9px; }
   .budget-nudge-card .budget-nudge { font-size: 13px; line-height: 1.55; }
 }
+
+
+/* Consigli IA: contenuto strutturato e coerente con l'identità visiva di Tasca. */
+.advice-card {
+  min-width: 0;
+}
+
+.advice-card > h3 {
+  margin-top: 0;
+}
+
+.advice-card-content {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.advice-ai-card {
+  border-color: color-mix(in srgb, var(--g) 22%, var(--line));
+  background: linear-gradient(145deg, var(--white), color-mix(in srgb, var(--gs) 48%, var(--white)));
+}
+
+.advice-ai-card > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.advice-ai-card > h3::before {
+  content: '✦';
+  display: inline-grid;
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--gs);
+  color: var(--g);
+  font-size: 15px;
+}
+
+.ai-advice-content {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.ai-advice-content p {
+  margin: 0 0 12px;
+}
+
+.ai-advice-content p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-advice-content h4 {
+  margin: 18px 0 8px;
+  color: var(--g);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.ai-advice-content h4:first-child {
+  margin-top: 0;
+}
+
+.ai-advice-content ul,
+.ai-advice-content ol {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+  padding-left: 22px;
+}
+
+.ai-advice-content li {
+  padding-left: 3px;
+}
+
+.ai-advice-content li::marker {
+  color: var(--g);
+  font-weight: 700;
+}
+
+.ai-advice-content strong {
+  color: var(--g);
+  font-weight: 750;
+}
+
+html[data-theme='dark'] .advice-ai-card {
+  background: linear-gradient(145deg, var(--white), color-mix(in srgb, var(--gs) 65%, var(--white)));
+}
+
+@media (max-width: 460px) {
+  .ai-advice-content {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .ai-advice-content ul,
+  .ai-advice-content ol {
+    gap: 7px;
+    padding-left: 20px;
+  }
+}
