@@ -382,7 +382,7 @@ import { calculateQuizXP, getQuizBadges, getQuizLevel, scoreQuiz, selectVerified
         throw new Error('Il Worker ha risposto, ma non ha restituito consigli testuali.');
       }
 
-      return result.text.trim().slice(0, 5000);
+      return result.text.trim().slice(0, task === 'quiz' ? 9000 : 5000);
     } finally {
       clearTimeout(timeoutId);
     }
