@@ -24,8 +24,12 @@ export function selectVerifiedQuestions({ category = 'all', count = 5, difficult
   if (!Number.isInteger(count) || count < 1 || count > 10) throw new RangeError('Il quiz deve contenere da 1 a 10 domande.');
   const excluded = new Set(excludeIds);
   let pool = VERIFIED_QUESTIONS.filter((q) => (category === 'all' || q.category === category) && q.difficulty <= difficulty + 1 && !excluded.has(q.id));
-  if (pool.length < count) pool = VERIFIED_QUESTIONS.filter((q) => (category === 'all' || q.category === category) && !excluded.has(q.id));
-  if (pool.length < count) pool = VERIFIED_QUESTIONS.filter((q) => category === 'all' || q.category === category);
+  if (pool.length < count) {
+    const preferred = pool;
+    const other = VERIFIED_QUESTIONS.filter((q) => !preferred.some((item) => item.id === q.id) && !excluded.has(q.id));
+    pool = [...preferred, ...other];
+  }
+  if (pool.length < count) pool = VERIFIED_QUESTIONS;
   const daySeed = Math.floor(Date.now() / 86400000) % Math.max(pool.length, 1);
   pool = [...pool.slice(daySeed), ...pool.slice(0, daySeed)];
   return pool.slice(0, count).map((q) => ({ ...q, options: q.options.map((o) => ({ ...o })) }));
