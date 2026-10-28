@@ -17,7 +17,7 @@ import {
   selectVerifiedQuestions,
   validateAIQuiz,
   QUIZ_CATEGORIES,
-} from './quiz-core.js?v=20261028-4';
+} from './quiz-core.js?v=20261028-5';
 
 (() => {
   'use strict';
@@ -1243,12 +1243,14 @@ import {
       }
       try {
         const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
-        const validated = validateAIQuiz(generated, { category, count: 5 });
-        if (validated) {
+        const validated = validateAIQuiz(generated, { category, count: 5, diagnostic: true });
+        if (validated && !validated.validationError) {
           questions = validated.questions;
           source = 'ai';
         } else {
-          throw new Error('La risposta IA non ha superato i controlli di qualità. Riprova.');
+          const reason = validated?.validationError || 'La risposta IA non ha superato i controlli di qualità per una causa non identificata.';
+          console.warn('Tasca quiz: validazione IA fallita:', reason);
+          throw new Error('Controllo qualità: ' + reason);
         }
       } catch (error) {
         console.warn('Tasca quiz IA:', error.message);
