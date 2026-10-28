@@ -34,7 +34,8 @@ export function selectVerifiedQuestions({ category = 'all', count = 5, difficult
   pool = [...pool.slice(daySeed), ...pool.slice(0, daySeed)];
   return pool.slice(0, count).map((q) => ({ ...q, options: q.options.map((o) => ({ ...o })) }));
 }
-export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
+export function validateAIQuiz(value, { category = 'all', count = 5, diagnostic = false } = {}) {
+  const reject = (reason) => diagnostic ? { validationError: reason } : null;
   let data = value;
   if (typeof data === 'string') {
     let cleaned = data
@@ -47,25 +48,27 @@ export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
     } catch {
       const start = cleaned.indexOf('{');
       const end = cleaned.lastIndexOf('}');
-      if (start < 0 || end <= start) return null;
-      try { data = JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
+      if (start < 0 || end <= start) return reject('La risposta non contiene un oggetto JSON riconoscibile.');
+      try { data = JSON.parse(cleaned.slice(start, end + 1)); } catch { return reject('Il JSON generato non è valido o è incompleto.'); }
     }
   }
   if (Array.isArray(data)) data = { questions: data };
-  if (!data || !Array.isArray(data.questions) || data.questions.length !== count) return null;
+  if (!data || !Array.isArray(data.questions)) return reject('Manca l’elenco delle domande nel JSON.');
+  if (data.questions.length !== count) return reject(`Il modello ha generato ${data.questions.length} domande invece di ${count}.`);
   const allowed = new Set(QUIZ_CATEGORIES.map((item) => item.id));
   const seen = new Set();
   const questions = [];
   for (const raw of data.questions) {
-    if (!raw || typeof raw !== 'object') return null;
+    if (!raw || typeof raw !== 'object') return reject('Una delle domande non è un oggetto valido.');
     const q = { ...raw };
     // Compatibilità con varianti comuni del formato prodotto dai modelli.
     if (typeof q.question !== 'string') q.question = q.text || q.prompt || '';
     if (!q.category && category !== 'all') q.category = category;
     if (!q.category && category === 'all') q.category = 'budget';
-    if (!allowed.has(q.category) || (category !== 'all' && q.category !== category)) return null;
-    if (typeof q.question !== 'string' || q.question.trim().length < 12 || q.question.length > 500) return null;
-    if (!Array.isArray(q.options)) return null;
+    if (!allowed.has(q.category)) return reject(`Categoria non riconosciuta nella domanda ${questions.length + 1}.`);
+    if (category !== 'all' && q.category !== category) return reject(`La domanda ${questions.length + 1} non rispetta la categoria selezionata (${category}).`);
+    if (typeof q.question !== 'string' || q.question.trim().length < 12 || q.question.length > 500) return reject(`Testo mancante, troppo corto o troppo lungo nella domanda ${questions.length + 1}.`);
+    if (!Array.isArray(q.options)) return reject(`Mancano le opzioni nella domanda ${questions.length + 1}.`);
     q.options = q.options.map((option, index) => {
       if (typeof option === 'string') return { value: String.fromCharCode(65 + index), label: option };
       if (!option || typeof option !== 'object') return null;
@@ -73,9 +76,10 @@ export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
       const value = option.value ?? option.id ?? option.key ?? String.fromCharCode(65 + index);
       return typeof label === 'string' ? { value: String(value), label: label.trim() } : null;
     });
-    if (q.options.length !== 4 || q.options.some((option) => !option || !option.label || option.label.length > 160)) return null;
+    if (q.options.length !== 4) return reject(`La domanda ${questions.length + 1} non contiene esattamente 4 opzioni.`);
+    if (q.options.some((option) => !option || !option.label || option.label.length > 160)) return reject(`Un’opzione è vuota o troppo lunga nella domanda ${questions.length + 1}.`);
     const optionValues = new Set(q.options.map((option) => option.value));
-    if (optionValues.size !== 4) return null;
+    if (optionValues.size !== 4) return reject(`Le opzioni della domanda ${questions.length + 1} hanno valori duplicati.`);
     let correct = q.correctValues;
     if (!Array.isArray(correct)) {
       const answer = q.correctValue ?? q.correctAnswer ?? q.correct_answer ?? q.answer ?? q.correctOption;
@@ -87,13 +91,14 @@ export function validateAIQuiz(value, { category = 'all', count = 5 } = {}) {
         correct = [(byValue || byLabel || byLetter)?.value || ''];
       }
     }
-    if (!Array.isArray(correct) || correct.length !== 1 || !optionValues.has(String(correct[0]))) return null;
+    if (!Array.isArray(correct) || correct.length !== 1 || !optionValues.has(String(correct[0]))) return reject(`La risposta corretta manca o non corrisponde alle opzioni nella domanda ${questions.length + 1}.`);
     q.correctValues = [String(correct[0])];
     if (typeof q.explanation !== 'string') q.explanation = q.explanationText || q.rationale || '';
     if (typeof q.hint !== 'string') q.hint = q.indice || q.clue || '';
-    if (q.explanation.trim().length < 8 || !q.hint.trim()) return null;
+    if (q.explanation.trim().length < 8) return reject(`La spiegazione è assente o troppo breve nella domanda ${questions.length + 1}.`);
+    if (!q.hint.trim()) return reject(`Manca l’indizio nella domanda ${questions.length + 1}.`);
     const signature = q.question.trim().toLocaleLowerCase('it-IT');
-    if (seen.has(signature)) return null;
+    if (seen.has(signature)) return reject(`La domanda ${questions.length + 1} è duplicata.`);
     seen.add(signature);
     questions.push(q);
   }
