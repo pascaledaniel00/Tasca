@@ -17,7 +17,7 @@ import {
   selectVerifiedQuestions,
   validateAIQuiz,
   QUIZ_CATEGORIES,
-} from './quiz-core.js?v=20261028-3';
+} from './quiz-core.js?v=20261028-4';
 
 (() => {
   'use strict';
@@ -850,6 +850,27 @@ import {
     return html.join('');
   }
 
+  function localQuizStorageKey() {
+    return 'tasca_quiz_attempts_' + String(user?.id || 'guest');
+  }
+
+  function readLocalQuizAttempts() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(localQuizStorageKey()) || '[]');
+      return Array.isArray(saved) ? saved.filter((item) => item && item.id && item.user_id === user?.id) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeLocalQuizAttempt(attempt) {
+    const existing = readLocalQuizAttempts();
+    if (existing.some((item) => item.attempt_key === attempt.attempt_key)) return existing;
+    const next = [attempt, ...existing].slice(0, 200);
+    localStorage.setItem(localQuizStorageKey(), JSON.stringify(next));
+    return next;
+  }
+
   async function loadQuizHistory() {
     if (!db || !user) return;
     const { data, error } = await db
@@ -858,11 +879,11 @@ import {
       .order('completed_at', { ascending: false });
     if (error) {
       quizSchemaReady = false;
-      quizAttempts = [];
+      quizAttempts = readLocalQuizAttempts();
       console.warn('Tasca quiz: tabella non disponibile o policy non configurata:', error.message);
     } else {
       quizSchemaReady = true;
-      quizAttempts = data || [];
+      quizAttempts = [...(data || [])];
     }
     if (page === 'quiz') renderQuizHome();
   }
@@ -887,9 +908,10 @@ import {
     play.classList.add('hidden');
     result.classList.add('hidden');
     if (!quizSchemaReady) {
-      $('quizNotice').className = 'notice warn';
-      $('quizNotice').textContent =
-        'Per salvare XP, livelli e badge, completa prima la configurazione SQL dei quiz in Supabase. Le altre funzioni di Tasca continuano a funzionare.';
+      $('quizNotice').className = quizAttempts.length ? 'notice warn' : 'notice';
+      $('quizNotice').textContent = quizAttempts.length
+        ? 'Quiz attivi. I progressi sono salvati su questo dispositivo; per sincronizzarli tra dispositivi va completata la configurazione SQL in Supabase.'
+        : 'Quiz pronti. Se il salvataggio cloud non è configurato, i risultati resteranno su questo dispositivo.';
     } else {
       $('quizNotice').className = 'notice';
       $('quizNotice').textContent = '';
@@ -1312,15 +1334,50 @@ import {
         renderQuizHome();
       });
     } catch (error) {
-      result.innerHTML +=
-        '<div class="notice error">Il risultato è calcolato, ma non è stato salvato: ' +
-        esc(error.message || 'errore di salvataggio') +
-        '. I punti non verranno aggiunti finché il salvataggio non riesce.</div><button id="quizRetrySaveBtn" class="btn primary full" type="button">Riprova a salvare</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
-      $('quizRetrySaveBtn').addEventListener('click', async () => {
-        quizSaving = false;
-        await finishQuiz();
-      });
-      $('quizHomeBtn').addEventListener('click', () => {
+      const message = String(error?.message || 'errore di salvataggio');
+      if (message.startsWith('Hai già completato questa combinazione')) {
+        result.innerHTML +=
+          '<div class="notice warn">' + esc(message) + '</div><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
+      } else {
+        const localAttempt = {
+          id: 'local-' + quizAttemptKey,
+          ...payload,
+          user_id: user.id,
+          completed_at: new Date().toISOString(),
+          local_only: true,
+        };
+        try {
+          writeLocalQuizAttempt(localAttempt);
+          quizAttempts = readLocalQuizAttempts();
+          quizSchemaReady = false;
+          const level = getQuizLevel(quizTotals().xp);
+          result.innerHTML =
+            '<div class="quiz-result-icon">✦</div><div class="eyebrow">Sessione completata</div><h3>' +
+            score.correct + ' su ' + score.total + ' risposte corrette</h3><p class="muted">' +
+            score.percent + '% di precisione in questa sessione.</p><div class="quiz-earned"><strong>+' +
+            xp + ' XP</strong><span>Livello ' + level.level + ' · ' + esc(level.title) +
+            '</span></div><div class="notice warn">Progressi salvati su questo dispositivo. La sincronizzazione cloud richiede la configurazione della tabella quiz in Supabase.</div><div class="quiz-result-review">' +
+            score.details.map((detail, index) =>
+              '<div class="quiz-review-row"><span class="' + (detail.correct ? 'review-correct' : 'review-wrong') +
+              '">' + (detail.correct ? '✓' : '×') + '</span><div><strong>' +
+              esc(quizQuestions[index].question) + '</strong><small>' +
+              (detail.correct ? 'Risposta corretta' : 'Risposta corretta: ' +
+                esc((quizQuestions[index].options.find((option) => option.value === detail.correctValue) || {}).label || detail.correctValue)) +
+              '</small></div></div>'
+            ).join('') +
+            '</div><button id="quizAgainBtn" class="btn primary full" type="button">Fai un altro quiz</button><button id="quizHomeBtn" class="btn full u-mt-8" type="button">Torna ai percorsi</button>';
+          $('quizAgainBtn').addEventListener('click', () => {
+            quizQuestions = [];
+            quizAnswers = {};
+            renderQuizHome();
+            startQuiz();
+          });
+        } catch (storageError) {
+          result.innerHTML +=
+            '<div class="notice error">Il risultato è calcolato ma il dispositivo non consente di salvare i progressi. Puoi comunque consultare le risposte qui sotto.</div>';
+        }
+      }
+      $('quizHomeBtn')?.addEventListener('click', () => {
         quizQuestions = [];
         quizAnswers = {};
         renderQuizHome();
