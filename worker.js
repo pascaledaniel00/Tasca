@@ -144,7 +144,9 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
         console.error('Archivio quiz non leggibile:', existingResponse.status);
         continue;
       }
-      if ((await existingResponse.json()).length >= QUIZ_WEEKLY_TARGET) continue;
+      const existingQuestions = await existingResponse.json();
+      const missingCount = Math.max(0, QUIZ_WEEKLY_TARGET - existingQuestions.length);
+      if (missingCount === 0) continue;
       const result = await env.AI.run(MODEL_NUDGE, {
         messages: [
           { role: 'system', content: SYSTEM_PROMPTS.quiz },
@@ -153,7 +155,7 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
             content: JSON.stringify({
               category,
               difficulty: 2,
-              count: 15,
+              count: missingCount,
               context: 'Domande settimanali Tasca con difficoltà mista da 1 a 3.',
             }),
           },
@@ -204,9 +206,10 @@ export default {
     const local = romeParts(new Date(controller.scheduledTime));
     const localDate = `${local.year}-${local.month}-${local.day}`;
 
-    // Bootstrap temporaneo: il 29 ottobre 2026 riempie l'archivio per la settimana corrente.
-    // Il cron temporaneo va rimosso da wrangler.toml dopo aver verificato le 90 domande.
-    if (localDate === '2026-10-29') {
+    // Bootstrap temporaneo: riprova ogni 5 minuti dal 29 ottobre al 7 novembre
+    // finché l'archivio della settimana corrente non viene popolato. Ogni categoria
+    // genera solo il numero di domande mancanti, evitando di rigenerare il lotto completo.
+    if (localDate >= '2026-10-29' && localDate < '2026-11-08') {
       ctx.waitUntil(prepareWeeklyQuestions(env, controller.scheduledTime));
       return;
     }
