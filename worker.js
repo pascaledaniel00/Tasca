@@ -381,8 +381,11 @@ export default {
                   Number(row.question.difficulty) === difficulty
               )
               .sort((a, b) => Number(a.id) - Number(b.id))
-              .slice(0, QUIZ_WEEKLY_TARGET_PER_DIFFICULTY)
+              // Prima escludi le domande già affrontate, poi limita il numero:
+              // altrimenti le prime cinque possono essere tutte esaurite anche
+              // se nell'archivio esistono altre domande ancora disponibili.
               .filter((row) => !seen.has(row.fingerprint))
+              .slice(0, QUIZ_WEEKLY_TARGET_PER_DIFFICULTY)
               .map((row) => ({
                 ...row.question,
                 id: 'bank-' + row.id,
