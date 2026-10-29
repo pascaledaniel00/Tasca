@@ -290,25 +290,34 @@ export default {
             env,
             `/rest/v1/quiz_question_bank?select=question&week_start=eq.${weekStart}&category=eq.${category}&order=created_at.asc&limit=15`
           );
-          if (cachedResponse.ok) {
-            const rows = await cachedResponse.json();
-            const questions = rows
-              .map((row) => row.question)
-              .filter((q) => q && q.category === category);
-            if (questions.length >= count) {
-              const difficulty = Number(body.data.difficulty) || 1;
-              let pool = questions.filter((q) => Number(q.difficulty) <= difficulty + 1);
-              if (pool.length < count) pool = questions;
-              const offset = Math.floor(Date.now() / 86400000) % Math.max(1, pool.length);
-              const rotated = [...pool.slice(offset), ...pool.slice(0, offset)].slice(0, count);
-              return json({ text: JSON.stringify({ questions: rotated }) }, 200, allowedOrigin);
-            }
+          if (!cachedResponse.ok) {
+            console.error('Lettura archivio quiz non riuscita:', cachedResponse.status);
+            return json({
+              code: 'QUIZ_BANK_READ_FAILED',
+              error: 'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
+            }, 502, allowedOrigin);
+          }
+          const rows = await cachedResponse.json();
+          const questions = rows
+            .map((row) => row.question)
+            .filter((q) => q && q.category === category);
+          if (questions.length >= count) {
+            const difficulty = Number(body.data.difficulty) || 1;
+            let pool = questions.filter((q) => Number(q.difficulty) <= difficulty + 1);
+            if (pool.length < count) pool = questions;
+            const offset = Math.floor(Date.now() / 86400000) % Math.max(1, pool.length);
+            const rotated = [...pool.slice(offset), ...pool.slice(0, offset)].slice(0, count);
+            return json({ text: JSON.stringify({ questions: rotated }) }, 200, allowedOrigin);
           }
         } catch (error) {
           console.error(
-            'Lettura archivio quiz non riuscita; uso generazione normale:',
-            String(error?.message || error).slice(0, 120)
+            'Lettura archivio quiz non riuscita:',
+            String(error?.message || error).slice(0, 180)
           );
+          return json({
+            code: 'QUIZ_BANK_READ_FAILED',
+            error: 'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
+          }, 502, allowedOrigin);
         }
       }
     }
