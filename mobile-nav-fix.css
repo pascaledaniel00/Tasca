@@ -146,7 +146,7 @@ video {
   .overflow-x-auto {
     max-width: 100%;
     overflow-x: auto;
-    overscroll-behavior-x: contain;
+    overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
   }
 }
@@ -445,7 +445,6 @@ video {
     line-height: 1.1;
     -webkit-tap-highlight-color: transparent;
     transition: background 160ms ease, color 160ms ease, transform 160ms ease;
-    scroll-snap-align: start;
   }
 
   .mobile-nav-page button[data-page] > svg {
