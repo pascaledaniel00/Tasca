@@ -496,9 +496,12 @@ video {
 
   @media (prefers-reduced-motion: reduce) {
     #mobileExtraNav,
-    .mobile-dock-swipe-hint,
     .bottomnav > button[data-page] {
       transition: none;
+    }
+
+    .mobile-dock-swipe-hint {
+      animation: none;
     }
   }
 }
