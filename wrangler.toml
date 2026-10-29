@@ -8,6 +8,13 @@ binding = "AI"
 [vars]
 SUPABASE_URL = "https://njgmlxyecjyreieqcpwk.supabase.co"
 
+[previews.ai]
+binding = "AI"
+
+[previews.vars]
+# Isolated preview target: never writes to the production Supabase project.
+SUPABASE_URL = "https://preview.invalid"
+
 [triggers]
 crons = ["*/5 * * * *"]
 
@@ -26,6 +33,3 @@ persist = true
 enabled = true
 head_sampling_rate = 1
 persist = true
-
-[observability.issue_detection]
-enabled = false
