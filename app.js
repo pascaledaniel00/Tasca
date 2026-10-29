@@ -232,12 +232,10 @@ import {
     document
       .querySelectorAll('[data-page]')
       .forEach((x) => x.classList.toggle('active', x.dataset.page === name));
-    const dockExpandBtn = $('mobileDockExpandBtn');
-    if (dockExpandBtn)
-      dockExpandBtn.classList.toggle(
-        'active',
-        !['home', 'transactions', 'budgets', 'quiz', 'shortcut'].includes(name)
-      );
+    if (window.matchMedia('(max-width: 720px)').matches)
+      document
+        .querySelector('#mobileNav [data-page="' + name + '"]')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'quiz') {
       if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
@@ -2748,33 +2746,9 @@ import {
     });
     const menuBtn = $('mobileMenuBtn'),
       nav = $('desktopNav'),
-      backdrop = $('navBackdrop'),
-      dockExpandBtn = $('mobileDockExpandBtn'),
-      extraNav = $('mobileExtraNav');
-    function closeDockPanel() {
-      if (!dockExpandBtn || !extraNav) return;
-      $('mobileNav').classList.remove('is-expanded');
-      extraNav.setAttribute('aria-hidden', 'true');
-      dockExpandBtn.setAttribute('aria-expanded', 'false');
-      dockExpandBtn.setAttribute('aria-label', 'Apri altre funzioni');
-      backdrop.classList.toggle('open', nav.classList.contains('open'));
-      document.body.classList.toggle('menu-open', nav.classList.contains('open'));
-    }
-    function setDockPanel(opening) {
-      extraNav.classList.toggle('open', opening);
-      $('mobileNav').classList.toggle('is-expanded', opening);
-      extraNav.setAttribute('aria-hidden', String(!opening));
-      dockExpandBtn.setAttribute('aria-expanded', String(opening));
-      dockExpandBtn.setAttribute('aria-label', opening ? 'Chiudi altre funzioni' : 'Apri altre funzioni');
-      backdrop.classList.toggle('open', opening || nav.classList.contains('open'));
-      document.body.classList.toggle('menu-open', opening || nav.classList.contains('open'));
-    }
-    function toggleDockPanel() {
-      setDockPanel(!extraNav.classList.contains('open'));
-    }
+      backdrop = $('navBackdrop');
     function closeSideNav() {
       nav.classList.remove('open');
-      closeDockPanel();
       backdrop.classList.remove('open');
       document.body.classList.remove('menu-open');
       menuBtn.setAttribute('aria-expanded', 'false');
@@ -2791,35 +2765,6 @@ import {
       menuBtn.textContent = opening ? '✕' : '☰';
     }
     menuBtn.addEventListener('click', toggleSideNav);
-    let dockPointerStartY = null;
-    let dockGestureMoved = false;
-    dockExpandBtn?.addEventListener('pointerdown', (event) => {
-      dockPointerStartY = event.clientY;
-      dockGestureMoved = false;
-      try {
-        dockExpandBtn.setPointerCapture(event.pointerId);
-      } catch {}
-    });
-    dockExpandBtn?.addEventListener('pointerup', (event) => {
-      if (dockPointerStartY === null) return;
-      const deltaY = event.clientY - dockPointerStartY;
-      dockPointerStartY = null;
-      if (Math.abs(deltaY) < 20) return;
-      dockGestureMoved = true;
-      const shouldOpen = deltaY < 0;
-      if (shouldOpen !== extraNav.classList.contains('open')) setDockPanel(shouldOpen);
-    });
-    dockExpandBtn?.addEventListener('pointercancel', () => {
-      dockPointerStartY = null;
-    });
-    dockExpandBtn?.addEventListener('click', (event) => {
-      if (dockGestureMoved) {
-        dockGestureMoved = false;
-        event.preventDefault();
-        return;
-      }
-      toggleDockPanel();
-    });
     backdrop.addEventListener('click', closeSideNav);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSideNav();
