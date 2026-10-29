@@ -2760,8 +2760,7 @@ import {
       backdrop.classList.toggle('open', nav.classList.contains('open'));
       document.body.classList.toggle('menu-open', nav.classList.contains('open'));
     }
-    function toggleDockPanel() {
-      const opening = !extraNav.classList.contains('open');
+    function setDockPanel(opening) {
       extraNav.classList.toggle('open', opening);
       $('mobileNav').classList.toggle('is-expanded', opening);
       extraNav.setAttribute('aria-hidden', String(!opening));
@@ -2769,6 +2768,9 @@ import {
       dockExpandBtn.setAttribute('aria-label', opening ? 'Chiudi altre funzioni' : 'Apri altre funzioni');
       backdrop.classList.toggle('open', opening || nav.classList.contains('open'));
       document.body.classList.toggle('menu-open', opening || nav.classList.contains('open'));
+    }
+    function toggleDockPanel() {
+      setDockPanel(!extraNav.classList.contains('open'));
     }
     function closeSideNav() {
       nav.classList.remove('open');
@@ -2789,7 +2791,35 @@ import {
       menuBtn.textContent = opening ? '✕' : '☰';
     }
     menuBtn.addEventListener('click', toggleSideNav);
-    dockExpandBtn?.addEventListener('click', toggleDockPanel);
+    let dockPointerStartY = null;
+    let dockGestureMoved = false;
+    dockExpandBtn?.addEventListener('pointerdown', (event) => {
+      dockPointerStartY = event.clientY;
+      dockGestureMoved = false;
+      try {
+        dockExpandBtn.setPointerCapture(event.pointerId);
+      } catch {}
+    });
+    dockExpandBtn?.addEventListener('pointerup', (event) => {
+      if (dockPointerStartY === null) return;
+      const deltaY = event.clientY - dockPointerStartY;
+      dockPointerStartY = null;
+      if (Math.abs(deltaY) < 20) return;
+      dockGestureMoved = true;
+      const shouldOpen = deltaY < 0;
+      if (shouldOpen !== extraNav.classList.contains('open')) setDockPanel(shouldOpen);
+    });
+    dockExpandBtn?.addEventListener('pointercancel', () => {
+      dockPointerStartY = null;
+    });
+    dockExpandBtn?.addEventListener('click', (event) => {
+      if (dockGestureMoved) {
+        dockGestureMoved = false;
+        event.preventDefault();
+        return;
+      }
+      toggleDockPanel();
+    });
     backdrop.addEventListener('click', closeSideNav);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSideNav();
