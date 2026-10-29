@@ -317,31 +317,43 @@ video {
 
   #mobileDockExpandBtn {
     position: absolute;
-    top: -17px;
+    top: -20px;
     left: 50%;
     z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 25px;
-    padding: 0;
-    border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
-    border-bottom: 0;
-    border-radius: 14px 14px 0 0;
-    background: color-mix(in srgb, var(--white) 94%, transparent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 88px;
+    height: 27px;
+    padding: 0 11px;
+    border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--white) 96%, transparent);
     color: var(--g);
+    box-shadow: 0 3px 10px #173d3210, inset 0 1px 0 #ffffffb8;
     transform: translateX(-50%);
     -webkit-tap-highlight-color: transparent;
   }
 
   #mobileDockExpandBtn > svg {
-    width: 18px;
-    height: 18px;
-    transition: transform 180ms ease;
+    flex: 0 0 15px;
+    width: 15px;
+    height: 15px;
+    stroke-width: 2.1;
   }
 
-  #mobileNav.is-expanded #mobileDockExpandBtn > svg {
-    transform: rotate(180deg);
+  .mobile-dock-toggle-label {
+    color: inherit;
+    font-size: 10px;
+    font-weight: 720;
+    letter-spacing: 0.005em;
+    line-height: 1;
+  }
+
+  #mobileNav.is-expanded #mobileDockExpandBtn {
+    background: linear-gradient(145deg, var(--gs), color-mix(in srgb, var(--white) 86%, var(--gs)));
+    box-shadow: 0 3px 12px #173d3218, inset 0 1px 0 #ffffffb8;
   }
 
   #mobileExtraNav {
