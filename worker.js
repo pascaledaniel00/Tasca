@@ -54,11 +54,11 @@ const QUIZ_DIFFICULTIES = [1, 2, 3];
 function normalizeQuizText(value) {
   return String(value || '')
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase('it-IT')
     .replace(/[^a-z0-9%€]+/g, ' ')
     .trim()
-    .replace(/\\s+/g, ' ');
+    .replace(/\s+/g, ' ');
 }
 function quizTextTokens(value) {
   return new Set(normalizeQuizText(value).split(' ').filter((word) => word.length >= 3));
@@ -159,8 +159,8 @@ function validBankQuestions(text, category, difficulty, existingQuestions = []) 
   try {
     parsed = JSON.parse(
       String(text)
-        .replace(/^\\s*```(?:json)?\\s*/i, '')
-        .replace(/\\s*```\\s*$/, '')
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/, '')
     );
   } catch {
     const s = String(text).indexOf('{'),
@@ -185,7 +185,7 @@ function validBankQuestions(text, category, difficulty, existingQuestions = []) 
         if (overlap >= 0.8) return true;
       }
     }
-    return /(?:la risposta|la soluzione|la risposta corretta)\\s+(?:e|è|:)|\\bquindi la risposta\\b/i.test(question + ' ' + hint);
+    return /(?:la risposta|la soluzione|la risposta corretta)\s+(?:e|è|:)|\\bquindi la risposta\\b/i.test(question + ' ' + hint);
   };
   return (Array.isArray(parsed?.questions) ? parsed.questions : [])
     .filter((q) => {
