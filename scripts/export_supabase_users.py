@@ -39,6 +39,54 @@ def request_users(base_url: str, service_key: str, page: int, per_page: int = 50
         raise SystemExit(1) from None
 
 
+def ensure_private_bucket(base_url: str, service_key: str) -> None:
+    url = f"{base_url.rstrip('/')}/storage/v1/bucket"
+    body = json.dumps({"id": "admin-exports", "name": "admin-exports", "public": False}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "apikey": service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30):
+            pass
+    except urllib.error.HTTPError as exc:
+        # A 409 means the bucket already exists. Do not log response bodies.
+        if exc.code != 409:
+            print(f"Creazione del contenitore privato Supabase fallita (HTTP {exc.code}).", file=sys.stderr)
+            raise SystemExit(1) from None
+
+
+def upload_private_excel(base_url: str, service_key: str, file_path: Path) -> None:
+    url = f"{base_url.rstrip('/')}/storage/v1/object/admin-exports/tasca-iscrizioni.xlsx"
+    data = file_path.read_bytes()
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "apikey": service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "x-upsert": "true",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60):
+            pass
+    except urllib.error.HTTPError as exc:
+        print(f"Caricamento dell'Excel nell'archivio privato fallito (HTTP {exc.code}).", file=sys.stderr)
+        raise SystemExit(1) from None
+    except urllib.error.URLError as exc:
+        print(f"Connessione all'archivio privato non riuscita: {exc.reason}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 def main() -> None:
     base_url = os.environ.get("SUPABASE_URL", "").strip()
     service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
@@ -127,8 +175,11 @@ def main() -> None:
     info["A1"].font = Font(bold=True)
     output = Path("artifacts")
     output.mkdir(exist_ok=True)
-    wb.save(output / "tasca-iscrizioni.xlsx")
-    print(f"Esportazione completata: {len(users)} utenti. Nessun dato personale riportato nei log.")
+    file_path = output / "tasca-iscrizioni.xlsx"
+    wb.save(file_path)
+    ensure_private_bucket(base_url, service_key)
+    upload_private_excel(base_url, service_key, file_path)
+    print(f"Esportazione completata: {len(users)} utenti. Excel aggiornato nel bucket privato Supabase; nessun dato personale riportato nei log.")
 
 
 if __name__ == "__main__":
