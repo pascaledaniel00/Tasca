@@ -40,10 +40,43 @@ def request_users(base_url: str, service_key: str, page: int, per_page: int = 50
 
 
 def ensure_private_bucket(base_url: str, service_key: str) -> None:
-    url = f"{base_url.rstrip('/')}/storage/v1/bucket"
+    bucket_url = f"{base_url.rstrip('/')}/storage/v1/bucket/admin-exports"
+
+    def read_existing_bucket() -> dict | None:
+        check = urllib.request.Request(
+            bucket_url,
+            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(check, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            print(
+                f"Verifica del contenitore privato Supabase fallita (HTTP {exc.code}).",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from None
+        except (urllib.error.URLError, json.JSONDecodeError):
+            print("Impossibile verificare il contenitore Supabase; esportazione interrotta.", file=sys.stderr)
+            raise SystemExit(1) from None
+
+    def require_private(bucket: dict | None) -> bool:
+        if bucket is None:
+            return False
+        if bucket.get("public") is not False:
+            print("Il bucket admin-exports non risulta privato. Esportazione interrotta per sicurezza.", file=sys.stderr)
+            raise SystemExit(1)
+        return True
+
+    if require_private(read_existing_bucket()):
+        return
+
     body = json.dumps({"id": "admin-exports", "name": "admin-exports", "public": False}).encode("utf-8")
     req = urllib.request.Request(
-        url,
+        f"{base_url.rstrip('/')}/storage/v1/bucket",
         data=body,
         headers={
             "apikey": service_key,
@@ -54,27 +87,12 @@ def ensure_private_bucket(base_url: str, service_key: str) -> None:
     )
     try:
         with urllib.request.urlopen(req, timeout=30):
-            pass
+            return
     except urllib.error.HTTPError as exc:
-        # Supabase may report an existing bucket as either 409 or legacy HTTP 400.
-        # In both cases, confirm the bucket exists and is private before continuing.
-        if exc.code not in (400, 409):
+        # Another run may create the bucket after our initial check. Verify it before continuing.
+        if exc.code not in (400, 409) or not require_private(read_existing_bucket()):
             print(f"Creazione del contenitore privato Supabase fallita (HTTP {exc.code}).", file=sys.stderr)
             raise SystemExit(1) from None
-        check = urllib.request.Request(
-            f"{base_url.rstrip('/')}/storage/v1/bucket/admin-exports",
-            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
-            method="GET",
-        )
-        try:
-            with urllib.request.urlopen(check, timeout=30) as response:
-                existing = json.loads(response.read().decode("utf-8"))
-        except Exception:
-            print("Impossibile verificare la privacy del bucket Supabase esistente; esportazione interrotta.", file=sys.stderr)
-            raise SystemExit(1) from None
-        if existing.get("public") is not False:
-            print("Il bucket admin-exports non risulta privato. Esportazione interrotta per sicurezza.", file=sys.stderr)
-            raise SystemExit(1)
 
 
 def upload_private_excel(base_url: str, service_key: str, file_path: Path) -> None:
