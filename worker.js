@@ -180,7 +180,8 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
                 category,
                 difficulty,
                 count: missingCount,
-                context: 'Archivio settimanale Tasca. Genera domande esclusivamente al livello di difficoltà richiesto.',
+                context:
+                  'Archivio settimanale Tasca. Genera domande esclusivamente al livello di difficoltà richiesto.',
               }),
             },
           ],
@@ -190,7 +191,10 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
           reasoning_effort: 'low',
         });
         const raw = String(
-          result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || ''
+          result?.response ||
+            result?.result?.response ||
+            result?.choices?.[0]?.message?.content ||
+            ''
         );
         const questions = validBankQuestions(raw, category, difficulty).slice(0, missingCount);
         if (!questions.length) {
@@ -223,7 +227,8 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
             body: JSON.stringify(rows),
           }
         );
-        if (!saved.ok) console.error('Salvataggio quiz non riuscito:', category, difficulty, saved.status);
+        if (!saved.ok)
+          console.error('Salvataggio quiz non riuscito:', category, difficulty, saved.status);
       } catch (error) {
         const message = String(error?.message || error);
         console.error(
@@ -326,7 +331,11 @@ export default {
     if (task === 'quiz' && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_URL) {
       const difficulty = Number(body.data.difficulty) || 1;
       if (!QUIZ_DIFFICULTIES.includes(difficulty)) {
-        return json({ code: 'QUIZ_DIFFICULTY_INVALID', error: 'Livello di difficoltà non valido.' }, 400, allowedOrigin);
+        return json(
+          { code: 'QUIZ_DIFFICULTY_INVALID', error: 'Livello di difficoltà non valido.' },
+          400,
+          allowedOrigin
+        );
       }
       try {
         const weekStart = romeWeekStart(new Date());
@@ -336,29 +345,40 @@ export default {
         );
         if (!bankResponse.ok) {
           console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
-          return json({
-            code: 'QUIZ_BANK_READ_FAILED',
-            error: 'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
-          }, 502, allowedOrigin);
+          return json(
+            {
+              code: 'QUIZ_BANK_READ_FAILED',
+              error:
+                'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
+            },
+            502,
+            allowedOrigin
+          );
         }
         const bankRows = await bankResponse.json();
         const historyResult = await fetchAllQuestionHistory(env, authenticatedUser.id);
         if (!historyResult.ok) {
           console.error('Lettura storico quiz non riuscita:', historyResult.status);
-          return json({
-            code: 'QUIZ_BANK_READ_FAILED',
-            error: 'Non riesco a leggere lo storico delle domande. Verifica la migrazione Supabase.',
-          }, 502, allowedOrigin);
+          return json(
+            {
+              code: 'QUIZ_BANK_READ_FAILED',
+              error:
+                'Non riesco a leggere lo storico delle domande. Verifica la migrazione Supabase.',
+            },
+            502,
+            allowedOrigin
+          );
         }
         const seen = new Set(historyResult.rows.map((row) => row.question_fingerprint));
         const questionsByCategory = Object.fromEntries(
           QUIZ_CATEGORIES.map((category) => [
             category,
             bankRows
-              .filter((row) =>
-                row.category === category &&
-                row.question &&
-                Number(row.question.difficulty) === difficulty
+              .filter(
+                (row) =>
+                  row.category === category &&
+                  row.question &&
+                  Number(row.question.difficulty) === difficulty
               )
               .sort((a, b) => Number(a.id) - Number(b.id))
               .slice(0, QUIZ_WEEKLY_TARGET_PER_DIFFICULTY)
@@ -376,11 +396,16 @@ export default {
           (category) => questionsByCategory[category].length < 2
         );
         if (exhausted.length) {
-          return json({
-            code: 'QUIZ_QUESTIONS_EXHAUSTED',
-            exhaustedCategories: exhausted,
-            error: 'Non ci sono abbastanza domande nuove in tutte le categorie per questo livello. Scegli un altro livello.',
-          }, 409, allowedOrigin);
+          return json(
+            {
+              code: 'QUIZ_QUESTIONS_EXHAUSTED',
+              exhaustedCategories: exhausted,
+              error:
+                'Non ci sono abbastanza domande nuove in tutte le categorie per questo livello. Scegli un altro livello.',
+            },
+            409,
+            allowedOrigin
+          );
         }
         const questions = [];
         for (const category of QUIZ_CATEGORIES) {
@@ -397,11 +422,19 @@ export default {
         }
         return json({ text: JSON.stringify({ questions }) }, 200, allowedOrigin);
       } catch (error) {
-        console.error('Lettura archivio quiz non riuscita:', String(error?.message || error).slice(0, 180));
-        return json({
-          code: 'QUIZ_BANK_READ_FAILED',
-          error: 'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
-        }, 502, allowedOrigin);
+        console.error(
+          'Lettura archivio quiz non riuscita:',
+          String(error?.message || error).slice(0, 180)
+        );
+        return json(
+          {
+            code: 'QUIZ_BANK_READ_FAILED',
+            error:
+              'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
+          },
+          502,
+          allowedOrigin
+        );
       }
     }
     // I quiz devono provenire esclusivamente dall'archivio settimanale:
