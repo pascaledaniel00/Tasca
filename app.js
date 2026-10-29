@@ -232,10 +232,19 @@ import {
     document
       .querySelectorAll('[data-page]')
       .forEach((x) => x.classList.toggle('active', x.dataset.page === name));
-    if (window.matchMedia('(max-width: 720px)').matches)
-      document
-        .querySelector('#mobileNav [data-page="' + name + '"]')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    if (window.matchMedia('(max-width: 720px)').matches) {
+      const dockTrack = $('mobileNavTrack');
+      const targetPage = dockTrack?.querySelector(
+        '.mobile-nav-page[data-nav-page="' +
+          (['spaces', 'recurring', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
+          '"]'
+      );
+      if (targetPage)
+        dockTrack.scrollTo({
+          left: targetPage.offsetLeft,
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        });
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'quiz') {
       if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
@@ -2765,6 +2774,17 @@ import {
       menuBtn.textContent = opening ? '✕' : '☰';
     }
     menuBtn.addEventListener('click', toggleSideNav);
+    const mobileNavTrack = $('mobileNavTrack');
+    const mobileNavDots = Array.from(document.querySelectorAll('.mobile-nav-pagination span'));
+    const mobileNavPageStatus = $('mobileNavPageStatus');
+    function syncMobileNavPage() {
+      if (!mobileNavTrack) return;
+      const pageIndex = mobileNavTrack.scrollLeft >= mobileNavTrack.clientWidth / 2 ? 1 : 0;
+      mobileNavDots.forEach((dot, index) => dot.classList.toggle('active', index === pageIndex));
+      if (mobileNavPageStatus) mobileNavPageStatus.textContent = 'Pagina ' + (pageIndex + 1) + ' di 2';
+    }
+    mobileNavTrack?.addEventListener('scroll', syncMobileNavPage, { passive: true });
+    syncMobileNavPage();
     backdrop.addEventListener('click', closeSideNav);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSideNav();
