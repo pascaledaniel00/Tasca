@@ -208,107 +208,163 @@ video {
 }
 
 
-/* Smartphone navigation: persistent primary actions with the full menu behind More. */
+/* Mobile navigation: fixed primary dock and a feature launcher sheet. */
 @media (max-width: 720px) {
   #mobileMenuBtn {
-    display: none !important;
+    position: relative;
+    z-index: 43;
+    display: grid !important;
+    place-items: center;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--white);
+    color: var(--g);
+    font-size: 20px;
+    box-shadow: 0 4px 14px #173d320c;
   }
 
   #desktopNav {
-    display: none !important;
-  }
-
-  #mobileNav {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mobile-primary-nav {
+    position: fixed;
+    z-index: 42;
+    top: calc(62px + env(safe-area-inset-top));
+    right: 12px;
+    bottom: auto;
+    left: 12px;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 8px;
+    width: auto;
+    max-height: min(72dvh, calc(100dvh - 124px - env(safe-area-inset-top)));
+    margin: 0;
+    padding: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--white) 92%, transparent);
+    box-shadow: 0 18px 50px #173d3226, inset 0 1px 0 #ffffffb8;
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    transform: translateY(-8px) scale(0.985);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease,
+      visibility 180ms ease;
   }
 
-  .mobile-extra-nav {
+  #desktopNav.open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  #desktopNav .sidebar-brand-logo {
     display: none;
-    grid-column: 1;
-    gap: 10px;
-    margin-top: 4px;
-    padding: 12px 2px 2px;
-    border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
   }
 
-  #mobileNav.is-expanded .mobile-extra-nav {
-    display: grid;
-  }
-
-  .mobile-extra-heading {
+  #desktopNav .sidebar-menu-label {
+    display: block;
+    grid-column: 1 / -1;
+    order: -1;
+    margin: 1px 5px 5px;
     color: var(--muted);
-    font-size: 11px;
-    font-weight: 750;
+    font-size: 12px;
+    font-weight: 800;
     letter-spacing: 0.015em;
   }
 
-  .mobile-extra-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  #desktopNav button[data-page='home'],
+  #desktopNav button[data-page='transactions'],
+  #desktopNav button[data-page='budgets'],
+  #desktopNav button[data-page='spaces'] {
+    display: none !important;
   }
 
-  .bottomnav .mobile-extra-item {
+  #desktopNav button[data-page] {
     display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 10px;
-    min-height: 54px;
-    padding: 10px;
-    border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--gs) 38%, var(--white));
-    text-align: left;
-    font-size: 12px;
-  }
-
-  .bottomnav .mobile-extra-item > svg {
-    flex: 0 0 20px;
-    width: 20px;
-    height: 20px;
-  }
-
-  .mobile-extra-copy {
-    display: grid;
     min-width: 0;
-    gap: 3px;
-  }
-
-  .mobile-extra-copy strong {
-    overflow: hidden;
-    color: inherit;
+    min-height: 54px;
+    margin: 0;
+    padding: 10px;
+    gap: 9px;
+    border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--gs) 40%, var(--white));
+    color: var(--ink);
     font-size: 12px;
-    font-weight: 700;
-    line-height: 1.15;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-align: left;
   }
 
-  .mobile-extra-copy small {
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 500;
-    line-height: 1.2;
+  #desktopNav button[data-page]::after {
+    display: none;
   }
 
-  .bottomnav .mobile-extra-featured {
-    min-height: 64px;
-    border-color: color-mix(in srgb, var(--g) 20%, var(--line));
+  #desktopNav button[data-page='quiz'] {
+    order: 0;
+  }
+
+  #desktopNav button[data-page='shortcut'] {
+    order: 1;
+  }
+
+  #desktopNav button[data-page='recurring'] {
+    order: 2;
+  }
+
+  #desktopNav button[data-page='advice'] {
+    order: 3;
+  }
+
+  #desktopNav button[data-page='settings'] {
+    grid-column: 1 / -1;
+    order: 4;
+  }
+
+  #desktopNav button[data-page='quiz'],
+  #desktopNav button[data-page='shortcut'] {
+    min-height: 68px;
+    border-color: color-mix(in srgb, var(--g) 22%, var(--line));
     background: linear-gradient(140deg, var(--gs), color-mix(in srgb, var(--white) 82%, var(--gs)));
+    font-weight: 750;
   }
 
-  html[data-theme='dark'] .bottomnav .mobile-extra-item {
-    background: color-mix(in srgb, var(--white) 88%, var(--gs));
+  #desktopNav .sidebar-nav-icon {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    color: var(--g);
   }
 
-  html[data-theme='dark'] .bottomnav .mobile-extra-featured {
-    background: linear-gradient(140deg, color-mix(in srgb, var(--g) 23%, var(--white)), var(--white));
+  #navBackdrop.open {
+    display: block;
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    background: #101b1680;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  body.menu-open {
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
   #appScreen:not(.hidden) ~ .bottomnav {
@@ -317,15 +373,15 @@ video {
 
   .bottomnav {
     position: fixed;
-    z-index: 45;
+    z-index: 38;
     right: 14px;
     bottom: calc(10px + env(safe-area-inset-bottom));
     left: 14px;
     display: none !important;
-    box-sizing: border-box;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
-    gap: 0;
+    gap: 4px;
+    box-sizing: border-box;
     min-height: 76px;
     padding: 8px;
     overflow: visible;
@@ -346,7 +402,7 @@ video {
     gap: 4px;
     min-width: 0;
     min-height: 58px;
-    padding: 6px 2px;
+    padding: 6px 3px;
     border: 1px solid transparent;
     border-radius: 17px;
     background: transparent;
@@ -356,7 +412,10 @@ video {
     letter-spacing: -0.01em;
     line-height: 1.1;
     -webkit-tap-highlight-color: transparent;
-    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+    transition:
+      background 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
   }
 
   .bottomnav button > svg {
@@ -370,11 +429,6 @@ video {
     stroke-linecap: round;
     stroke-linejoin: round;
     transition: transform 160ms ease;
-  }
-
-  .bottomnav button > svg circle,
-  .bottomnav button > svg rect {
-    vector-effect: non-scaling-stroke;
   }
 
   .bottomnav .bottomnav-label {
@@ -404,15 +458,10 @@ video {
     transform: scale(0.96);
   }
 
-  .bottomnav button:focus-visible {
+  .bottomnav button:focus-visible,
+  #mobileMenuBtn:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--g) 58%, transparent);
     outline-offset: 2px;
-  }
-
-  #mobileMoreBtn[aria-expanded='true'] {
-    border-color: color-mix(in srgb, var(--g) 10%, transparent);
-    color: var(--g);
-    background: var(--gs);
   }
 
   html[data-theme='dark'] .bottomnav {
@@ -421,7 +470,18 @@ video {
     box-shadow: 0 12px 34px #0005, inset 0 1px 0 #ffffff0c;
   }
 
+  html[data-theme='dark'] #desktopNav {
+    border-color: color-mix(in srgb, var(--line) 72%, transparent);
+    background: color-mix(in srgb, var(--white) 90%, transparent);
+    box-shadow: 0 18px 50px #0005, inset 0 1px 0 #ffffff0a;
+  }
+
   @media (max-width: 380px) {
+    #desktopNav {
+      right: 9px;
+      left: 9px;
+    }
+
     .bottomnav {
       right: 9px;
       left: 9px;
@@ -439,17 +499,9 @@ video {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .bottomnav button,
-    .bottomnav button > svg {
+    #desktopNav,
+    .bottomnav button {
       transition: none;
     }
-  }
-
-  #page-home .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #page-home .stat:last-child {
-    grid-column: 1 / -1;
   }
 }
