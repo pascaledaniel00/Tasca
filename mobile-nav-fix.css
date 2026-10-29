@@ -1,3 +1,10 @@
+  .icon-definitions {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
 /* Correzione anteprima mobile: il backdrop deve restare dietro al menu laterale. */
 @media (max-width: 720px) {
   #navBackdrop.open {
@@ -497,13 +504,6 @@ video {
   .mobile-nav-pagination span.active {
     width: 14px;
     background: color-mix(in srgb, var(--g) 70%, var(--muted));
-  }
-
-  .icon-definitions {
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: hidden;
   }
 
   @media (prefers-reduced-motion: reduce) {
