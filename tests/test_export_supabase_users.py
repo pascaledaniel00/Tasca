@@ -9,7 +9,7 @@ from scripts import export_supabase_users as exporter
 
 class EnsurePrivateBucketTests(unittest.TestCase):
     def _check_existing_bucket(self, status, is_private):
-        response = io.BytesIO(json.dumps({"public": is_private}).encode("utf-8"))
+        response = io.BytesIO(json.dumps({"public": not is_private}).encode("utf-8"))
         with patch.object(
             exporter.urllib.request,
             "urlopen",
