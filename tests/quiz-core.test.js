@@ -37,6 +37,12 @@ test('validazione quiz IA rifiuta struttura incompleta e accetta struttura valid
   };
   assert.equal(validateAIQuiz({ questions: [q] }, { category: 'budget', count: 1 }).questions.length, 1);
   assert.equal(validateAIQuiz({ questions: [{ ...q, correctValues: ['Z'] }] }, { category: 'budget', count: 1 }), null);
+  const archived = validateAIQuiz(
+    { questions: [{ ...q, id: 'bank-42', fingerprint: 'question-fingerprint-42' }] },
+    { category: 'budget', count: 1 }
+  );
+  assert.equal(archived.questions[0].id, 'bank-42');
+  assert.equal(archived.questions[0].fingerprint, 'question-fingerprint-42');
 });
 
 test('calcolo punteggio e XP è limitato ai risultati validi', () => {
