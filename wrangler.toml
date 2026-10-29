@@ -9,7 +9,7 @@ binding = "AI"
 SUPABASE_URL = "https://njgmlxyecjyreieqcpwk.supabase.co"
 
 [triggers]
-crons = ["0 * * * *", "0 0 * * SUN", "0 1 * * SUN"]
+crons = ["*/5 * * * *"]
 
 [observability]
 enabled = true
