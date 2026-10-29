@@ -1230,60 +1230,39 @@ import {
     const btn = $('startQuizBtn');
     if (!btn || btn.disabled) return;
     btn.disabled = true;
-    btn.textContent = 'Preparo le domande…';
+    btn.textContent = 'Carico le domande…';
     try {
       const category = $('quizCategory').value;
       const difficulty = Number($('quizDifficulty').value) || 1;
-      const context = buildQuizContext(category);
-      let questions = null;
-      let source = 'ai';
-      let quotaExhausted = false;
       if (!isAIConfigured()) {
-        throw new Error('Il servizio IA non è configurato: verifica l’URL del Worker.');
+        throw new Error('Il servizio Tasca non è configurato: verifica l’URL del Worker.');
       }
-      try {
-        const generated = await callTascaAI('quiz', { category, difficulty, count: 5, context });
-        const validated = validateAIQuiz(generated, { category, count: 5, diagnostic: true });
-        if (validated && !validated.validationError) {
-          questions = validated.questions;
-          source = 'ai';
-        } else {
-          const reason =
-            validated?.validationError ||
-            'La risposta IA non ha superato i controlli di qualità per una causa non identificata.';
-          console.warn('Tasca quiz: validazione IA fallita:', reason);
-          throw new Error('Controllo qualità: ' + reason);
-        }
-      } catch (error) {
-        console.warn('Tasca quiz IA:', error.message);
-        quotaExhausted = error?.code === 'QUOTA_EXHAUSTED';
-        if (quotaExhausted) {
-          questions = selectVerifiedQuestions({ category, count: 5, difficulty });
-          source = 'verified';
-          $('quizNotice').className = 'notice warn';
-          $('quizNotice').textContent = 'Quota IA esaurita: per oggi usiamo le domande verificate.';
-        } else {
-          $('quizNotice').className = 'notice warn';
-          $('quizNotice').textContent =
-            'Non sono riuscito a generare il quiz con l’IA: ' +
-            String(error?.message || 'errore non specificato') +
-            ' Riprova tra poco.';
-          return;
-        }
+
+      // Le domande sono pre-generate e archiviate nel banco settimanale.
+      // Qui non viene mai chiesta una nuova generazione al modello.
+      const archived = await callTascaAI('quiz', { category, difficulty, count: 5 });
+      const validated = validateAIQuiz(archived, { category, count: 5, diagnostic: true });
+      if (!validated || validated.validationError) {
+        throw new Error(validated?.validationError || 'Le domande archiviate non hanno superato i controlli.');
       }
-      quizQuestions = questions;
-      quizSource = source;
+
+      quizQuestions = validated.questions;
+      quizSource = 'verified';
       quizAnswers = {};
       quizIndex = 0;
       quizAttemptKey = globalThis.crypto?.randomUUID
         ? globalThis.crypto.randomUUID()
         : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+      $('quizNotice').className = 'notice';
+      $('quizNotice').textContent = '';
       renderQuizQuestion();
     } catch (error) {
-      console.error('Tasca quiz: avvio non riuscito', error);
+      console.warn('Tasca quiz: archivio settimanale non disponibile:', error?.message || error);
       $('quizNotice').className = 'notice warn';
       $('quizNotice').textContent =
-        'Non riesco ad avviare il quiz. Riprova; se il problema continua, aggiorna la pagina.';
+        error?.code === 'QUIZ_BANK_NOT_READY' || /non sono ancora pronte|archiv/i.test(String(error?.message || ''))
+          ? 'Le domande settimanali sono ancora in preparazione. Riprova più tardi.'
+          : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
     } finally {
       btn.disabled = false;
       btn.textContent = 'Inizia il quiz';
