@@ -30,7 +30,8 @@ function json(data, status, origin) {
 }
 
 const QUIZ_CATEGORIES = ['budget', 'saving', 'debt', 'spending', 'banking', 'economy'];
-const QUIZ_WEEKLY_TARGET = 15;
+const QUIZ_WEEKLY_TARGET_PER_DIFFICULTY = 5;
+const QUIZ_DIFFICULTIES = [1, 2, 3];
 
 function romeParts(date = new Date()) {
   return Object.fromEntries(
@@ -67,7 +68,7 @@ async function bankRequest(env, path, options = {}) {
     },
   });
 }
-function validBankQuestions(text, category) {
+function validBankQuestions(text, category, difficulty) {
   let parsed;
   try {
     parsed = JSON.parse(
@@ -119,7 +120,7 @@ function validBankQuestions(text, category) {
       // La categoria viene fissata dal Worker in base alla richiesta, evitando
       // che il modello copi per errore la categoria d'esempio presente nel prompt.
       category,
-      difficulty: Math.max(1, Math.min(3, Number(q.difficulty) || 1)),
+      difficulty,
       question: q.question.trim(),
       options: q.options.map((o) => ({ value: String(o.value), label: o.label.trim() })),
       correctValues: [String(q.correctValues[0])],
@@ -136,79 +137,91 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
   }
   const weekStart = romeWeekStart(new Date(scheduledTime));
   for (const category of QUIZ_CATEGORIES) {
-    try {
-      const existingResponse = await bankRequest(
-        env,
-        `/rest/v1/quiz_question_bank?select=id&week_start=eq.${weekStart}&category=eq.${category}`
-      );
-      if (!existingResponse.ok) {
-        console.error('Archivio quiz non leggibile:', existingResponse.status);
-        continue;
-      }
-      const existingQuestions = await existingResponse.json();
-      const missingCount = Math.max(0, QUIZ_WEEKLY_TARGET - existingQuestions.length);
-      if (missingCount === 0) continue;
-      const result = await env.AI.run(MODEL_NUDGE, {
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPTS.quiz },
-          {
-            role: 'user',
-            content: JSON.stringify({
-              category,
-              difficulty: 2,
-              count: missingCount,
-              context: 'Domande settimanali Tasca con difficoltà mista da 1 a 3.',
-            }),
-          },
-        ],
-        max_tokens: 6500,
-        temperature: 0.15,
-        chat_template_kwargs: { enable_thinking: false },
-        reasoning_effort: 'low',
-      });
-      const raw = String(
-        result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || ''
-      );
-      // Il modello può restituire più elementi del count richiesto:
-      // salva esclusivamente il numero di domande ancora necessario.
-      const questions = validBankQuestions(raw, category).slice(0, missingCount);
-      if (!questions.length) {
-        console.error(
-          'Nessuna domanda valida generata per:',
-          category,
-          'risposta iniziale:',
-          raw.slice(0, 400)
+    for (const difficulty of QUIZ_DIFFICULTIES) {
+      try {
+        const existingResponse = await bankRequest(
+          env,
+          `/rest/v1/quiz_question_bank?select=id,question&week_start=eq.${weekStart}&category=eq.${category}&limit=100`
         );
-        continue;
-      }
-      const rows = questions.map((question) => ({
-        week_start: weekStart,
-        category,
-        question,
-        fingerprint: question.question
-          .trim()
-          .toLocaleLowerCase('it-IT')
-          .replace(/\s+/g, ' ')
-          .slice(0, 240),
-      }));
-      const saved = await bankRequest(
-        env,
-        '/rest/v1/quiz_question_bank?on_conflict=week_start,fingerprint',
-        {
-          method: 'POST',
-          headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
-          body: JSON.stringify(rows),
+        if (!existingResponse.ok) {
+          console.error('Archivio quiz non leggibile:', existingResponse.status);
+          continue;
         }
-      );
-      if (!saved.ok) console.error('Salvataggio quiz non riuscito:', category, saved.status);
-    } catch (error) {
-      const message = String(error?.message || error);
-      console.error('Preparazione quiz interrotta per categoria', category, message.slice(0, 180));
-      if (/quota|neurons?|resource exhausted|daily.{0,30}limit/i.test(message)) break;
+        const existingQuestions = await existingResponse.json();
+        const existingForDifficulty = existingQuestions.filter(
+          (row) => Number(row.question?.difficulty) === difficulty
+        );
+        const missingCount = Math.max(
+          0,
+          QUIZ_WEEKLY_TARGET_PER_DIFFICULTY - existingForDifficulty.length
+        );
+        if (missingCount === 0) continue;
+        const result = await env.AI.run(MODEL_NUDGE, {
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPTS.quiz },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                category,
+                difficulty,
+                count: missingCount,
+                context: 'Archivio settimanale Tasca. Genera domande esclusivamente al livello di difficoltà richiesto.',
+              }),
+            },
+          ],
+          max_tokens: 6500,
+          temperature: 0.25,
+          chat_template_kwargs: { enable_thinking: false },
+          reasoning_effort: 'low',
+        });
+        const raw = String(
+          result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || ''
+        );
+        const questions = validBankQuestions(raw, category, difficulty).slice(0, missingCount);
+        if (!questions.length) {
+          console.error(
+            'Nessuna domanda valida generata per:',
+            category,
+            'difficoltà:',
+            difficulty,
+            'risposta iniziale:',
+            raw.slice(0, 300)
+          );
+          continue;
+        }
+        const rows = questions.map((question) => ({
+          week_start: weekStart,
+          category,
+          question,
+          fingerprint: question.question
+            .trim()
+            .toLocaleLowerCase('it-IT')
+            .replace(/\s+/g, ' ')
+            .slice(0, 240),
+        }));
+        const saved = await bankRequest(
+          env,
+          '/rest/v1/quiz_question_bank?on_conflict=week_start,fingerprint',
+          {
+            method: 'POST',
+            headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+            body: JSON.stringify(rows),
+          }
+        );
+        if (!saved.ok) console.error('Salvataggio quiz non riuscito:', category, difficulty, saved.status);
+      } catch (error) {
+        const message = String(error?.message || error);
+        console.error(
+          'Preparazione quiz interrotta per categoria/livello',
+          category,
+          difficulty,
+          message.slice(0, 180)
+        );
+        if (/quota|neurons?|resource exhausted|daily.{0,30}limit/i.test(message)) return;
+      }
     }
   }
 }
-
 export default {
   async scheduled(controller, env, ctx) {
     const local = romeParts(new Date(controller.scheduledTime));
@@ -259,7 +272,8 @@ export default {
       return json({ error: 'Configurazione o sessione mancante.' }, 401, allowedOrigin);
     }
 
-    // Verifica il token con Supabase Auth: nessun token privilegiato viene esposto al browser.
+    // Verifica il token con Supabase Auth e conserva l'ID attendibile dell'account.
+    let authenticatedUser;
     try {
       const authResponse = await fetch(env.SUPABASE_URL.replace(/\/$/, '') + '/auth/v1/user', {
         headers: {
@@ -269,6 +283,9 @@ export default {
       });
       if (!authResponse.ok)
         return json({ error: 'Sessione non valida. Accedi di nuovo.' }, 401, allowedOrigin);
+      authenticatedUser = await authResponse.json();
+      if (!authenticatedUser?.id)
+        return json({ error: 'Identità utente non verificabile.' }, 401, allowedOrigin);
     } catch {
       return json({ error: 'Verifica della sessione non riuscita.' }, 502, allowedOrigin);
     }
@@ -292,57 +309,85 @@ export default {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
     if (task === 'quiz' && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_URL) {
-      const category = String(body.data.category || '');
-      const count = Math.max(1, Math.min(10, Number(body.data.count) || 5));
-      if (QUIZ_CATEGORIES.includes(category)) {
-        try {
-          const weekStart = romeWeekStart(new Date());
-          const cachedResponse = await bankRequest(
+      const difficulty = Number(body.data.difficulty) || 1;
+      if (!QUIZ_DIFFICULTIES.includes(difficulty)) {
+        return json({ code: 'QUIZ_DIFFICULTY_INVALID', error: 'Livello di difficoltà non valido.' }, 400, allowedOrigin);
+      }
+      try {
+        const weekStart = romeWeekStart(new Date());
+        const [bankResponse, historyResponse] = await Promise.all([
+          bankRequest(
             env,
-            `/rest/v1/quiz_question_bank?select=question&week_start=eq.${weekStart}&category=eq.${category}&order=created_at.asc&limit=15`
-          );
-          if (!cachedResponse.ok) {
-            console.error('Lettura archivio quiz non riuscita:', cachedResponse.status);
-            return json(
-              {
-                code: 'QUIZ_BANK_READ_FAILED',
-                error:
-                  'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
-              },
-              502,
-              allowedOrigin
-            );
-          }
-          const rows = await cachedResponse.json();
-          const questions = rows
-            .map((row) => row.question)
-            .filter((q) => q && q.category === category);
-          if (questions.length >= count) {
-            const difficulty = Number(body.data.difficulty) || 1;
-            let pool = questions.filter((q) => Number(q.difficulty) <= difficulty + 1);
-            if (pool.length < count) pool = questions;
-            const offset = Math.floor(Date.now() / 86400000) % Math.max(1, pool.length);
-            const rotated = [...pool.slice(offset), ...pool.slice(0, offset)].slice(0, count);
-            return json({ text: JSON.stringify({ questions: rotated }) }, 200, allowedOrigin);
-          }
-        } catch (error) {
-          console.error(
-            'Lettura archivio quiz non riuscita:',
-            String(error?.message || error).slice(0, 180)
-          );
-          return json(
-            {
-              code: 'QUIZ_BANK_READ_FAILED',
-              error:
-                'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
-            },
-            502,
-            allowedOrigin
-          );
+            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&week_start=eq.${weekStart}&order=created_at.asc&limit=500`
+          ),
+          bankRequest(
+            env,
+            `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(authenticatedUser.id)}&limit=5000`
+          ),
+        ]);
+        if (!bankResponse.ok || !historyResponse.ok) {
+          console.error('Lettura archivio/storico quiz non riuscita:', bankResponse.status, historyResponse.status);
+          return json({
+            code: 'QUIZ_BANK_READ_FAILED',
+            error: 'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
+          }, 502, allowedOrigin);
         }
+        const [bankRows, historyRows] = await Promise.all([
+          bankResponse.json(),
+          historyResponse.json(),
+        ]);
+        const seen = new Set(historyRows.map((row) => row.question_fingerprint));
+        const questionsByCategory = Object.fromEntries(
+          QUIZ_CATEGORIES.map((category) => [
+            category,
+            bankRows
+              .filter((row) =>
+                row.category === category &&
+                row.question &&
+                Number(row.question.difficulty) === difficulty &&
+                !seen.has(row.fingerprint)
+              )
+              .map((row) => ({
+                ...row.question,
+                id: 'bank-' + row.id,
+                fingerprint: row.fingerprint,
+                category,
+                difficulty,
+              })),
+          ])
+        );
+        const exhausted = QUIZ_CATEGORIES.filter(
+          (category) => questionsByCategory[category].length < 2
+        );
+        if (exhausted.length) {
+          return json({
+            code: 'QUIZ_QUESTIONS_EXHAUSTED',
+            exhaustedCategories: exhausted,
+            error: 'Non ci sono abbastanza domande nuove in tutte le categorie per questo livello. Scegli un altro livello.',
+          }, 409, allowedOrigin);
+        }
+        const questions = [];
+        for (const category of QUIZ_CATEGORIES) {
+          const pool = [...questionsByCategory[category]];
+          for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+          }
+          questions.push(...pool.slice(0, 2));
+        }
+        for (let i = questions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [questions[i], questions[j]] = [questions[j], questions[i]];
+        }
+        return json({ text: JSON.stringify({ questions }) }, 200, allowedOrigin);
+      } catch (error) {
+        console.error('Lettura archivio quiz non riuscita:', String(error?.message || error).slice(0, 180));
+        return json({
+          code: 'QUIZ_BANK_READ_FAILED',
+          error: 'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
+        }, 502, allowedOrigin);
       }
     }
-
     // I quiz devono provenire esclusivamente dall'archivio settimanale:
     // mai generare domande in tempo reale se il banco non è completo.
     if (task === 'quiz') {
