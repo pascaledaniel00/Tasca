@@ -239,9 +239,9 @@ video {
     align-items: stretch;
     gap: 2px;
     box-sizing: border-box;
-    min-height: 70px;
+    min-height: 78px;
     margin: 0;
-    padding: 6px;
+    padding: 14px 6px 6px;
     overflow: visible;
     border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
     border-radius: 23px;
@@ -317,43 +317,36 @@ video {
 
   #mobileDockExpandBtn {
     position: absolute;
-    top: -20px;
+    top: 2px;
     left: 50%;
     z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-width: 88px;
-    height: 27px;
-    padding: 0 11px;
-    border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 12px;
+    padding: 0;
+    border: 0;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--white) 96%, transparent);
-    color: var(--g);
-    box-shadow: 0 3px 10px #173d3210, inset 0 1px 0 #ffffffb8;
+    background: transparent;
+    box-shadow: none;
     transform: translateX(-50%);
+    touch-action: none;
     -webkit-tap-highlight-color: transparent;
   }
 
-  #mobileDockExpandBtn > svg {
-    flex: 0 0 15px;
-    width: 15px;
-    height: 15px;
-    stroke-width: 2.1;
+  .mobile-dock-grabber {
+    display: block;
+    width: 28px;
+    height: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
+    transition: width 160ms ease, background 160ms ease;
   }
 
-  .mobile-dock-toggle-label {
-    color: inherit;
-    font-size: 10px;
-    font-weight: 720;
-    letter-spacing: 0.005em;
-    line-height: 1;
-  }
-
-  #mobileNav.is-expanded #mobileDockExpandBtn {
-    background: linear-gradient(145deg, var(--gs), color-mix(in srgb, var(--white) 86%, var(--gs)));
-    box-shadow: 0 3px 12px #173d3218, inset 0 1px 0 #ffffffb8;
+  #mobileDockExpandBtn:active .mobile-dock-grabber,
+  #mobileNav.is-expanded .mobile-dock-grabber {
+    width: 36px;
+    background: color-mix(in srgb, var(--g) 62%, var(--muted));
   }
 
   #mobileExtraNav {
@@ -448,8 +441,7 @@ video {
   }
 
   html[data-theme='dark'] .bottomnav,
-  html[data-theme='dark'] #mobileExtraNav,
-  html[data-theme='dark'] #mobileDockExpandBtn {
+  html[data-theme='dark'] #mobileExtraNav {
     border-color: color-mix(in srgb, var(--line) 72%, transparent);
     background-color: color-mix(in srgb, var(--white) 90%, transparent);
     box-shadow: 0 12px 34px #0005, inset 0 1px 0 #ffffff0a;
@@ -460,7 +452,7 @@ video {
       right: 6px;
       left: 6px;
       gap: 0;
-      padding: 5px;
+      padding: 14px 5px 5px;
     }
 
     .bottomnav > button[data-page] {
