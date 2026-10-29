@@ -56,8 +56,9 @@ def ensure_private_bucket(base_url: str, service_key: str) -> None:
         with urllib.request.urlopen(req, timeout=30):
             pass
     except urllib.error.HTTPError as exc:
-        # A 409 means the bucket already exists; verify that it is actually private.
-        if exc.code != 409:
+        # Supabase may report an existing bucket as either 409 or legacy HTTP 400.
+        # In both cases, confirm the bucket exists and is private before continuing.
+        if exc.code not in (400, 409):
             print(f"Creazione del contenitore privato Supabase fallita (HTTP {exc.code}).", file=sys.stderr)
             raise SystemExit(1) from None
         check = urllib.request.Request(
