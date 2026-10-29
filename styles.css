@@ -3541,3 +3541,12 @@ html[data-theme='dark'] .advice-ai-card {
   .quiz-options-heading small { display: none; }
   .quiz-option { min-height: 57px; padding: 11px; }
 }
+
+
+/* Logo ufficiale Tasca: icona condivisa tra accesso, intestazione e onboarding. */
+.logo.logo-image {
+  display: block;
+  object-fit: cover;
+  padding: 0;
+  background: transparent;
+}
