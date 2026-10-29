@@ -28,7 +28,7 @@ L'URL del Worker non è una chiave segreta. L'accesso al servizio è comunque su
 - Accedi a Tasca da `https://pascaledaniel00.github.io/Tasca/`.
 - Controlla il commento sotto il budget: con l'IA attiva viene generato in italiano sulla base del nome e dei numeri del mese.
 - Apri **Consigli**: l'IA analizzerà i dati aggregati degli ultimi sei mesi disponibili e le ricorrenze attive.
-- Apri **Quiz** e avvia un percorso: se la generazione IA non riesce, Tasca usa il banco di domande verificate.
+- Apri **Quiz** e avvia un percorso misto da 12 domande, 2 per categoria. Le domande devono provenire dall'archivio settimanale già preparato; non vengono generate durante la partita.
 - Usa **Rigenera consigli IA** per richiedere una nuova analisi.
 
 ## Piano gratuito e limiti
@@ -43,14 +43,17 @@ Workers AI include una quota gratuita giornaliera di Neurons; il limite può ess
 - Se l'IA non è configurata o il servizio non risponde, Tasca continua a mostrare il commento locale e i consigli statistici già presenti; i quiz passano alle domande verificate.
 
 
-## Archivio quiz settimanale (90 domande massimo)
+## Archivio quiz settimanale (90 domande)
 
-Il Worker è predisposto per preparare fino a 15 domande per ciascuna delle 6 categorie (90 in totale), la domenica alle 02:00 ora italiana. La preparazione avviene in background; il quiz interattivo continua a poter usare l'IA normale o le domande verificate. Se una categoria fallisce o la quota viene esaurita, le domande già salvate restano disponibili. La quota gratuita non è garantita: il limite di 90 è un massimo, non una promessa di generazione completa.
+Ogni domenica alle 02:00 ora italiana, il Worker prepara 5 domande per ciascuna combinazione di 6 categorie e 3 livelli: 90 domande complessive. Ogni partita propone 12 domande casuali, due per categoria, tutte del livello selezionato.
+
+La tabella `quiz_question_bank` contiene l'archivio settimanale; `quiz_question_history` conserva le domande già affrontate da ciascun account. Una domanda viene registrata quando l'utente risponde, correttamente o meno, e non viene più proposta a quello stesso account. Se in una categoria restano meno di due domande nuove, Tasca avvisa l'utente e non ripete le domande già viste.
 
 Prima dell'attivazione:
-1. Esegui una volta lo script `supabase/migrations/20261028_quiz_question_bank.sql` nel SQL Editor del progetto Supabase.
-2. In Cloudflare Workers, aggiungi `SUPABASE_SERVICE_ROLE_KEY` come **secret** del Worker (mai come variabile pubblica e mai in GitHub). Usa la chiave segreta del progetto Supabase; non usare la chiave publishable. Il secret è necessario soltanto al Worker per scrivere/leggere l'archivio privato.
-3. Pubblica il Worker aggiornato con la configurazione `wrangler.toml`, che contiene il cron settimanale. I cron sono pianificati in UTC e il Worker verifica l'ora `Europe/Rome`, compresi i cambi stagionali.
-4. Controlla i log del Worker dopo la prima esecuzione e verifica che `quiz_question_bank` contenga domande per la settimana corrente.
+1. Esegui `supabase/migrations/20261028_quiz_question_bank.sql` se non è già stata eseguita.
+2. Esegui `supabase/migrations/20261029_quiz_question_history.sql` nel SQL Editor di Supabase.
+3. In Cloudflare Workers, configura `SUPABASE_SERVICE_ROLE_KEY` come **secret** del Worker, mai nel codice o nel browser. Serve per accedere all'archivio privato e allo storico personale.
+4. Pubblica il `worker.js` aggiornato su Cloudflare Workers.
+5. Dopo il deployment, controlla i log del Worker e verifica che l'archivio della settimana corrente contenga domande per tutte le categorie e i livelli.
 
-Il codice sorgente nel repository non significa che il Worker sia già pubblicato, che la migrazione sia stata eseguita o che il secret sia configurato. Non attivare un piano a pagamento per risolvere eventuali limiti di quota.
+Il merge del codice su GitHub non esegue automaticamente la migrazione SQL e non distribuisce il Worker, salvo che tu abbia configurato separatamente questi deployment. Non attivare un piano a pagamento per risolvere eventuali limiti di quota.
