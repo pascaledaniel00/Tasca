@@ -122,7 +122,7 @@ video {
   .bottomnav {
     padding-bottom: max(7px, env(safe-area-inset-bottom));
     overflow-x: auto;
-    overscroll-behavior-x: contain;
+    overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -397,6 +397,7 @@ video {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     scroll-snap-type: x mandatory;
+    scroll-behavior: auto;
     touch-action: pan-x;
   }
 
@@ -479,36 +480,8 @@ video {
     outline-offset: 1px;
   }
 
-  .mobile-nav-pagination {
-    position: absolute;
-    right: 0;
-    bottom: 5px;
-    left: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    height: 4px;
-    pointer-events: none;
-  }
-
-  .mobile-nav-pagination span {
-    display: block;
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--muted) 40%, transparent);
-    transition: width 160ms ease, background 160ms ease;
-  }
-
-  .mobile-nav-pagination span.active {
-    width: 14px;
-    background: color-mix(in srgb, var(--g) 70%, var(--muted));
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .mobile-nav-page button[data-page],
-    .mobile-nav-pagination span {
+    .mobile-nav-page button[data-page] {
       transition: none;
     }
   }
