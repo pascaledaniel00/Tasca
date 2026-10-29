@@ -34,10 +34,5 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/export_supabase_users.py
 
-      - name: Pubblica Excel come artifact privato della run
-        uses: actions/upload-artifact@v4
-        with:
-          name: tasca-iscrizioni-${{ github.run_number }}
-          path: artifacts/tasca-iscrizioni.xlsx
-          if-no-files-found: error
-          retention-days: 30
+      # Il file viene caricato direttamente nel bucket privato Supabase.
+      # Non pubblicare il file come artifact GitHub: il repository del sito è pubblico.
