@@ -3237,7 +3237,6 @@ html[data-theme='dark'] .advice-ai-card {
   }
 }
 
-
 /* Onboarding iniziale */
 .onboarding-overlay {
   position: fixed;
@@ -3305,7 +3304,8 @@ html[data-theme='dark'] .advice-ai-card {
 .onboarding-dot.active {
   background: var(--g);
 }
-.onboarding-actions, .onboarding-nav {
+.onboarding-actions,
+.onboarding-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
