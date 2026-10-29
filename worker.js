@@ -173,7 +173,12 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
       // salva esclusivamente il numero di domande ancora necessario.
       const questions = validBankQuestions(raw, category).slice(0, missingCount);
       if (!questions.length) {
-        console.error('Nessuna domanda valida generata per:', category, 'risposta iniziale:', raw.slice(0, 400));
+        console.error(
+          'Nessuna domanda valida generata per:',
+          category,
+          'risposta iniziale:',
+          raw.slice(0, 400)
+        );
         continue;
       }
       const rows = questions.map((question) => ({
