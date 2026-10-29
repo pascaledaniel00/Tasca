@@ -72,7 +72,7 @@ function similarQuizQuestion(left, right) {
   return common / (a.size + b.size - common) >= 0.82;
 }
 export function selectArchivedQuizQuestions(bankRows, seenFingerprints, difficulty) {
-  const seen = new Set((seenFingerprints || []).map(normalizeQuizText));
+  const seen = new Set(Array.from(seenFingerprints || [], normalizeQuizText));
   const acceptedTexts = [];
   const byCategory = Object.fromEntries(QUIZ_CATEGORIES.map((category) => [category, []]));
   // Ordine stabile: prevale la prima domanda e vengono eliminate anche copie con punteggiatura diversa.
