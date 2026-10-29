@@ -1130,6 +1130,30 @@ import {
     };
   }
 
+  function quizQuestionFingerprint(question) {
+    return String(question?.question || '')
+      .trim()
+      .toLocaleLowerCase('it-IT')
+      .replace(/\\s+/g, ' ')
+      .slice(0, 240);
+  }
+
+  async function persistQuizAnswer(question, selectedValue) {
+    if (!db || !user?.id) throw new Error('Sessione utente non disponibile.');
+    const fingerprint = question?.fingerprint || quizQuestionFingerprint(question);
+    if (!fingerprint) throw new Error('Identificativo della domanda mancante.');
+    const { error } = await db.from('quiz_question_history').insert({
+      user_id: user.id,
+      question_fingerprint: fingerprint,
+      category: question.category,
+      difficulty: Number(question.difficulty) || 1,
+      selected_value: String(selectedValue),
+      is_correct: String(selectedValue) === String(question.correctValues?.[0]),
+    });
+    // Una risposta già registrata resta valida: il vincolo univoco impedisce duplicati.
+    if (error && error.code !== '23505') throw error;
+  }
+
   function renderQuizQuestion() {
     const q = quizQuestions[quizIndex];
     if (!q) return finishQuiz();
@@ -1204,10 +1228,26 @@ import {
           '</p></details></div>') +
       '<p class="muted tiny">Le risposte servono per imparare; non modificano i tuoi movimenti o il budget.</p>';
     play.querySelectorAll('[data-quiz-answer]').forEach((button) =>
-      button.addEventListener('click', () => {
+      button.addEventListener('click', async () => {
         if (quizAnswers[q.id] !== undefined) return;
-        quizAnswers[q.id] = button.dataset.quizAnswer;
-        renderQuizQuestion();
+        const selectedValue = button.dataset.quizAnswer;
+        const answerButtons = [...play.querySelectorAll('[data-quiz-answer]')];
+        answerButtons.forEach((item) => (item.disabled = true));
+        const status = document.createElement('p');
+        status.className = 'muted tiny';
+        status.textContent = 'Salvo la risposta…';
+        play.append(status);
+        try {
+          await persistQuizAnswer(q, selectedValue);
+          quizAnswers[q.id] = selectedValue;
+          renderQuizQuestion();
+        } catch (error) {
+          console.error('Tasca quiz: impossibile salvare la risposta:', error?.message || error);
+          status.className = 'notice warn';
+          status.textContent =
+            'Non riesco a salvare questa risposta. Controlla la connessione e riprova: la domanda non verrà conteggiata finché non sarà registrata.';
+          answerButtons.forEach((item) => (item.disabled = false));
+        }
       })
     );
     $('quizNextBtn')?.addEventListener('click', () => {
@@ -1230,7 +1270,8 @@ import {
     btn.disabled = true;
     btn.textContent = 'Carico le domande…';
     try {
-      const category = $('quizCategory').value;
+      const category = 'all';
+      if ($('quizCategory')) $('quizCategory').value = 'all';
       const difficulty = Number($('quizDifficulty').value) || 1;
       if (!isAIConfigured()) {
         throw new Error('Il servizio Tasca non è configurato: verifica l’URL del Worker.');
@@ -1238,8 +1279,8 @@ import {
 
       // Le domande sono pre-generate e archiviate nel banco settimanale.
       // Qui non viene mai chiesta una nuova generazione al modello.
-      const archived = await callTascaAI('quiz', { category, difficulty, count: 5 });
-      const validated = validateAIQuiz(archived, { category, count: 5, diagnostic: true });
+      const archived = await callTascaAI('quiz', { category, difficulty, count: 12 });
+      const validated = validateAIQuiz(archived, { category, count: 12, diagnostic: true });
       if (!validated || validated.validationError) {
         throw new Error(
           validated?.validationError || 'Le domande archiviate non hanno superato i controlli.'
@@ -1262,9 +1303,11 @@ import {
       $('quizNotice').textContent =
         error?.code === 'QUIZ_BANK_NOT_READY'
           ? 'Le domande settimanali sono ancora in preparazione. Riprova più tardi.'
-          : error?.code === 'QUIZ_BANK_READ_FAILED'
-            ? 'Tasca non riesce a leggere l’archivio quiz. Verifica il deployment del Worker e il secret Supabase di servizio.'
-            : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
+          : error?.code === 'QUIZ_QUESTIONS_EXHAUSTED'
+            ? 'Hai già affrontato quasi tutte le domande nuove di questo livello. Scegli un altro livello per continuare senza ripetizioni.'
+            : error?.code === 'QUIZ_BANK_READ_FAILED'
+              ? 'Tasca non riesce a leggere l’archivio o lo storico quiz. Verifica la migrazione Supabase e il deployment del Worker.'
+              : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
     } finally {
       btn.disabled = false;
       btn.textContent = 'Inizia il quiz';

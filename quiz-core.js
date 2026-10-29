@@ -102,7 +102,7 @@ export function validateAIQuiz(value, { category = 'all', count = 5, diagnostic 
     seen.add(signature);
     questions.push(q);
   }
-  return { questions: questions.map((q, i) => ({ ...q, id: 'ai-' + i + '-' + Date.now(), difficulty: Number(q.difficulty) || 1 })) };
+  return { questions: questions.map((q, i) => ({ ...q, id: q.id || 'ai-' + i + '-' + Date.now(), difficulty: Number(q.difficulty) || 1 })) };
 }
 export function scoreQuiz(questions, answers) {
   const details = questions.map((question) => ({ id: question.id, correct: answers[question.id] === question.correctValues[0], selected: answers[question.id] ?? null, correctValue: question.correctValues[0] }));
