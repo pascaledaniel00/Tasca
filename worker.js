@@ -201,8 +201,18 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
 export default {
   async scheduled(controller, env, ctx) {
     const local = romeParts(new Date(controller.scheduledTime));
-    // Due istanti UTC coprono l'ora legale e solare; in primavera si recupera alle 03:00.
-    if (local.weekday !== 'Sun' || !['02', '03'].includes(local.hour)) return;
+    const localDate = `${local.year}-${local.month}-${local.day}`;
+
+    // Bootstrap temporaneo: il 29 ottobre 2026 riempie l'archivio per la settimana corrente.
+    // Il cron temporaneo va rimosso da wrangler.toml dopo aver verificato le 90 domande.
+    if (localDate === '2026-10-29') {
+      ctx.waitUntil(prepareWeeklyQuestions(env, controller.scheduledTime));
+      return;
+    }
+
+    // Dal giorno 8 novembre: un solo avvio domenicale alle 02:00 Europe/Rome.
+    // I due cron UTC coprono CET/CEST; il controllo locale evita la doppia esecuzione in estate.
+    if (localDate < '2026-11-08' || local.weekday !== 'Sun' || local.hour !== '02') return;
     ctx.waitUntil(prepareWeeklyQuestions(env, controller.scheduledTime));
   },
   async fetch(request, env) {
@@ -295,7 +305,17 @@ export default {
         }
       }
     }
-    const quizCount = task === 'quiz' ? Math.max(1, Math.min(15, Number(body.data.count) || 5)) : 5;
+
+    // I quiz devono provenire esclusivamente dall'archivio settimanale:
+    // mai generare domande in tempo reale se il banco non è completo.
+    if (task === 'quiz') {
+      return json({
+        code: 'QUIZ_BANK_NOT_READY',
+        error: 'Le domande di questa categoria non sono ancora pronte. Riprova più tardi.',
+      }, 503, allowedOrigin);
+    }
+
+    const quizCount = 5;
     const maxTokens =
       task === 'nudge' ? 96 : task === 'quiz' ? (quizCount <= 5 ? 1800 : 6500) : 1200;
     const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
