@@ -68,6 +68,21 @@ async function bankRequest(env, path, options = {}) {
     },
   });
 }
+
+async function fetchAllQuestionHistory(env, userId) {
+  const pageSize = 1000;
+  const allRows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const response = await bankRequest(
+      env,
+      `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(userId)}&order=answered_at.asc&limit=${pageSize}&offset=${offset}`
+    );
+    if (!response.ok) return { ok: false, status: response.status, rows: [] };
+    const rows = await response.json();
+    allRows.push(...rows);
+    if (rows.length < pageSize) return { ok: true, rows: allRows };
+  }
+}
 function validBankQuestions(text, category, difficulty) {
   let parsed;
   try {
@@ -315,28 +330,27 @@ export default {
       }
       try {
         const weekStart = romeWeekStart(new Date());
-        const [bankResponse, historyResponse] = await Promise.all([
-          bankRequest(
-            env,
-            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&week_start=eq.${weekStart}&order=created_at.asc&limit=500`
-          ),
-          bankRequest(
-            env,
-            `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(authenticatedUser.id)}&limit=5000`
-          ),
-        ]);
-        if (!bankResponse.ok || !historyResponse.ok) {
-          console.error('Lettura archivio/storico quiz non riuscita:', bankResponse.status, historyResponse.status);
+        const bankResponse = await bankRequest(
+          env,
+          `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&week_start=eq.${weekStart}&order=created_at.asc&limit=500`
+        );
+        if (!bankResponse.ok) {
+          console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
           return json({
             code: 'QUIZ_BANK_READ_FAILED',
             error: 'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
           }, 502, allowedOrigin);
         }
-        const [bankRows, historyRows] = await Promise.all([
-          bankResponse.json(),
-          historyResponse.json(),
-        ]);
-        const seen = new Set(historyRows.map((row) => row.question_fingerprint));
+        const bankRows = await bankResponse.json();
+        const historyResult = await fetchAllQuestionHistory(env, authenticatedUser.id);
+        if (!historyResult.ok) {
+          console.error('Lettura storico quiz non riuscita:', historyResult.status);
+          return json({
+            code: 'QUIZ_BANK_READ_FAILED',
+            error: 'Non riesco a leggere lo storico delle domande. Verifica la migrazione Supabase.',
+          }, 502, allowedOrigin);
+        }
+        const seen = new Set(historyResult.rows.map((row) => row.question_fingerprint));
         const questionsByCategory = Object.fromEntries(
           QUIZ_CATEGORIES.map((category) => [
             category,
@@ -344,9 +358,11 @@ export default {
               .filter((row) =>
                 row.category === category &&
                 row.question &&
-                Number(row.question.difficulty) === difficulty &&
-                !seen.has(row.fingerprint)
+                Number(row.question.difficulty) === difficulty
               )
+              .sort((a, b) => Number(a.id) - Number(b.id))
+              .slice(0, QUIZ_WEEKLY_TARGET_PER_DIFFICULTY)
+              .filter((row) => !seen.has(row.fingerprint))
               .map((row) => ({
                 ...row.question,
                 id: 'bank-' + row.id,
