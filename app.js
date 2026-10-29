@@ -1260,10 +1260,11 @@ import {
       console.warn('Tasca quiz: archivio settimanale non disponibile:', error?.message || error);
       $('quizNotice').className = 'notice warn';
       $('quizNotice').textContent =
-        error?.code === 'QUIZ_BANK_NOT_READY' ||
-        /non sono ancora pronte|archiv/i.test(String(error?.message || ''))
+        error?.code === 'QUIZ_BANK_NOT_READY'
           ? 'Le domande settimanali sono ancora in preparazione. Riprova più tardi.'
-          : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
+          : error?.code === 'QUIZ_BANK_READ_FAILED'
+            ? 'Tasca non riesce a leggere l’archivio quiz. Verifica il deployment del Worker e il secret Supabase di servizio.'
+            : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
     } finally {
       btn.disabled = false;
       btn.textContent = 'Inizia il quiz';
