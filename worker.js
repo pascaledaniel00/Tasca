@@ -38,6 +38,7 @@ function romeParts(date = new Date()) {
       timeZone: 'Europe/Rome',
       weekday: 'short',
       hour: '2-digit',
+      minute: '2-digit',
       hourCycle: 'h23',
       year: 'numeric',
       month: '2-digit',
@@ -212,7 +213,12 @@ export default {
 
     // Dal giorno 8 novembre: un solo avvio domenicale alle 02:00 Europe/Rome.
     // I due cron UTC coprono CET/CEST; il controllo locale evita la doppia esecuzione in estate.
-    if (localDate < '2026-11-08' || local.weekday !== 'Sun' || local.hour !== '02') return;
+    if (
+      localDate < '2026-11-08' ||
+      local.weekday !== 'Sun' ||
+      local.hour !== '02' ||
+      local.minute !== '00'
+    ) return;
     ctx.waitUntil(prepareWeeklyQuestions(env, controller.scheduledTime));
   },
   async fetch(request, env) {
