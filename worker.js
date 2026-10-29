@@ -309,10 +309,14 @@ export default {
     // I quiz devono provenire esclusivamente dall'archivio settimanale:
     // mai generare domande in tempo reale se il banco non è completo.
     if (task === 'quiz') {
-      return json({
-        code: 'QUIZ_BANK_NOT_READY',
-        error: 'Le domande di questa categoria non sono ancora pronte. Riprova più tardi.',
-      }, 503, allowedOrigin);
+      return json(
+        {
+          code: 'QUIZ_BANK_NOT_READY',
+          error: 'Le domande di questa categoria non sono ancora pronte. Riprova più tardi.',
+        },
+        503,
+        allowedOrigin
+      );
     }
 
     const quizCount = 5;

@@ -1243,7 +1243,9 @@ import {
       const archived = await callTascaAI('quiz', { category, difficulty, count: 5 });
       const validated = validateAIQuiz(archived, { category, count: 5, diagnostic: true });
       if (!validated || validated.validationError) {
-        throw new Error(validated?.validationError || 'Le domande archiviate non hanno superato i controlli.');
+        throw new Error(
+          validated?.validationError || 'Le domande archiviate non hanno superato i controlli.'
+        );
       }
 
       quizQuestions = validated.questions;
@@ -1260,7 +1262,8 @@ import {
       console.warn('Tasca quiz: archivio settimanale non disponibile:', error?.message || error);
       $('quizNotice').className = 'notice warn';
       $('quizNotice').textContent =
-        error?.code === 'QUIZ_BANK_NOT_READY' || /non sono ancora pronte|archiv/i.test(String(error?.message || ''))
+        error?.code === 'QUIZ_BANK_NOT_READY' ||
+        /non sono ancora pronte|archiv/i.test(String(error?.message || ''))
           ? 'Le domande settimanali sono ancora in preparazione. Riprova più tardi.'
           : 'Non riesco a caricare le domande archiviate. Verifica la connessione e riprova.';
     } finally {
