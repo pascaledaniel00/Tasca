@@ -51,7 +51,8 @@ La tabella `quiz_question_bank` contiene l'archivio settimanale; `quiz_question_
 
 Prima dell'attivazione:
 1. Esegui `supabase/migrations/20261028_quiz_question_bank.sql` se non è già stata eseguita.
-2. Esegui `supabase/migrations/20261029_quiz_question_history.sql` nel SQL Editor di Supabase.
+2. Esegui `supabase/migrations/20261028_quiz_attempts.sql` se non è già stata eseguita.
+3. Esegui `supabase/migrations/20261029_quiz_question_history.sql` nel SQL Editor di Supabase.
 3. In Cloudflare Workers, configura `SUPABASE_SERVICE_ROLE_KEY` come **secret** del Worker, mai nel codice o nel browser. Serve per accedere all'archivio privato e allo storico personale.
 4. Pubblica il `worker.js` aggiornato su Cloudflare Workers.
 5. Dopo il deployment, controlla i log del Worker e verifica che l'archivio della settimana corrente contenga domande per tutte le categorie e i livelli.
