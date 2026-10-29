@@ -432,7 +432,7 @@ import {
       } catch (error) {
         if (error?.name === 'AbortError') {
           throw new Error(
-            'La richiesta IA ha superato il limite di attesa. Tasca userà le domande verificate; riprova più tardi.'
+            'La richiesta ha superato il limite di attesa. Riprova più tardi.'
           );
         }
         throw new Error(
