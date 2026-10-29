@@ -56,10 +56,24 @@ def ensure_private_bucket(base_url: str, service_key: str) -> None:
         with urllib.request.urlopen(req, timeout=30):
             pass
     except urllib.error.HTTPError as exc:
-        # A 409 means the bucket already exists. Do not log response bodies.
+        # A 409 means the bucket already exists; verify that it is actually private.
         if exc.code != 409:
             print(f"Creazione del contenitore privato Supabase fallita (HTTP {exc.code}).", file=sys.stderr)
             raise SystemExit(1) from None
+        check = urllib.request.Request(
+            f"{base_url.rstrip('/')}/storage/v1/bucket/admin-exports",
+            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(check, timeout=30) as response:
+                existing = json.loads(response.read().decode("utf-8"))
+        except Exception:
+            print("Impossibile verificare la privacy del bucket Supabase esistente; esportazione interrotta.", file=sys.stderr)
+            raise SystemExit(1) from None
+        if existing.get("public") is not False:
+            print("Il bucket admin-exports non risulta privato. Esportazione interrotta per sicurezza.", file=sys.stderr)
+            raise SystemExit(1)
 
 
 def upload_private_excel(base_url: str, service_key: str, file_path: Path) -> None:
