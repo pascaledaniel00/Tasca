@@ -7,31 +7,55 @@ from urllib.error import HTTPError
 from scripts import export_supabase_users as exporter
 
 
+def response(payload):
+    return io.BytesIO(json.dumps(payload).encode("utf-8"))
+
+
+def http_error(status):
+    return HTTPError("https://example.test/storage/v1/bucket", status, "error", {}, None)
+
+
 class EnsurePrivateBucketTests(unittest.TestCase):
-    def _check_existing_bucket(self, status, is_private):
-        response = io.BytesIO(json.dumps({"public": not is_private}).encode("utf-8"))
+    def test_existing_private_bucket_is_reused_without_create_request(self):
+        with patch.object(exporter.urllib.request, "urlopen", return_value=response({"public": False})) as urlopen:
+            exporter.ensure_private_bucket("https://example.test", "secret")
+
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_args.args[0].method, "GET")
+
+    def test_existing_public_bucket_stops_export_before_create(self):
+        with patch.object(exporter.urllib.request, "urlopen", return_value=response({"public": True})) as urlopen:
+            with self.assertRaises(SystemExit):
+                exporter.ensure_private_bucket("https://example.test", "secret")
+
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_args.args[0].method, "GET")
+
+    def test_missing_bucket_is_created_as_private(self):
         with patch.object(
             exporter.urllib.request,
             "urlopen",
-            side_effect=[HTTPError("https://example.test/storage/v1/bucket", status, "exists", {}, None), response],
+            side_effect=[http_error(404), response({"name": "admin-exports", "public": False})],
         ) as urlopen:
-            if is_private:
-                exporter.ensure_private_bucket("https://example.test", "secret")
-            else:
-                with self.assertRaises(SystemExit):
-                    exporter.ensure_private_bucket("https://example.test", "secret")
+            exporter.ensure_private_bucket("https://example.test", "secret")
 
         self.assertEqual(urlopen.call_count, 2)
-        self.assertEqual(urlopen.call_args_list[1].args[0].method, "GET")
+        self.assertEqual(urlopen.call_args_list[0].args[0].method, "GET")
+        self.assertEqual(urlopen.call_args_list[1].args[0].method, "POST")
+        self.assertIn(b'"public": false', urlopen.call_args_list[1].args[0].data)
 
-    def test_existing_private_bucket_accepts_legacy_http_400(self):
-        self._check_existing_bucket(400, True)
+    def test_bucket_created_by_concurrent_run_is_verified(self):
+        for status in (400, 409):
+            with self.subTest(status=status):
+                with patch.object(
+                    exporter.urllib.request,
+                    "urlopen",
+                    side_effect=[http_error(404), http_error(status), response({"public": False})],
+                ) as urlopen:
+                    exporter.ensure_private_bucket("https://example.test", "secret")
 
-    def test_existing_private_bucket_accepts_http_409(self):
-        self._check_existing_bucket(409, True)
-
-    def test_existing_public_bucket_stops_export(self):
-        self._check_existing_bucket(400, False)
+                self.assertEqual(urlopen.call_count, 3)
+                self.assertEqual(urlopen.call_args_list[2].args[0].method, "GET")
 
 
 if __name__ == "__main__":
