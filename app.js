@@ -232,6 +232,10 @@ import {
     document
       .querySelectorAll('[data-page]')
       .forEach((x) => x.classList.toggle('active', x.dataset.page === name));
+    $('mobileMoreBtn')?.classList.toggle(
+      'active',
+      !['home', 'transactions', 'budgets', 'spaces'].includes(name)
+    );
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'quiz') {
       if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
@@ -2743,9 +2747,13 @@ import {
     const menuBtn = $('mobileMenuBtn'),
       mobileMoreBtn = $('mobileMoreBtn'),
       nav = $('desktopNav'),
+      mobileNav = $('mobileNav'),
+      mobileExtraNav = $('mobileExtraNav'),
       backdrop = $('navBackdrop');
     function closeSideNav() {
       nav.classList.remove('open');
+      mobileNav.classList.remove('is-expanded');
+      mobileExtraNav.setAttribute('aria-hidden', 'true');
       backdrop.classList.remove('open');
       menuBtn.setAttribute('aria-expanded', 'false');
       menuBtn.setAttribute('aria-label', 'Apri menu');
@@ -2753,12 +2761,20 @@ import {
       mobileMoreBtn.setAttribute('aria-expanded', 'false');
     }
     function toggleSideNav() {
-      const opening = !nav.classList.contains('open');
-      nav.classList.toggle('open', opening);
+      const isMobile = window.matchMedia('(max-width: 720px)').matches;
+      const opening = isMobile
+        ? !mobileNav.classList.contains('is-expanded')
+        : !nav.classList.contains('open');
+      if (isMobile) {
+        mobileNav.classList.toggle('is-expanded', opening);
+        mobileExtraNav.setAttribute('aria-hidden', String(!opening));
+      } else {
+        nav.classList.toggle('open', opening);
+        menuBtn.setAttribute('aria-expanded', String(opening));
+        menuBtn.setAttribute('aria-label', opening ? 'Chiudi menu' : 'Apri menu');
+        menuBtn.textContent = opening ? '✕' : '☰';
+      }
       backdrop.classList.toggle('open', opening);
-      menuBtn.setAttribute('aria-expanded', String(opening));
-      menuBtn.setAttribute('aria-label', opening ? 'Chiudi menu' : 'Apri menu');
-      menuBtn.textContent = opening ? '✕' : '☰';
       mobileMoreBtn.setAttribute('aria-expanded', String(opening));
     }
     menuBtn.addEventListener('click', toggleSideNav);

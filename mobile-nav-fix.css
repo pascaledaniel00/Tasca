@@ -214,21 +214,118 @@ video {
     display: none !important;
   }
 
+  #desktopNav {
+    display: none !important;
+  }
+
+  #mobileNav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-primary-nav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .mobile-extra-nav {
+    display: none;
+    grid-column: 1;
+    gap: 10px;
+    margin-top: 4px;
+    padding: 12px 2px 2px;
+    border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  }
+
+  #mobileNav.is-expanded .mobile-extra-nav {
+    display: grid;
+  }
+
+  .mobile-extra-heading {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.015em;
+  }
+
+  .mobile-extra-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bottomnav .mobile-extra-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 54px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--gs) 38%, var(--white));
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .bottomnav .mobile-extra-item > svg {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-extra-copy {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .mobile-extra-copy strong {
+    overflow: hidden;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-extra-copy small {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .bottomnav .mobile-extra-featured {
+    min-height: 64px;
+    border-color: color-mix(in srgb, var(--g) 20%, var(--line));
+    background: linear-gradient(140deg, var(--gs), color-mix(in srgb, var(--white) 82%, var(--gs)));
+  }
+
+  html[data-theme='dark'] .bottomnav .mobile-extra-item {
+    background: color-mix(in srgb, var(--white) 88%, var(--gs));
+  }
+
+  html[data-theme='dark'] .bottomnav .mobile-extra-featured {
+    background: linear-gradient(140deg, color-mix(in srgb, var(--g) 23%, var(--white)), var(--white));
+  }
+
   #appScreen:not(.hidden) ~ .bottomnav {
-    display: flex !important;
+    display: grid !important;
   }
 
   .bottomnav {
     position: fixed;
-    z-index: 40;
+    z-index: 45;
     right: 14px;
     bottom: calc(10px + env(safe-area-inset-bottom));
     left: 14px;
     display: none !important;
     box-sizing: border-box;
-    align-items: center;
-    justify-content: space-around;
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0;
     min-height: 76px;
     padding: 8px;
     overflow: visible;
