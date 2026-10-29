@@ -218,7 +218,8 @@ export default {
       local.weekday !== 'Sun' ||
       local.hour !== '02' ||
       local.minute !== '00'
-    ) return;
+    )
+      return;
     ctx.waitUntil(prepareWeeklyQuestions(env, controller.scheduledTime));
   },
   async fetch(request, env) {
