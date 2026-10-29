@@ -102,7 +102,7 @@ async function fetchAllQuestionHistory(env, userId) {
   for (let offset = 0; ; offset += pageSize) {
     const response = await bankRequest(
       env,
-      `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(userId)}&order=answered_at.asc&limit=${pageSize}&offset=${offset}`
+      `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(userId)}&order=answered_at.asc,id.asc&limit=${pageSize}&offset=${offset}`
     );
     if (!response.ok) return { ok: false, status: response.status, rows: [] };
     const rows = await response.json();
@@ -372,7 +372,7 @@ export default {
         for (let offset = 0; ; offset += bankPageSize) {
           const bankResponse = await bankRequest(
             env,
-            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&order=created_at.asc&limit=${bankPageSize}&offset=${offset}`
+            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&order=id.asc&limit=${bankPageSize}&offset=${offset}`
           );
           if (!bankResponse.ok) {
             console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
