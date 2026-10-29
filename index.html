@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="./favicon.svg?v=20261029-1" />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261029-2" />
+    <link rel="stylesheet" href="styles.css?v=20261029-3" />
     <link rel="stylesheet" href="mobile-nav-fix.css" />
   </head>
   <body>
@@ -127,7 +127,13 @@
           aria-label="Torna alla home"
           title="Torna alla home"
         >
-          <img class="logo logo-image" src="./favicon.svg?v=20261029-1" alt="" aria-hidden="true" />
+          <span class="brand">
+            <img class="logo logo-image" src="./favicon.svg?v=20261029-1" alt="" aria-hidden="true" />
+            <span class="brand-copy">
+              <h1>Tasca</h1>
+              <p>Il tuo budget personale</p>
+            </span>
+          </span>
         </button>
         <div class="top-actions">
           <button id="refreshBtn" class="iconbtn" title="Aggiorna dati" aria-label="Aggiorna dati">
@@ -158,6 +164,7 @@
         </div>
       </header>
       <nav id="desktopNav" class="nav">
+        <img class="sidebar-brand-logo" src="./favicon.svg?v=20261029-1" alt="Tasca" />
         <button data-page="home" class="active">Home</button
         ><button data-page="transactions">Movimenti</button
         ><button data-page="budgets">Budget</button><button data-page="recurring">Ricorrenze</button
