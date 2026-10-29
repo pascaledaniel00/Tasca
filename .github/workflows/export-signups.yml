@@ -28,6 +28,9 @@ jobs:
       - name: Installa dipendenze
         run: python -m pip install --disable-pip-version-check openpyxl
 
+      - name: Verifica gestione bucket export
+        run: python -m unittest discover -s tests -p 'test_export_supabase_users.py'
+
       - name: Genera Excel da Supabase Auth
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
