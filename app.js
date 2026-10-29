@@ -944,17 +944,23 @@ import {
 
   async function loadQuizHistory() {
     if (!db || !user) return;
-    const { data, error } = await db
-      .from('quiz_attempts')
-      .select('*')
-      .order('completed_at', { ascending: false });
-    if (error) {
+    try {
+      const data = await fetchAllRows(() =>
+        db
+          .from('quiz_attempts')
+          .select('*')
+          .order('completed_at', { ascending: false })
+          .order('id', { ascending: false })
+      );
+      quizSchemaReady = true;
+      quizAttempts = [...data];
+    } catch (error) {
       quizSchemaReady = false;
       quizAttempts = readLocalQuizAttempts();
-      console.warn('Tasca quiz: tabella non disponibile o policy non configurata:', error.message);
-    } else {
-      quizSchemaReady = true;
-      quizAttempts = [...(data || [])];
+      console.warn(
+        'Tasca quiz: tabella non disponibile o policy non configurata:',
+        error.message
+      );
     }
     // Il caricamento asincrono dello storico non deve azzerare un quiz in corso.
     // Ripristina la sessione salvata se la pagina è stata ricaricata.
@@ -1856,15 +1862,15 @@ import {
     try {
       const [tx, bg, rc, sp] = await Promise.all([
         fetchAllRows(() =>
-          db.from('transactions').select('*').order('occurred_on', { ascending: false })
+          db.from('transactions').select('*').order('occurred_on', { ascending: false }).order('id', { ascending: false })
         ),
         fetchAllRows(() =>
-          db.from('budgets').select('*').order('month_start', { ascending: false })
+          db.from('budgets').select('*').order('month_start', { ascending: false }).order('id', { ascending: false })
         ),
         fetchAllRows(() =>
-          db.from('recurring_plans').select('*').order('next_due_on', { ascending: true })
+          db.from('recurring_plans').select('*').order('next_due_on', { ascending: true }).order('id', { ascending: true })
         ),
-        fetchAllRows(() => db.from('spaces').select('*').order('created_at', { ascending: false })),
+        fetchAllRows(() => db.from('spaces').select('*').order('created_at', { ascending: false }).order('id', { ascending: false })),
       ]);
       if (requestId !== dataLoadSequence || user?.id !== requestUserId) return;
       transactions = tx;
@@ -2316,6 +2322,7 @@ import {
             .select('*')
             .eq('space_id', id)
             .order('occurred_on', { ascending: false })
+            .order('id', { ascending: false })
         ),
         fetchAllRows(() =>
           db
@@ -2323,6 +2330,7 @@ import {
             .select('*')
             .eq('space_id', id)
             .order('paid_on', { ascending: false })
+            .order('id', { ascending: false })
         ),
         fetchAllRows(() =>
           db
