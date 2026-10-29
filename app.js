@@ -431,9 +431,7 @@ import {
         });
       } catch (error) {
         if (error?.name === 'AbortError') {
-          throw new Error(
-            'La richiesta ha superato il limite di attesa. Riprova più tardi.'
-          );
+          throw new Error('La richiesta ha superato il limite di attesa. Riprova più tardi.');
         }
         throw new Error(
           'Non riesco a raggiungere il servizio IA. Verifica la connessione o l’indirizzo del Worker.'
