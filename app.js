@@ -239,11 +239,7 @@ import {
           (['spaces', 'recurring', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
           '"]'
       );
-      if (targetPage)
-        dockTrack.scrollTo({
-          left: targetPage.offsetLeft,
-          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-        });
+      if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'quiz') {
@@ -2775,16 +2771,60 @@ import {
     }
     menuBtn.addEventListener('click', toggleSideNav);
     const mobileNavTrack = $('mobileNavTrack');
-    const mobileNavDots = Array.from(document.querySelectorAll('.mobile-nav-pagination span'));
-    const mobileNavPageStatus = $('mobileNavPageStatus');
-    function syncMobileNavPage() {
-      if (!mobileNavTrack) return;
-      const pageIndex = mobileNavTrack.scrollLeft >= mobileNavTrack.clientWidth / 2 ? 1 : 0;
-      mobileNavDots.forEach((dot, index) => dot.classList.toggle('active', index === pageIndex));
-      if (mobileNavPageStatus) mobileNavPageStatus.textContent = 'Pagina ' + (pageIndex + 1) + ' di 2';
-    }
-    mobileNavTrack?.addEventListener('scroll', syncMobileNavPage, { passive: true });
-    syncMobileNavPage();
+    let mobileNavTouchStartX = null;
+    let mobileNavTouchStartAt = 0;
+    let suppressMobileNavClick = false;
+    let mobileNavClickTimer = 0;
+    mobileNavTrack?.addEventListener(
+      'touchstart',
+      (event) => {
+        if (event.touches.length !== 1) {
+          mobileNavTouchStartX = null;
+          return;
+        }
+        mobileNavTouchStartX = event.touches[0].clientX;
+        mobileNavTouchStartAt = performance.now();
+      },
+      { passive: true }
+    );
+    mobileNavTrack?.addEventListener(
+      'touchend',
+      (event) => {
+        if (mobileNavTouchStartX === null || !event.changedTouches.length) return;
+        const deltaX = event.changedTouches[0].clientX - mobileNavTouchStartX;
+        const elapsed = performance.now() - mobileNavTouchStartAt;
+        mobileNavTouchStartX = null;
+        if (Math.abs(deltaX) < 26 && !(Math.abs(deltaX) >= 14 && elapsed < 180)) return;
+        const currentPage = mobileNavTrack.scrollLeft >= mobileNavTrack.clientWidth / 2 ? 1 : 0;
+        const targetPageName = deltaX < 0 ? 'secondary' : 'primary';
+        const targetPage = mobileNavTrack.querySelector(
+          '.mobile-nav-page[data-nav-page="' + targetPageName + '"]'
+        );
+        const targetIndex = targetPageName === 'secondary' ? 1 : 0;
+        if (!targetPage || targetIndex === currentPage) return;
+        suppressMobileNavClick = true;
+        window.clearTimeout(mobileNavClickTimer);
+        mobileNavClickTimer = window.setTimeout(() => {
+          suppressMobileNavClick = false;
+        }, 450);
+        mobileNavTrack.scrollLeft = targetPage.offsetLeft;
+      },
+      { passive: true }
+    );
+    mobileNavTrack?.addEventListener('touchcancel', () => {
+      mobileNavTouchStartX = null;
+    });
+    mobileNavTrack?.addEventListener(
+      'click',
+      (event) => {
+        if (!suppressMobileNavClick) return;
+        suppressMobileNavClick = false;
+        window.clearTimeout(mobileNavClickTimer);
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      true
+    );
     backdrop.addEventListener('click', closeSideNav);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSideNav();
