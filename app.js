@@ -17,7 +17,7 @@ import {
   selectVerifiedQuestions,
   validateAIQuiz,
   QUIZ_CATEGORIES,
-} from './quiz-core.js?v=20261028-5';
+} from './quiz-core.js?v=20261029-2';
 
 (() => {
   'use strict';
@@ -1168,27 +1168,31 @@ import {
     $('quizResult').classList.add('hidden');
     const play = $('quizPlay');
     play.classList.remove('hidden');
-    const progress = Math.round((quizIndex / quizQuestions.length) * 100);
+    const progress = Math.round(((quizIndex + 1) / quizQuestions.length) * 100);
     const answer = quizAnswers[q.id];
     const isAnswered = answer !== undefined;
     const isCorrect = answer === q.correctValues[0];
     play.innerHTML =
-      '<div class="quiz-question-head"><button id="quizExitBtn" class="btn small" type="button">← Esci</button><span class="muted tiny">Domanda ' +
+      '<div class="quiz-question-head"><button id="quizExitBtn" class="btn small quiz-exit-btn" type="button">← Esci</button><div class="quiz-step-counter"><span class="quiz-step-number">' +
+      String(quizIndex + 1).padStart(2, '0') +
+      '</span><span class="quiz-step-copy"><strong>Domanda ' +
       (quizIndex + 1) +
       ' di ' +
       quizQuestions.length +
-      '</span></div><div class="quiz-progress"><span style="width:' +
+      '</strong><small>Un passo alla volta</small></span></div></div><div class="quiz-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
       progress +
-      '%"></span></div><div class="eyebrow">' +
+      '"><span style="width:' +
+      progress +
+      '%"></span></div><div class="quiz-question-meta"><span class="quiz-topic-pill">' +
       esc(
         (QUIZ_CATEGORIES.find((item) => item.id === q.category) || {}).label ||
           'Educazione finanziaria'
       ) +
-      ' · ' +
-      (quizSource === 'ai' ? 'Personalizzato IA' : 'Domanda verificata') +
-      '</div><h3 class="quiz-question-title">' +
+      '</span><span class="quiz-source-pill">' +
+      (quizSource === 'ai' ? '✦ Generata con IA' : '✓ Verificata') +
+      '</span></div><div class="quiz-prompt-card"><div class="quiz-prompt-symbol" aria-hidden="true">?</div><div class="quiz-prompt-copy"><span class="quiz-prompt-label">Ragiona, poi scegli</span><h3 class="quiz-question-title">' +
       esc(q.question) +
-      '</h3><div class="quiz-options">' +
+      '</h3></div></div><div class="quiz-options-heading"><span>Scegli una risposta</span><small>4 opzioni · 1 corretta</small></div><div class="quiz-options">' +
       q.options
         .map(
           (option) =>
