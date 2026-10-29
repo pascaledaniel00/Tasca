@@ -10,7 +10,7 @@
     />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261028-5" />
+    <link rel="stylesheet" href="styles.css?v=20261029-1" />
     <link rel="stylesheet" href="mobile-nav-fix.css" />
   </head>
   <body>
@@ -27,9 +27,28 @@
         <p class="muted tiny" id="authSubtitle">Accedi per sincronizzare le tue finanze.</p>
         <div id="authNotice" class="notice"></div>
         <form id="authForm">
+          <div id="signupNameFields" class="hidden">
+            <div class="field">
+              <label for="authFirstName">Nome</label>
+              <input id="authFirstName" type="text" autocomplete="given-name" maxlength="80" />
+            </div>
+            <div class="field">
+              <label for="authLastName">Cognome</label>
+              <input id="authLastName" type="text" autocomplete="family-name" maxlength="80" />
+            </div>
+          </div>
           <div class="field">
-            <label for="authEmail">Email</label
-            ><input id="authEmail" type="email" autocomplete="email" required />
+            <label for="authEmail">Email</label>
+            <input id="authEmail" type="email" autocomplete="email" required placeholder="Inserisci la tua email" />
+          </div>
+          <div id="authEmailConfirmWrap" class="field hidden">
+            <label for="authEmailConfirm">Conferma email</label>
+            <input id="authEmailConfirm" type="email" autocomplete="off" placeholder="Ripeti la tua email" />
+          </div>
+          <div id="signupBirthDateWrap" class="field hidden">
+            <label for="authBirthDate">Data di nascita</label>
+            <input id="authBirthDate" type="date" autocomplete="bday" />
+            <p class="muted tiny">La data viene usata per il profilo; non inserire dati non corretti.</p>
           </div>
           <div class="field">
             <label for="authPassword">Password</label>
@@ -598,6 +617,23 @@
       ><button data-page="spaces"><span>♧</span>Spazi</button
       ><button data-page="settings"><span>⚙</span>Impost.</button>
     </nav>
+    <div id="onboardingOverlay" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+      <div class="onboarding-card">
+        <div class="onboarding-topline"><span class="logo">T</span><span id="onboardingProgress" class="muted tiny">Guida 1 di 9</span></div>
+        <div class="onboarding-mark" aria-hidden="true">✦</div>
+        <p class="eyebrow">Benvenuto in Tasca</p>
+        <h2 id="onboardingTitle">La tua guida iniziale</h2>
+        <p id="onboardingBody" class="muted"></p>
+        <div class="onboarding-dots" id="onboardingDots" aria-hidden="true"></div>
+        <div class="onboarding-actions">
+          <button id="onboardingSkip" class="btn" type="button">Salta tutorial</button>
+          <div class="onboarding-nav">
+            <button id="onboardingPrev" class="btn" type="button">Indietro</button>
+            <button id="onboardingNext" class="btn primary" type="button">Avanti</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="modal" class="modal" role="dialog" aria-modal="true">
       <div class="modalcard">
         <div class="modalhead">
@@ -608,6 +644,6 @@
       </div>
     </div>
     <div id="toast" class="toast hidden" role="status"></div>
-    <script type="module" src="app.js?v=20261028-11"></script>
+    <script type="module" src="app.js?v=20261029-1"></script>
   </body>
 </html>

@@ -1605,9 +1605,19 @@ import {
         : 'Accedi per sincronizzare le tue finanze.';
     $('authPassword').classList.toggle('hidden', reset);
     $('authPassword').required = !reset;
+    $('authPassword').autocomplete = signup || reset ? 'new-password' : 'current-password';
+    $('signupNameFields').classList.toggle('hidden', !signup);
+    $('authFirstName').required = signup;
+    $('authLastName').required = signup;
+    $('authEmailConfirmWrap').classList.toggle('hidden', !signup);
+    $('authEmailConfirm').required = signup;
+    $('signupBirthDateWrap').classList.toggle('hidden', !signup);
+    $('authBirthDate').required = signup;
     $('authConfirmWrap').classList.toggle('hidden', !signup);
     $('authConfirm').required = signup;
-    $('authSubmit').textContent = signup ? 'Registrati' : reset ? 'Invia istruzioni' : 'Accedi';
+    $('rememberLogin').closest('.remember-login').classList.toggle('hidden', signup || reset);
+    $('authEmail').autocomplete = signup || reset ? 'email' : 'username';
+    $('authSubmit').textContent = signup ? 'Crea account' : reset ? 'Invia istruzioni' : 'Accedi';
     $('showSignup').classList.toggle('hidden', signup);
     $('showReset').classList.toggle('hidden', reset);
     $('authForm').dataset.mode = mode;
@@ -1626,15 +1636,34 @@ import {
     try {
       $('authSubmit').disabled = true;
       if (mode === 'signup') {
+        const firstName = $('authFirstName').value.trim();
+        const lastName = $('authLastName').value.trim();
+        const emailConfirm = $('authEmailConfirm').value.trim().toLowerCase();
+        const birthDate = $('authBirthDate').value;
+        if (!firstName || !lastName) throw new Error('Inserisci nome e cognome.');
+        if (email.toLowerCase() !== emailConfirm) throw new Error('Le email non coincidono.');
         if (password !== $('authConfirm').value) throw new Error('Le password non coincidono.');
+        if (!birthDate) throw new Error('Inserisci la data di nascita.');
+        if (birthDate > today()) throw new Error('La data di nascita non può essere futura.');
         const { error } = await db.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: location.origin + location.pathname },
+          options: {
+            emailRedirectTo: location.origin + location.pathname,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              full_name: firstName + ' ' + lastName,
+              date_of_birth: birthDate,
+              onboarding_completed: false,
+            },
+          },
         });
         if (error) throw error;
+        $('authForm').reset();
+        showAuth('login');
         showAuthMessage(
-          'Registrazione inviata. Se la conferma email è attiva, controlla la posta prima di accedere.'
+          'Registrazione inviata. Controlla la tua email e conferma l’indirizzo per attivare l’account.'
         );
       } else if (mode === 'reset') {
         const { error } = await db.auth.resetPasswordForEmail(email, {
@@ -1652,10 +1681,58 @@ import {
       $('authSubmit').disabled = false;
     }
   }
+
+  const onboardingSteps = [
+    { title: 'Benvenuto in Tasca', body: 'Tasca ti aiuta a tenere sotto controllo entrate, spese e obiettivi. Questa guida ti accompagna nelle schermate principali: puoi saltarla e iniziare a usare l\'app.' },
+    { title: 'Home: il quadro generale', body: 'La Home mostra entrate, uscite e residuo del mese, andamento delle spese e riepilogo dei budget. Il residuo è un calcolo sui movimenti registrati, non il saldo bancario aggiornato in automatico.' },
+    { title: 'Movimenti: registra tutto', body: 'Aggiungi ogni entrata, spesa, trasferimento o rimborso con data, importo, categoria e descrizione. Inserisci anche le piccole spese: sono utili per avere un quadro fedele.' },
+    { title: 'Budget: controlla i limiti', body: 'Crea un budget mensile per categoria e confronta quanto hai speso con il limite impostato. Il residuo e la percentuale utilizzata si aggiornano in base ai movimenti salvati.' },
+    { title: 'Rate e ricorrenze', body: 'Registra abbonamenti, rate e scadenze per ricordarti importi e date. Sono promemoria: Tasca non addebita automaticamente denaro e non verifica i pagamenti sul conto.' },
+    { title: 'Consigli con Tasca AI', body: 'L’IA può elaborare riepiloghi pertinenti del budget e delle spese per offrire suggerimenti. I risultati possono essere imprecisi: usali come supporto, non come consulenza finanziaria. Tasca non è collegata automaticamente alla banca.' },
+    { title: 'Quiz di benessere finanziario', body: 'Scegli un argomento e una difficoltà per allenarti con domande, spiegazioni e progressi. I quiz servono per imparare e non modificano il registro dei movimenti.' },
+    { title: 'Spazi personali e condivisi', body: 'Usa gli spazi per separare le tue finanze personali da quelle condivise o da un progetto. Inviti, membri e ripartizione delle spese funzionano solo quando la relativa configurazione è attiva.' },
+    { title: 'Comando Rapido e impostazioni', body: 'Il Comando Rapido può aiutarti a preparare una registrazione da Wallet tramite la scorciatoia configurata; controlla sempre i dati prima di salvarli. Nelle Impostazioni puoi gestire preferenze e dati. L’IA non riceve password o dati di accesso bancari.' },
+  ];
+  let onboardingIndex = 0;
+  let onboardingOpen = false;
+  function renderOnboardingStep() {
+    const step = onboardingSteps[onboardingIndex];
+    $('onboardingTitle').textContent = step.title;
+    $('onboardingBody').textContent = step.body;
+    $('onboardingProgress').textContent = 'Guida ' + (onboardingIndex + 1) + ' di ' + onboardingSteps.length;
+    $('onboardingPrev').disabled = onboardingIndex === 0;
+    $('onboardingNext').textContent = onboardingIndex === onboardingSteps.length - 1 ? 'Completa' : 'Avanti';
+    $('onboardingDots').innerHTML = onboardingSteps.map((_, i) =>
+      '<span class="onboarding-dot' + (i === onboardingIndex ? ' active' : '') + '"></span>'
+    ).join('');
+  }
+  function openOnboarding() {
+    if (!user || user.user_metadata?.onboarding_completed !== false || onboardingOpen) return;
+    onboardingIndex = 0;
+    onboardingOpen = true;
+    renderOnboardingStep();
+    $('onboardingOverlay').classList.remove('hidden');
+  }
+  async function finishOnboarding() {
+    $('onboardingOverlay').classList.add('hidden');
+    onboardingOpen = false;
+    if (!db || !user) return;
+    try {
+      const { data, error } = await db.auth.updateUser({ data: { onboarding_completed: true } });
+      if (error) throw error;
+      if (data?.user) user = data.user;
+    } catch (error) {
+      notify('La guida è stata chiusa, ma non sono riuscito a salvare la preferenza. Potrebbe ricomparire al prossimo accesso.', 'error');
+    }
+  }
+  function maybeShowOnboarding() {
+    if (user?.user_metadata?.onboarding_completed === false) openOnboarding();
+  }
   function showApp() {
     $('authScreen').classList.add('hidden');
     $('appScreen').classList.remove('hidden');
     $('mobileNav').classList.remove('hidden');
+    maybeShowOnboarding();
   }
   function showLogin() {
     clearQuizSession();
@@ -2673,6 +2750,21 @@ import {
     $('showSignup').addEventListener('click', () => showAuth('signup'));
     $('showReset').addEventListener('click', () => showAuth('reset'));
     $('authForm').addEventListener('submit', authSubmit);
+    $('onboardingPrev').addEventListener('click', () => {
+      if (onboardingIndex > 0) {
+        onboardingIndex -= 1;
+        renderOnboardingStep();
+      }
+    });
+    $('onboardingNext').addEventListener('click', () => {
+      if (onboardingIndex < onboardingSteps.length - 1) {
+        onboardingIndex += 1;
+        renderOnboardingStep();
+      } else {
+        finishOnboarding();
+      }
+    });
+    $('onboardingSkip').addEventListener('click', finishOnboarding);
     document.addEventListener('click', (e) => {
       const addSpaceMovement = e.target.closest('[data-add-space-movement]');
       if (addSpaceMovement) {
@@ -2985,6 +3077,7 @@ import {
   async function start() {
     initTheme();
     restoreRememberedEmail();
+    $('authBirthDate').max = today();
     $('budgetMonth').value = monthNow();
     $('filterMonth').value = monthNow();
     initNavigation();
