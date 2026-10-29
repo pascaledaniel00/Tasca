@@ -2741,6 +2741,7 @@ import {
       else openAccountSettings();
     });
     const menuBtn = $('mobileMenuBtn'),
+      mobileMoreBtn = $('mobileMoreBtn'),
       nav = $('desktopNav'),
       backdrop = $('navBackdrop');
     function closeSideNav() {
@@ -2749,6 +2750,7 @@ import {
       menuBtn.setAttribute('aria-expanded', 'false');
       menuBtn.setAttribute('aria-label', 'Apri menu');
       menuBtn.textContent = '☰';
+      mobileMoreBtn.setAttribute('aria-expanded', 'false');
     }
     function toggleSideNav() {
       const opening = !nav.classList.contains('open');
@@ -2757,8 +2759,10 @@ import {
       menuBtn.setAttribute('aria-expanded', String(opening));
       menuBtn.setAttribute('aria-label', opening ? 'Chiudi menu' : 'Apri menu');
       menuBtn.textContent = opening ? '✕' : '☰';
+      mobileMoreBtn.setAttribute('aria-expanded', String(opening));
     }
     menuBtn.addEventListener('click', toggleSideNav);
+    mobileMoreBtn.addEventListener('click', toggleSideNav);
     backdrop.addEventListener('click', closeSideNav);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSideNav();
