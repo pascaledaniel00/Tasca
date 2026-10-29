@@ -168,7 +168,9 @@ async function prepareWeeklyQuestions(env, scheduledTime) {
       const raw = String(
         result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || ''
       );
-      const questions = validBankQuestions(raw, category);
+      // Il modello può restituire più elementi del count richiesto:
+      // salva esclusivamente il numero di domande ancora necessario.
+      const questions = validBankQuestions(raw, category).slice(0, missingCount);
       if (!questions.length) {
         console.error('Nessuna domanda valida generata per:', category);
         continue;
