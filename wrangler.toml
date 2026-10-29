@@ -9,4 +9,4 @@ binding = "AI"
 SUPABASE_URL = "https://njgmlxyecjyreieqcpwk.supabase.co"
 
 [triggers]
-crons = ["0 0,1 * * 0"]
+crons = ["0 0 * * 0", "0 1 * * 0"]
