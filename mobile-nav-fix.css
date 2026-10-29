@@ -468,7 +468,7 @@ video {
 
   @media (prefers-reduced-motion: reduce) {
     #mobileExtraNav,
-    #mobileDockExpandBtn > svg,
+    .mobile-dock-grabber,
     .bottomnav > button[data-page] {
       transition: none;
     }
