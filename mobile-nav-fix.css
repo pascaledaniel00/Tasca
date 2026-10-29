@@ -1,3 +1,10 @@
+  .icon-definitions {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
 /* Correzione anteprima mobile: il backdrop deve restare dietro al menu laterale. */
 @media (max-width: 720px) {
   #navBackdrop.open {
@@ -369,67 +376,141 @@ video {
 
   }
   #appScreen:not(.hidden) ~ .bottomnav {
-    display: flex !important;
+    display: block !important;
   }
 
   .bottomnav {
-    display: flex !important;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 3px;
-    padding: 7px 8px;
+    display: block !important;
+    min-height: 78px;
+    padding: 6px 0 14px;
+    overflow: visible;
+  }
+
+  .mobile-nav-track {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 56px;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    scroll-snap-type: x proximity;
+    scroll-snap-type: x mandatory;
     touch-action: pan-x;
   }
 
-  .bottomnav::-webkit-scrollbar {
+  .mobile-nav-track::-webkit-scrollbar {
     display: none;
   }
 
-  .bottomnav > button[data-page] {
-    flex: 0 0 auto;
-    width: 54px;
+  .mobile-nav-page {
+    position: relative;
+    display: grid;
+    flex: 0 0 100%;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 3px;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 0 8px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .mobile-nav-page.secondary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .mobile-nav-page button[data-page] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     min-width: 0;
     min-height: 56px;
+    margin: 0;
     padding: 5px 2px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
     scroll-snap-align: start;
   }
 
-  .bottomnav > button[data-page='transactions'] {
-    width: 64px;
+  .mobile-nav-page button[data-page] > svg {
+    display: block;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
-  .bottomnav > button[data-page='budgets'] {
-    width: 52px;
+  .mobile-nav-page button.active {
+    border-color: color-mix(in srgb, var(--g) 10%, transparent);
+    background: linear-gradient(145deg, var(--gs), color-mix(in srgb, var(--gs) 48%, var(--white)));
+    color: var(--g);
+    box-shadow: inset 0 1px 0 #ffffffa8;
   }
 
-  .bottomnav > button[data-page='quiz'] {
-    width: 48px;
+  .mobile-nav-page button.active > svg {
+    stroke-width: 2;
   }
 
-  .bottomnav > button[data-page='shortcut'] {
-    width: 72px;
+  .mobile-nav-page button:active {
+    transform: scale(0.96);
   }
 
-  .bottomnav > button[data-page='recurring'] {
-    width: 70px;
+  .mobile-nav-page button:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--g) 58%, transparent);
+    outline-offset: 1px;
   }
 
-  .bottomnav > button[data-page='advice'] {
-    width: 58px;
+  .mobile-nav-pagination {
+    position: absolute;
+    right: 0;
+    bottom: 5px;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 4px;
+    pointer-events: none;
   }
 
-  .bottomnav > button[data-page='settings'] {
-    width: 70px;
+  .mobile-nav-pagination span {
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+    transition: width 160ms ease, background 160ms ease;
   }
 
-  .bottomnav > button[data-page='spaces'] {
-    width: 54px;
+  .mobile-nav-pagination span.active {
+    width: 14px;
+    background: color-mix(in srgb, var(--g) 70%, var(--muted));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-nav-page button[data-page],
+    .mobile-nav-pagination span {
+      transition: none;
+    }
   }
 
 }
