@@ -33,6 +33,33 @@ const QUIZ_CATEGORIES = ['budget', 'saving', 'debt', 'spending', 'banking', 'eco
 const QUIZ_WEEKLY_TARGET_PER_DIFFICULTY = 10;
 const QUIZ_DIFFICULTIES = [1, 2, 3];
 
+export function selectArchivedQuizQuestions(bankRows, seenFingerprints, difficulty) {
+  const seen = new Set(seenFingerprints || []);
+  const byCategory = Object.fromEntries(QUIZ_CATEGORIES.map((category) => [category, []]));
+  // Ordine stabile: la prima occorrenza prevale sulle copie generate in settimane diverse.
+  const orderedRows = [...bankRows].sort((a, b) => Number(a.id) - Number(b.id));
+  for (const row of orderedRows) {
+    const category = row.category;
+    const fingerprint = String(row.fingerprint || '').trim();
+    if (
+      !byCategory[category] ||
+      !row.question ||
+      Number(row.question.difficulty) !== Number(difficulty) ||
+      !fingerprint ||
+      seen.has(fingerprint)
+    ) continue;
+    seen.add(fingerprint);
+    byCategory[category].push({
+      ...row.question,
+      id: 'bank-' + row.id,
+      fingerprint,
+      category,
+      difficulty: Number(difficulty),
+    });
+  }
+  return byCategory;
+}
+
 function romeParts(date = new Date()) {
   return Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
@@ -75,7 +102,7 @@ async function fetchAllQuestionHistory(env, userId) {
   for (let offset = 0; ; offset += pageSize) {
     const response = await bankRequest(
       env,
-      `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(userId)}&order=answered_at.asc&limit=${pageSize}&offset=${offset}`
+      `/rest/v1/quiz_question_history?select=question_fingerprint&user_id=eq.${encodeURIComponent(userId)}&order=answered_at.asc,id.asc&limit=${pageSize}&offset=${offset}`
     );
     if (!response.ok) return { ok: false, status: response.status, rows: [] };
     const rows = await response.json();
@@ -345,7 +372,7 @@ export default {
         for (let offset = 0; ; offset += bankPageSize) {
           const bankResponse = await bankRequest(
             env,
-            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&order=created_at.asc&limit=${bankPageSize}&offset=${offset}`
+            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&order=id.asc&limit=${bankPageSize}&offset=${offset}`
           );
           if (!bankResponse.ok) {
             console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
@@ -377,31 +404,9 @@ export default {
           );
         }
         const seen = new Set(historyResult.rows.map((row) => row.question_fingerprint));
-        const questionsByCategory = Object.fromEntries(
-          QUIZ_CATEGORIES.map((category) => [
-            category,
-            bankRows
-              .filter(
-                (row) =>
-                  row.category === category &&
-                  row.question &&
-                  Number(row.question.difficulty) === difficulty
-              )
-              .sort((a, b) => Number(a.id) - Number(b.id))
-              // Prima escludi le domande già affrontate, poi limita il numero:
-              // altrimenti le prime cinque possono essere tutte esaurite anche
-              // se nell'archivio esistono altre domande ancora disponibili.
-              .filter((row) => !seen.has(row.fingerprint))
-              .slice(0, QUIZ_WEEKLY_TARGET_PER_DIFFICULTY)
-              .map((row) => ({
-                ...row.question,
-                id: 'bank-' + row.id,
-                fingerprint: row.fingerprint,
-                category,
-                difficulty,
-              })),
-          ])
-        );
+        // Usa tutto l'archivio cumulativo, escludendo lo storico personale e
+        // deduplicando le domande uguali generate in settimane diverse.
+        const questionsByCategory = selectArchivedQuizQuestions(bankRows, seen, difficulty);
         const exhausted = QUIZ_CATEGORIES.filter(
           (category) => questionsByCategory[category].length < 2
         );

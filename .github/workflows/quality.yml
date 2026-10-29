@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -23,7 +23,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Automatically format project files
+      - name: Normalize formatting in CI workspace
         run: npm run format
       - name: Verify formatting
         run: npm run format:check
@@ -33,15 +33,3 @@ jobs:
         run: npm run check
       - name: Build production site
         run: npm run build
-      - name: Save formatting fixes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js tests/finance-core.test.js worker.js mobile-nav-fix.css
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: auto-format project files"
-            git push
-          else
-            echo "Nessuna correzione di formattazione da salvare."
-          fi

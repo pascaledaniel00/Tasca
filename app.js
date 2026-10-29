@@ -1288,7 +1288,7 @@ import {
       }
 
       quizQuestions = validated.questions;
-      quizSource = 'verified';
+      quizSource = 'ai';
       quizAnswers = {};
       quizIndex = 0;
       quizAttemptKey = globalThis.crypto?.randomUUID
@@ -1357,6 +1357,7 @@ import {
     const payload = {
       user_id: user.id,
       attempt_key: quizAttemptKey,
+      question_fingerprint: await createQuizFingerprint(quizQuestions),
       category,
       difficulty,
       correct_answers: score.correct,

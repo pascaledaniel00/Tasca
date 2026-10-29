@@ -7,9 +7,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check": "node --check app.js && node --check finance-core.js && node --check quiz-core.js && node --check worker.js && node --check tests/finance-core.test.js && node --check tests/quiz-core.test.js",
-    "format": "npx --yes prettier@3 --write app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js quiz-core.js tests/finance-core.test.js tests/quiz-core.test.js worker.js mobile-nav-fix.css",
-    "format:check": "npx --yes prettier@3 --check app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml finance-core.js quiz-core.js tests/finance-core.test.js tests/quiz-core.test.js worker.js mobile-nav-fix.css",
+    "check": "node --check app.js && node --check finance-core.js && node --check quiz-core.js && node --check worker.js && node --check tests/finance-core.test.js && node --check tests/quiz-core.test.js && node --check tests/worker-quiz-selection.test.js",
+    "format": "npx --yes prettier@3 --write app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml .github/workflows/deploy-worker.yml finance-core.js quiz-core.js tests/finance-core.test.js tests/quiz-core.test.js tests/worker-quiz-selection.test.js worker.js mobile-nav-fix.css",
+    "format:check": "npx --yes prettier@3 --check app.js styles.css index.html package.json .prettierrc.json .github/workflows/quality.yml .github/workflows/deploy-worker.yml finance-core.js quiz-core.js tests/finance-core.test.js tests/quiz-core.test.js tests/worker-quiz-selection.test.js worker.js mobile-nav-fix.css",
     "test": "node --test"
   },
   "devDependencies": {
