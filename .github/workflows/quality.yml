@@ -23,6 +23,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Normalize formatting in CI workspace
+        run: npm run format
       - name: Verify formatting
         run: npm run format:check
       - name: Run finance logic tests
