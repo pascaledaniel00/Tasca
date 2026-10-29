@@ -214,8 +214,12 @@ video {
     display: none !important;
   }
 
-  .bottomnav {
+  #appScreen:not(.hidden) ~ .bottomnav {
     display: flex !important;
+  }
+
+  .bottomnav {
+    display: none !important;
     justify-content: space-around;
     gap: 2px;
     padding: 6px 5px calc(6px + env(safe-area-inset-bottom));
