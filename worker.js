@@ -292,10 +292,15 @@ export default {
           );
           if (!cachedResponse.ok) {
             console.error('Lettura archivio quiz non riuscita:', cachedResponse.status);
-            return json({
-              code: 'QUIZ_BANK_READ_FAILED',
-              error: 'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
-            }, 502, allowedOrigin);
+            return json(
+              {
+                code: 'QUIZ_BANK_READ_FAILED',
+                error:
+                  'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
+              },
+              502,
+              allowedOrigin
+            );
           }
           const rows = await cachedResponse.json();
           const questions = rows
@@ -314,10 +319,15 @@ export default {
             'Lettura archivio quiz non riuscita:',
             String(error?.message || error).slice(0, 180)
           );
-          return json({
-            code: 'QUIZ_BANK_READ_FAILED',
-            error: 'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
-          }, 502, allowedOrigin);
+          return json(
+            {
+              code: 'QUIZ_BANK_READ_FAILED',
+              error:
+                'Non riesco a leggere l’archivio delle domande. Verifica la configurazione Supabase del Worker.',
+            },
+            502,
+            allowedOrigin
+          );
         }
       }
     }
