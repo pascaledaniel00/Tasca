@@ -334,19 +334,47 @@ video {
     -webkit-tap-highlight-color: transparent;
   }
 
-  .mobile-dock-grabber {
+  .mobile-dock-swipe-hint {
     display: block;
-    width: 28px;
-    height: 3px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-    transition: width 160ms ease, background 160ms ease;
+    width: 20px;
+    height: 17px;
+    fill: none;
+    stroke: color-mix(in srgb, var(--muted) 72%, transparent);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: dockSwipeUp 1.5s ease-in-out infinite;
   }
 
-  #mobileDockExpandBtn:active .mobile-dock-grabber,
-  #mobileNav.is-expanded .mobile-dock-grabber {
-    width: 36px;
-    background: color-mix(in srgb, var(--g) 62%, var(--muted));
+  #mobileDockExpandBtn:active .mobile-dock-swipe-hint,
+  #mobileNav.is-expanded .mobile-dock-swipe-hint {
+    stroke: color-mix(in srgb, var(--g) 76%, var(--muted));
+  }
+
+  #mobileNav.is-expanded .mobile-dock-swipe-hint {
+    animation-name: dockSwipeDown;
+  }
+
+  @keyframes dockSwipeUp {
+    0%, 100% {
+      opacity: 0.55;
+      transform: translateY(1px);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+  }
+
+  @keyframes dockSwipeDown {
+    0%, 100% {
+      opacity: 0.55;
+      transform: translateY(-1px) rotate(180deg);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(2px) rotate(180deg);
+    }
   }
 
   #mobileExtraNav {
@@ -468,7 +496,7 @@ video {
 
   @media (prefers-reduced-motion: reduce) {
     #mobileExtraNav,
-    .mobile-dock-grabber,
+    .mobile-dock-swipe-hint,
     .bottomnav > button[data-page] {
       transition: none;
     }
