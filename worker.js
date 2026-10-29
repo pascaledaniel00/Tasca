@@ -338,24 +338,31 @@ export default {
         );
       }
       try {
-        const weekStart = romeWeekStart(new Date());
-        const bankResponse = await bankRequest(
-          env,
-          `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&week_start=eq.${weekStart}&order=created_at.asc&limit=500`
-        );
-        if (!bankResponse.ok) {
-          console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
-          return json(
-            {
-              code: 'QUIZ_BANK_READ_FAILED',
-              error:
-                'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
-            },
-            502,
-            allowedOrigin
+        // Usa l'archivio cumulativo: le domande delle settimane precedenti
+        // restano disponibili, con paginazione per non fermarsi al limite REST.
+        const bankPageSize = 1000;
+        const bankRows = [];
+        for (let offset = 0; ; offset += bankPageSize) {
+          const bankResponse = await bankRequest(
+            env,
+            `/rest/v1/quiz_question_bank?select=id,question,fingerprint,category&order=created_at.asc&limit=${bankPageSize}&offset=${offset}`
           );
+          if (!bankResponse.ok) {
+            console.error('Lettura archivio quiz non riuscita:', bankResponse.status);
+            return json(
+              {
+                code: 'QUIZ_BANK_READ_FAILED',
+                error:
+                  'Non riesco a leggere l’archivio o lo storico delle domande. Verifica la configurazione Supabase.',
+              },
+              502,
+              allowedOrigin
+            );
+          }
+          const page = await bankResponse.json();
+          bankRows.push(...page);
+          if (page.length < bankPageSize) break;
         }
-        const bankRows = await bankResponse.json();
         const historyResult = await fetchAllQuestionHistory(env, authenticatedUser.id);
         if (!historyResult.ok) {
           console.error('Lettura storico quiz non riuscita:', historyResult.status);
