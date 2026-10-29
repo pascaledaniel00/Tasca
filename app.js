@@ -1683,7 +1683,7 @@ import {
   }
 
   const onboardingSteps = [
-    { title: 'Benvenuto in Tasca', body: 'Tasca ti aiuta a tenere sotto controllo entrate, spese e obiettivi. Questa guida ti accompagna nelle schermate principali: puoi saltarla e riaprirla in seguito dalle impostazioni.' },
+    { title: 'Benvenuto in Tasca', body: 'Tasca ti aiuta a tenere sotto controllo entrate, spese e obiettivi. Questa guida ti accompagna nelle schermate principali: puoi saltarla e iniziare a usare l'app.' },
     { title: 'Home: il quadro generale', body: 'La Home mostra entrate, uscite e residuo del mese, andamento delle spese e riepilogo dei budget. Il residuo è un calcolo sui movimenti registrati, non il saldo bancario aggiornato in automatico.' },
     { title: 'Movimenti: registra tutto', body: 'Aggiungi ogni entrata, spesa, trasferimento o rimborso con data, importo, categoria e descrizione. Inserisci anche le piccole spese: sono utili per avere un quadro fedele.' },
     { title: 'Budget: controlla i limiti', body: 'Crea un budget mensile per categoria e confronta quanto hai speso con il limite impostato. Il residuo e la percentuale utilizzata si aggiornano in base ai movimenti salvati.' },
