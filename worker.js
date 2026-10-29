@@ -30,7 +30,7 @@ function json(data, status, origin) {
 }
 
 const QUIZ_CATEGORIES = ['budget', 'saving', 'debt', 'spending', 'banking', 'economy'];
-const QUIZ_WEEKLY_TARGET_PER_DIFFICULTY = 5;
+const QUIZ_WEEKLY_TARGET_PER_DIFFICULTY = 10;
 const QUIZ_DIFFICULTIES = [1, 2, 3];
 
 function romeParts(date = new Date()) {
