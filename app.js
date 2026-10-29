@@ -2771,6 +2771,14 @@ import {
     }
     menuBtn.addEventListener('click', toggleSideNav);
     const mobileNavTrack = $('mobileNavTrack');
+    const mobileNavDots = Array.from(document.querySelectorAll('.mobile-nav-pagination span'));
+    function syncMobileNavDots() {
+      if (!mobileNavTrack) return;
+      const pageIndex = mobileNavTrack.scrollLeft >= mobileNavTrack.clientWidth / 2 ? 1 : 0;
+      mobileNavDots.forEach((dot, index) => dot.classList.toggle('active', index === pageIndex));
+    }
+    mobileNavTrack?.addEventListener('scroll', syncMobileNavDots, { passive: true });
+    syncMobileNavDots();
     let mobileNavTouchStartX = null;
     let mobileNavTouchStartAt = 0;
     let suppressMobileNavClick = false;
