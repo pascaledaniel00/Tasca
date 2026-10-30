@@ -1814,6 +1814,13 @@ import {
   function aiChatStorageKey() {
     return user?.id ? 'tasca_ai_chat:' + user.id : null;
   }
+  function aiChatSyncErrorMessage(error) {
+    const details = String(error?.message || '');
+    if (/conversation_id/i.test(details) && /(column|schema cache|does not exist|could not find)/i.test(details)) {
+      return 'Manca la migrazione della chat in Supabase: esegui 20261030120000_ai_chat_conversations.sql nel progetto Tasca.';
+    }
+    return 'Non riesco a sincronizzare la chat IA. Controlla la connessione e riprova.';
+  }
   function aiChatConversationStorageKey() {
     return user?.id ? 'tasca_ai_chat_active:' + user.id : null;
   }
@@ -1887,7 +1894,7 @@ import {
       console.error('Tasca: sincronizzazione chat IA non riuscita.', error);
       aiChatMessages = local;
       aiChatConversationId = preferredId || crypto.randomUUID();
-      notify('Non riesco a sincronizzare la chat IA. Controlla la connessione e riprova.', 'error');
+      notify(aiChatSyncErrorMessage(error), 'error');
     }
     renderAIChat();
   }
@@ -2051,7 +2058,7 @@ import {
     } catch (error) {
       aiChatMessages.pop();
       renderAIChat();
-      notify('Messaggio non salvato: impossibile sincronizzare la chat. Riprova.', 'error');
+      notify('Messaggio non salvato: ' + aiChatSyncErrorMessage(error), 'error');
       return;
     }
     aiChatPending = true;
