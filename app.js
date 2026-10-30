@@ -125,6 +125,8 @@ import {
     aiAdviceText = '',
     aiAdvicePending = false,
     aiChatMessages = [],
+    aiChatConversations = [],
+    aiChatConversationId = null,
     aiChatPending = false;
   let goal = 40;
   try {
@@ -256,6 +258,10 @@ import {
       if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (name === 'tasca-ai') requestAnimationFrame(() => {
+      const chat = $('aiChatMessages');
+      if (chat) chat.scrollTop = chat.scrollHeight;
+    });
     if (name === 'quiz') {
       if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
       else if (restoreQuizSession()) renderQuizQuestion();
@@ -1811,6 +1817,14 @@ import {
   function aiChatStorageKey() {
     return user?.id ? 'tasca_ai_chat:' + user.id : null;
   }
+  function aiChatConversationStorageKey() {
+    return user?.id ? 'tasca_ai_chat_active:' + user.id : null;
+  }
+  function rememberAIChatConversation() {
+    const key = aiChatConversationStorageKey();
+    if (!key || !aiChatConversationId) return;
+    try { localStorage.setItem(key, aiChatConversationId); } catch {}
+  }
   function cacheAIChatLocally() {
     const key = aiChatStorageKey();
     if (!key) return;
@@ -1821,6 +1835,7 @@ import {
     if (!message.id) message.id = crypto.randomUUID();
     const { error } = await db.from('ai_chat_messages').upsert({
       user_id: user.id,
+      conversation_id: aiChatConversationId,
       client_message_id: message.id,
       role: message.role === 'user' ? 'user' : 'assistant',
       content: String(message.content).slice(0, 6000),
@@ -1831,8 +1846,12 @@ import {
   }
   async function loadAIChat() {
     aiChatMessages = [];
+    aiChatConversations = [];
     if (!user?.id || !db) { renderAIChat(); return; }
     const key = aiChatStorageKey();
+    const activeKey = aiChatConversationStorageKey();
+    let preferredId = null;
+    try { preferredId = activeKey ? localStorage.getItem(activeKey) : null; } catch {}
     let local = [];
     try {
       const saved = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
@@ -1840,28 +1859,37 @@ import {
     } catch {}
     try {
       const { data, error } = await db.from('ai_chat_messages')
-        .select('client_message_id, role, content, created_at')
+        .select('conversation_id, client_message_id, role, content, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(1000);
       if (error) throw error;
-      const cloud = (data || []).reverse().map(row => ({
-        id: row.client_message_id, role: row.role, content: row.content, created_at: row.created_at
-      }));
-      if (!cloud.length && local.length) {
+      const grouped = new Map();
+      (data || []).reverse().forEach(row => {
+        const conversationId = row.conversation_id || 'legacy';
+        if (!grouped.has(conversationId)) grouped.set(conversationId, []);
+        grouped.get(conversationId).push({ id: row.client_message_id, role: row.role, content: row.content, created_at: row.created_at });
+      });
+      aiChatConversations = Array.from(grouped, ([id, messages]) => ({ id, messages, updatedAt: messages[messages.length - 1]?.created_at || '' }));
+      aiChatConversations.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      if (!aiChatConversations.length && local.length) {
+        aiChatConversationId = crypto.randomUUID();
         for (const message of local) {
           if (!message.id) message.id = crypto.randomUUID();
           if (!message.created_at) message.created_at = new Date().toISOString();
           await persistAIChatMessage(message);
         }
-        aiChatMessages = local.slice(-100);
-      } else {
-        aiChatMessages = cloud;
+        aiChatConversations = [{ id: aiChatConversationId, messages: local.slice(-100), updatedAt: local[local.length - 1]?.created_at || '' }];
       }
+      aiChatConversationId = aiChatConversations.find(item => item.id === preferredId)?.id || preferredId || aiChatConversations[0]?.id || crypto.randomUUID();
+      if (!aiChatConversations.some(item => item.id === aiChatConversationId)) aiChatConversations.unshift({ id: aiChatConversationId, messages: [], updatedAt: '' });
+      rememberAIChatConversation();
+      aiChatMessages = aiChatConversations.find(item => item.id === aiChatConversationId)?.messages || [];
       cacheAIChatLocally();
     } catch (error) {
       console.error('Tasca: sincronizzazione chat IA non riuscita.', error);
       aiChatMessages = local;
+      aiChatConversationId = preferredId || crypto.randomUUID();
       notify('Non riesco a sincronizzare la chat IA. Controlla la connessione e riprova.', 'error');
     }
     renderAIChat();
@@ -1927,6 +1955,24 @@ import {
   function renderAIChat() {
     const host = $('aiChatMessages');
     if (!host) return;
+    const selector = $('aiChatConversation');
+    const newChatButton = $('newAIChatBtn');
+    if (newChatButton) newChatButton.disabled = aiChatPending;
+    if (selector) {
+      selector.replaceChildren();
+      const conversations = aiChatConversations.slice();
+      if (aiChatConversationId && !conversations.some(item => item.id === aiChatConversationId)) conversations.unshift({ id: aiChatConversationId, messages: aiChatMessages, updatedAt: '' });
+      conversations.forEach((conversation) => {
+        const option = document.createElement('option');
+        option.value = conversation.id;
+        const firstMessage = conversation.messages.find(message => message.role === 'user')?.content || 'Nuova conversazione';
+        option.textContent = String(firstMessage).slice(0, 42) + (firstMessage.length > 42 ? '…' : '');
+        option.selected = conversation.id === aiChatConversationId;
+        selector.appendChild(option);
+      });
+      selector.hidden = conversations.length < 2;
+      selector.disabled = aiChatPending;
+    }
     const rows = aiChatMessages.length ? aiChatMessages : [{
       role: 'assistant',
       content: 'Ciao! Sono qui per aiutarti a leggere meglio le tue finanze. Possiamo analizzare le spese, valutare una rata o costruire un piano di risparmio. Ogni modifica al registro richiederà sempre la tua conferma.'
@@ -1951,6 +1997,22 @@ import {
       host.appendChild(row);
     });
     host.scrollTop = host.scrollHeight;
+  }
+  function startNewAIChat() {
+    if (aiChatPending) return;
+    aiChatConversationId = crypto.randomUUID();
+    aiChatMessages = [];
+    aiChatConversations.unshift({ id: aiChatConversationId, messages: aiChatMessages, updatedAt: '' });
+    rememberAIChatConversation();
+    renderAIChat();
+    $('aiChatInput')?.focus();
+  }
+  function selectAIChatConversation(event) {
+    if (aiChatPending) return;
+    aiChatConversationId = event.target.value;
+    aiChatMessages = aiChatConversations.find(item => item.id === aiChatConversationId)?.messages || [];
+    rememberAIChatConversation();
+    renderAIChat();
   }
   async function sendAIChatMessage(event) {
     event.preventDefault();
@@ -3384,6 +3446,8 @@ import {
     $('budgetMonth').addEventListener('change', renderBudgets);
     $('refreshBtn').addEventListener('click', loadData);
     $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
+    $('newAIChatBtn')?.addEventListener('click', startNewAIChat);
+    $('aiChatConversation')?.addEventListener('change', selectAIChatConversation);
     $('aiChatInput')?.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
       event.preventDefault();
