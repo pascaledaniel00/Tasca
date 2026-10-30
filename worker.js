@@ -1,6 +1,6 @@
 /**
  * Tasca AI Worker.
- * Chat e consigli: Groq API (Qwen 3.8 27B).
+ * Chat e consigli: Groq API (GPT-OSS 120B).
  * Nudge e generazione quiz: Cloudflare Workers AI.
  *
  * Required Worker bindings/secrets:
@@ -10,7 +10,7 @@
  * - SUPABASE_ANON_KEY (secret/variable; public project key)
  */
 const MODEL_NUDGE = '@cf/zai-org/glm-4.7-flash';
-const GROQ_MODEL = 'qwen/qwen3.8-27b';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const ALLOWED_ORIGINS = new Set(['https://pascaledaniel00.github.io']);
 
 const SYSTEM_PROMPTS = {
@@ -602,7 +602,7 @@ export default {
           temperature: 1,
         });
 
-        // Qwen 3.8 27B è il provider principale. Le quote esaurite non vengono
+        // GPT-OSS 120B è il provider principale. Le quote esaurite non vengono
         // mascherate da risposte di qualità inferiore: il fallback resta per guasti temporanei.
         let groqResponse;
         let payload = {};
@@ -650,7 +650,7 @@ export default {
                   ? 'Il limite gratuito di Groq è stato raggiunto. Riprova dopo il ripristino della quota.'
                   : busy
                     ? 'Groq è momentaneamente occupato e il servizio alternativo non è disponibile.'
-                    : 'Qwen non è riuscito a completare la richiesta.',
+                    : 'GPT-OSS non è riuscito a completare la richiesta.',
                 diagnostic: providerMessage.slice(0, 220) || 'Errore Groq senza dettagli.',
               },
               quota ? 429 : busy ? 503 : 502,
