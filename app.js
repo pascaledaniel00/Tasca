@@ -1662,7 +1662,20 @@ import {
     renderAIChat();
     try {
       const snapshot = buildAdviceSnapshot();
-      const recent = scopedTransactions().slice().sort((x, y) => String(txDate(y)).localeCompare(String(txDate(x)))).slice(0, 60).map((t) => ({ date: txDate(t), type: t.type, amount: Number(t.amount) || 0, category: t.category || 'Da classificare', description: String(t.description || t.name || '').slice(0, 90), status: t.status || 'confirmed' }));
+      const recent = scopedTransactions()
+        .slice()
+        .sort((x, y) => String(txDate(y)).localeCompare(String(txDate(x))))
+        .slice(0, 100)
+        .map((t) => ({
+          date: txDate(t),
+          type: t.type,
+          amount: Number(t.amount) || 0,
+          category: t.category || 'Da classificare',
+          description: String(t.description || t.name || '').slice(0, 100),
+          paymentMethod: t.payment_method || null,
+          status: t.status || 'confirmed',
+          notes: String(t.notes || '').slice(0, 160),
+        }));
       const plans = scopedRecurring().filter(planActive).slice(0, 30).map((p) => ({ name: p.name, amount: Number(p.amount) || 0, category: p.category, cadence: p.cadence, next_due_on: p.next_due_on, remaining_installments: p.remaining_installments }));
       const context = { currentSpace: activeSpace()?.name || 'Spazio non selezionato', financialSnapshot: snapshot, recentTransactions: recent, activeRecurring: plans, conversation: aiChatMessages.slice(-11).map((m) => ({ role: m.role, content: String(m.content).slice(0, 1500) })) };
       const answer = await callTascaAI('chat', context);
