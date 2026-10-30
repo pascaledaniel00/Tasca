@@ -847,7 +847,7 @@ import {
     const target = $('statementImportPreview');
     if (!target) return;
     const summary = statementImportSummary(statementImportRows);
-    const rows = statementImportRows.slice(0, 100);
+    const rows = statementImportRows;
     target.innerHTML = statementImportRows.length ? `
       <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Possibili duplicati: ${summary.duplicates} · Da verificare: ${summary.invalid + summary.review}</div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
