@@ -41,3 +41,21 @@ test('flags likely duplicates without deleting source rows', () => {
   assert.equal(result[0].duplicateOf, 7);
   assert.equal(statementImportSummary(result).duplicates, 1);
 });
+
+
+test('flags duplicates repeated inside the same statement file', () => {
+  const rows = normalizeStatementRows([
+    { Data: '30/10/2026', Descrizione: 'Pagamento supermercato', Importo: '-12,50' },
+    { Data: '30/10/2026', Descrizione: 'Pagamento supermercato', Importo: '-12,50' },
+  ]);
+  const result = findStatementDuplicates(rows, []);
+  assert.equal(result[0].duplicate, false);
+  assert.equal(result[1].duplicate, true);
+  assert.equal(result[1].duplicateSource, 'file');
+  assert.equal(result[1].duplicateOf, 2);
+});
+
+test('preserves the calendar date of Date objects in local time', () => {
+  const value = new Date(2026, 9, 30, 0, 15);
+  assert.equal(parseStatementDate(value), '2026-10-30');
+});
