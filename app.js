@@ -3219,6 +3219,8 @@ import {
     $('newRecurringBtn').addEventListener('click', () => {
       if (requireSpecificSpace('creare una ricorrenza')) openRecurringForm();
     });
+    $('newDebtBtn')?.addEventListener('click', () => financeTablesReady ? openDebtForm() : notify('Esegui prima la migrazione SQL su Supabase.','error'));
+    $('newSavingsGoalBtn')?.addEventListener('click', () => financeTablesReady ? openSavingsGoalForm() : notify('Esegui prima la migrazione SQL su Supabase.','error'));
     $('newSpaceBtn').addEventListener('click', () => openSpaceForm());
     $('homeCreatePersonalSpace').addEventListener('click', () => openSpaceForm('personal'));
     $('homeCreateSharedSpace').addEventListener('click', () => openSpaceForm('shared'));
@@ -3303,6 +3305,10 @@ import {
         }
         return;
       }
+      const debtPay = e.target.closest('[data-debt-payment]'); if(debtPay){openDebtPaymentForm(debtPay.dataset.debtPayment);return;}
+      const debtEdit = e.target.closest('[data-edit-debt]'); if(debtEdit){const item=debts.find((x)=>x.id===debtEdit.dataset.editDebt);if(item)openDebtForm(item);return;}
+      const fundMove = e.target.closest('[data-fund-movement]'); if(fundMove){openFundMovementForm(fundMove.dataset.fundMovement,fundMove.dataset.fundType);return;}
+      const goalEdit = e.target.closest('[data-edit-goal]'); if(goalEdit){const item=savingsGoals.find((x)=>x.id===goalEdit.dataset.editGoal);if(item)openSavingsGoalForm(item);return;}
       const b = e.target.closest('[data-edit-tx]');
       if (b) {
         const t = transactions.find((x) => x.id === b.dataset.editTx);
