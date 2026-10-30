@@ -111,7 +111,9 @@ import {
     aiNudgePending = false,
     aiAdviceKey = '',
     aiAdviceText = '',
-    aiAdvicePending = false;
+    aiAdvicePending = false,
+    aiChatMessages = [],
+    aiChatPending = false;
   let goal = 40;
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
