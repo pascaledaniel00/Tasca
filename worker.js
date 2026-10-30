@@ -582,7 +582,7 @@ export default {
     const maxTokens = task === 'chat' ? 1800 : task === 'advice' ? 1200 : task === 'nudge' ? 96 : 1800;
     const prompt = JSON.stringify(body.data).slice(
       0,
-      task === 'nudge' ? 7000 : task === 'chat' ? 22000 : 18000
+      task === 'nudge' ? 7000 : task === 'chat' ? 14000 : 12000
     );
 
     try {
