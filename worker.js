@@ -1,14 +1,16 @@
 /**
- * Tasca AI Worker — Cloudflare Workers AI
- * Model: Google Gemma 4 26B A4B Instruct (multilingual).
+ * Tasca AI Worker.
+ * Chat e consigli: Google Gemini Developer API (Gemini 3.8 Flash).
+ * Nudge e generazione quiz: Cloudflare Workers AI.
  *
  * Required Worker bindings/secrets:
- * - AI binding named AI
+ * - AI binding named AI (nudge e generazione quiz)
+ * - GEMINI_API_KEY (secret; chat e consigli)
  * - SUPABASE_URL (secret/variable)
  * - SUPABASE_ANON_KEY (secret/variable; public project key)
  */
 const MODEL_NUDGE = '@cf/zai-org/glm-4.7-flash';
-const MODEL_ADVICE = '@cf/google/gemma-4-26b-a4b-it';
+const GEMINI_MODEL = 'gemini-3.8-flash';
 const ALLOWED_ORIGINS = new Set(['https://pascaledaniel00.github.io']);
 
 const SYSTEM_PROMPTS = {
@@ -412,7 +414,7 @@ export default {
 
     const authorization = request.headers.get('Authorization') || '';
     const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-    if (!token || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.AI) {
+    if (!token || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
       return json({ error: 'Configurazione o sessione mancante.' }, 401, allowedOrigin);
     }
 
@@ -451,6 +453,21 @@ export default {
       typeof body.data !== 'object'
     ) {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
+    }
+    if (task === 'chat' || task === 'advice') {
+      if (!env.GEMINI_API_KEY) {
+        return json(
+          { code: 'GEMINI_NOT_CONFIGURED', error: 'Gemini non è ancora configurato sul Worker.' },
+          503,
+          allowedOrigin
+        );
+      }
+    } else if (!env.AI) {
+      return json(
+        { code: 'WORKERS_AI_NOT_CONFIGURED', error: 'Il servizio per questa funzione non è configurato.' },
+        503,
+        allowedOrigin
+      );
     }
     if (task === 'quiz' && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_URL) {
       const difficulty = Number(body.data.difficulty) || 1;
@@ -562,71 +579,110 @@ export default {
       );
     }
 
-    const quizCount = 5;
-    const maxTokens =
-      task === 'nudge' ? 96 : task === 'quiz' ? (quizCount <= 5 ? 1800 : 6500) : task === 'chat' ? 1800 : 1200;
-    const model = task === 'nudge' || task === 'quiz' ? MODEL_NUDGE : MODEL_ADVICE;
+    const maxTokens = task === 'chat' ? 1800 : task === 'advice' ? 1200 : task === 'nudge' ? 96 : 1800;
     const prompt = JSON.stringify(body.data).slice(
       0,
-      task === 'nudge' ? 7000 : task === 'quiz' ? 4500 : task === 'chat' ? 22000 : 18000
+      task === 'nudge' ? 7000 : task === 'chat' ? 22000 : 18000
     );
 
     try {
-      const result = await env.AI.run(model, {
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPTS[task] },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: maxTokens,
-        temperature: task === 'nudge' ? 0.75 : task === 'quiz' ? 0.15 : task === 'chat' ? 0.35 : 0.25,
-        chat_template_kwargs: { enable_thinking: false },
-        ...(task === 'nudge' || task === 'quiz' ? { reasoning_effort: 'low' } : {}),
-      });
-      // Supporta i formati di risposta restituiti dalle diverse versioni del binding.
-      const text = String(
-        result?.response ||
-          result?.result?.response ||
-          result?.choices?.[0]?.message?.content ||
-          result?.result?.choices?.[0]?.message?.content ||
-          ''
-      ).trim();
+      let text = '';
+      if (task === 'chat' || task === 'advice') {
+        // Gemini Developer API: la chiave resta esclusivamente nel secret del Worker.
+        const geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': env.GEMINI_API_KEY,
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: SYSTEM_PROMPTS[task] }],
+              },
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: {
+                maxOutputTokens: maxTokens,
+                temperature: task === 'chat' ? 0.45 : 0.3,
+              },
+            }),
+          }
+        );
+        const payload = await geminiResponse.json().catch(() => ({}));
+        if (!geminiResponse.ok) {
+          const providerMessage = String(payload?.error?.message || '');
+          const quota = geminiResponse.status === 429 ||
+            /quota|rate.?limit|resource exhausted/i.test(providerMessage);
+          const busy = geminiResponse.status === 503 || geminiResponse.status === 504;
+          return json(
+            {
+              code: quota ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'GEMINI_API_ERROR',
+              error: quota
+                ? 'La quota gratuita di Gemini è momentaneamente esaurita. Riprova più tardi.'
+                : busy
+                  ? 'Gemini è momentaneamente occupato. Riprova tra poco.'
+                  : 'Gemini non è riuscito a completare la richiesta.',
+              diagnostic: providerMessage.slice(0, 220) || 'Errore Gemini senza dettagli.',
+            },
+            quota ? 429 : busy ? 503 : 502,
+            allowedOrigin
+          );
+        }
+        text = (payload?.candidates?.[0]?.content?.parts || [])
+          .map((part) => typeof part.text === 'string' ? part.text : '')
+          .join('')
+          .trim();
+        if (!text && payload?.promptFeedback?.blockReason) {
+          return json(
+            { code: 'GEMINI_BLOCKED', error: 'Gemini ha bloccato la richiesta per motivi di sicurezza.' },
+            422,
+            allowedOrigin
+          );
+        }
+      } else {
+        const result = await env.AI.run(MODEL_NUDGE, {
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPTS[task] },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: maxTokens,
+          temperature: task === 'nudge' ? 0.75 : 0.15,
+          chat_template_kwargs: { enable_thinking: false },
+          reasoning_effort: 'low',
+        });
+        text = String(
+          result?.response ||
+            result?.result?.response ||
+            result?.choices?.[0]?.message?.content ||
+            result?.result?.choices?.[0]?.message?.content ||
+            ''
+        ).trim();
+      }
       if (!text) {
         return json(
-          {
-            error: 'Il modello ha risposto senza testo utilizzabile.',
-            diagnostic: 'Formato della risposta IA non riconosciuto.',
-            responseKeys: Object.keys(result || {})
-              .join(', ')
-              .slice(0, 200),
-          },
+          { error: 'Il modello ha risposto senza testo utilizzabile.' },
           502,
           allowedOrigin
         );
       }
       return json(
-        { text: text.slice(0, task === 'nudge' ? 500 : task === 'quiz' ? 9000 : task === 'chat' ? 9000 : 5000) },
+        { text: text.slice(0, task === 'nudge' ? 500 : task === 'chat' ? 9000 : 5000) },
         200,
         allowedOrigin
       );
     } catch (error) {
-      // Non lasciare la richiesta in attesa se il modello è occupato o il provider restituisce un errore.
       const message = String(error?.message || '');
-      const quotaExhausted =
-        /quota|daily.{0,30}(limit|usage|exceed)|(?:limit|exceed).{0,30}daily|neurons?.{0,30}(limit|exceed)|(?:limit|exceed).{0,30}neurons?|resource exhausted|billing.{0,30}limit/i.test(
-          message
-        );
       const busy = /busy|capacity|temporar|overloaded/i.test(message);
       return json(
         {
-          code: quotaExhausted ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'AI_PROVIDER_ERROR',
-          error: quotaExhausted
-            ? 'La quota giornaliera gratuita dell’IA potrebbe essere esaurita.'
-            : busy
-              ? 'Il modello IA è momentaneamente occupato. Riprova tra qualche secondo.'
-              : 'Servizio IA temporaneamente non disponibile.',
-          diagnostic: message.slice(0, 240) || 'Errore del provider IA senza dettagli.',
+          code: busy ? 'AI_BUSY' : 'AI_PROVIDER_ERROR',
+          error: busy
+            ? 'Il servizio IA è momentaneamente occupato. Riprova tra qualche secondo.'
+            : 'Servizio IA temporaneamente non disponibile.',
+          diagnostic: message.slice(0, 220) || 'Errore del provider IA senza dettagli.',
         },
-        quotaExhausted ? 429 : busy ? 503 : 502,
+        busy ? 503 : 502,
         allowedOrigin
       );
     }
