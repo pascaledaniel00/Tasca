@@ -425,20 +425,39 @@
               <p class="muted tiny">Un assistente per ragionare sulle tue finanze, usando i dati dello spazio selezionato.</p>
             </div>
           </div>
-          <section class="panel tasca-chat-panel" aria-label="Chat con Tasca AI">
-            <div class="panelhead">
-              <div><h3>Parla con Tasca AI</h3><p class="muted tiny">Budget, rate, spese, estratti conto e obiettivi di risparmio.</p></div>
-              <span class="pill">Consulente IA</span>
+          <section class="panel tasca-chat-panel" aria-label="Chat con Tasca IA">
+            <div class="tasca-chat-heading">
+              <div class="tasca-chat-brand">
+                <div class="tasca-chat-brandmark" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" role="img" focusable="false">
+                    <path d="M24 4.5 40 13.7v20.6L24 43.5 8 34.3V13.7L24 4.5Z" fill="currentColor" opacity=".13"/>
+                    <path d="M16 18.5c0-4.5 3.5-7.5 8-7.5s8 3 8 7.5v11c0 4.5-3.5 7.5-8 7.5s-8-3-8-7.5v-11Z" fill="currentColor"/>
+                    <path d="M19.5 23h.1m8.8 0h.1" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+                    <path d="M20 29c2.4 2.2 5.6 2.2 8 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M24 8V5m-2 0h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="tasca-chat-kicker">IL TUO ASSISTENTE FINANZIARIO</div>
+                  <h3>Parla con Tasca IA</h3>
+                  <p>Budget, rate, spese e obiettivi: facciamo chiarezza insieme.</p>
+                </div>
+              </div>
+              <span class="tasca-chat-status"><span></span> Pronta ad aiutarti</span>
             </div>
-            <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite">
-              <div class="ai-chat-bubble assistant">Ciao! Posso aiutarti a capire le spese, valutare una rata, impostare un budget o costruire un fondo risparmio. Le modifiche al registro richiederanno sempre la tua conferma.</div>
+            <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite" aria-label="Conversazione con Tasca IA">
+              <div class="ai-chat-bubble assistant">Ciao! Sono qui per aiutarti a leggere meglio le tue finanze. Possiamo analizzare le spese, valutare una rata o costruire un piano di risparmio. Ogni modifica al registro richiederà sempre la tua conferma.</div>
             </div>
             <form id="aiChatForm" class="ai-chat-form">
-              <label class="sr-only" for="aiChatInput">Scrivi un messaggio a Tasca AI</label>
-              <textarea id="aiChatInput" rows="2" maxlength="3000" placeholder="Es. Posso aumentare la rata a 250 € senza compromettere i risparmi?" required></textarea>
-              <button class="btn primary" id="aiChatSend" type="submit">Invia</button>
+              <label class="sr-only" for="aiChatInput">Scrivi un messaggio a Tasca IA</label>
+              <textarea id="aiChatInput" rows="2" maxlength="3000" placeholder="Scrivi qui la tua domanda…" required></textarea>
+              <button class="btn primary" id="aiChatSend" type="submit" aria-label="Invia messaggio">
+                <span>Invia</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-5 16-3-6-8-2Zm8 2 8-10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
             </form>
-            <p class="tiny muted">La cronologia della chat viene salvata su questo dispositivo. Per generare le risposte, il messaggio e i dati finanziari pertinenti vengono inviati al servizio IA tramite il Worker. Tasca IA non modifica il registro né esegue pagamenti automaticamente.</p>
+            <p class="tasca-chat-privacy"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 13 3.4v4.1c0 3.1-2 5.5-5 7-3-1.5-5-3.9-5-7V3.4l5-1.9Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m5.7 7.8 1.5 1.5 3.1-3.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              La cronologia viene sincronizzata in modo sicuro con il tuo account Tasca e puoi ritrovarla sui tuoi dispositivi. Per generare le risposte, il messaggio e i dati finanziari pertinenti vengono inviati al servizio IA tramite il Worker. Tasca IA non modifica il registro né esegue pagamenti automaticamente.
+            </p>
           </section>
         </section>
         <section id="page-quiz" class="section">
