@@ -1550,6 +1550,62 @@ import {
     }
   }
 
+  function loadAIChat() {
+    aiChatMessages = [];
+    try {
+      const key = user?.id ? 'tasca_ai_chat:' + user.id : null;
+      const saved = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
+      if (Array.isArray(saved)) aiChatMessages = saved.slice(-20);
+    } catch {}
+    renderAIChat();
+  }
+  function saveAIChat() {
+    if (!user?.id) return;
+    try { localStorage.setItem('tasca_ai_chat:' + user.id, JSON.stringify(aiChatMessages.slice(-20))); } catch {}
+  }
+  function renderAIChat() {
+    const host = $('aiChatMessages');
+    if (!host) return;
+    const rows = aiChatMessages.length ? aiChatMessages : [{ role: 'assistant', content: 'Ciao! Posso aiutarti con budget, rate, spese e fondo risparmio. Ogni modifica richiederà la tua conferma.' }];
+    host.replaceChildren();
+    rows.forEach((m) => {
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-chat-bubble ' + (m.role === 'user' ? 'user' : 'assistant');
+      bubble.textContent = String(m.content || '');
+      host.appendChild(bubble);
+    });
+    host.scrollTop = host.scrollHeight;
+  }
+  async function sendAIChatMessage(event) {
+    event.preventDefault();
+    const input = $('aiChatInput');
+    const message = String(input?.value || '').trim();
+    if (!message || aiChatPending) return;
+    if (!isAIConfigured() || !user) { notify('Accedi e verifica la configurazione del servizio IA.', 'error'); return; }
+    aiChatMessages.push({ role: 'user', content: message });
+    input.value = '';
+    aiChatPending = true;
+    const send = $('aiChatSend');
+    if (send) send.disabled = true;
+    aiChatMessages.push({ role: 'assistant', content: 'Sto analizzando i dati di Tasca…' });
+    renderAIChat();
+    try {
+      const snapshot = buildAdviceSnapshot();
+      const recent = scopedTransactions().slice().sort((x, y) => String(txDate(y)).localeCompare(String(txDate(x)))).slice(0, 60).map((t) => ({ date: txDate(t), type: t.type, amount: Number(t.amount) || 0, category: t.category || 'Da classificare', description: String(t.description || t.name || '').slice(0, 90), status: t.status || 'confirmed' }));
+      const plans = scopedRecurring().filter(planActive).slice(0, 30).map((p) => ({ name: p.name, amount: Number(p.amount) || 0, category: p.category, cadence: p.cadence, next_due_on: p.next_due_on, remaining_installments: p.remaining_installments }));
+      const context = { currentSpace: activeSpace()?.name || 'Spazio non selezionato', financialSnapshot: snapshot, recentTransactions: recent, activeRecurring: plans, conversation: aiChatMessages.slice(-11).map((m) => ({ role: m.role, content: String(m.content).slice(0, 1500) })) };
+      const answer = await callTascaAI('chat', context);
+      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: answer || 'Non ho ricevuto una risposta utilizzabile.' };
+      saveAIChat();
+    } catch (error) {
+      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: 'Servizio non disponibile: ' + (error.message || 'errore imprevisto') };
+    } finally {
+      aiChatPending = false;
+      if (send) send.disabled = false;
+      renderAIChat();
+      input?.focus();
+    }
+  }
   function renderAdvice() {
     const s = monthSummary(),
       rows = monthRows(monthNow()).filter((t) => t.type === 'expense'),
