@@ -1024,6 +1024,124 @@ import {
         'Aggiungi abbonamenti, rate e pagamenti previsti.'
       );
   }
+  function renderDebtSavings() {
+    if (!$('debtsList')) return;
+    $('debtSavingsNotice').textContent = financeTablesReady
+      ? 'Archivio attivo. I pagamenti collegati non duplicano i movimenti del registro.'
+      : 'Archivio non attivo: esegui supabase/migrations/20261030_debts_savings.sql nel progetto Supabase.';
+    $('newDebtBtn').disabled = !financeTablesReady;
+    $('newSavingsGoalBtn').disabled = !financeTablesReady;
+    const ds = debts.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const ps = debtPayments.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const gs = savingsGoals.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const ms = savingsMovements.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    $('debtsList').innerHTML = calculateDebtSummary(ds, ps).map((d) =>
+      '<div class="movement"><div class="movinfo"><strong>' + esc(d.name) + '</strong><small>' +
+      esc(d.creditor || 'Creditore non indicato') + ' · ' +
+      (d.installments_remaining == null ? 'Rate residue da verificare' : esc(d.installments_remaining + ' rate residue')) +
+      '</small><small>' + (d.principalRemaining == null ? 'Capitale residuo non indicato' : 'Capitale residuo: ' + eur(d.principalRemaining)) +
+      ' · Pagamenti registrati: ' + eur(d.paidTotal) + '</small></div><div class="row-actions"><button class="btn small" data-debt-payment="' +
+      esc(d.id) + '">Pagamento</button><button class="btn small" data-edit-debt="' + esc(d.id) + '">Modifica</button></div></div>'
+    ).join('') || emptyHtml('Nessun debito registrato', 'Aggiungi un finanziamento o una rata.');
+    $('savingsGoalsList').innerHTML = calculateSavingsSummary(gs, ms).map((g) =>
+      '<div class="movement"><div class="movinfo"><strong>' + esc(g.name) + '</strong><small>Saldo fondo: ' + eur(g.balance) +
+      ' · Obiettivo: ' + eur(g.target_amount) + '</small><small>Da raggiungere: ' + eur(g.remaining) +
+      ' · Avanzamento: ' + Math.round(g.percent) + '%</small></div><div class="row-actions"><button class="btn small" data-fund-movement="' +
+      esc(g.id) + '" data-fund-type="contribution">＋ Versa</button><button class="btn small" data-fund-movement="' +
+      esc(g.id) + '" data-fund-type="withdrawal">Preleva</button><button class="btn small" data-edit-goal="' +
+      esc(g.id) + '">Modifica</button></div></div>'
+    ).join('') || emptyHtml('Nessun obiettivo creato', 'Crea un fondo emergenze o un obiettivo di risparmio.');
+  }
+
+  function openDebtForm(debt = null) {
+    if (!financeTablesReady || !requireSpecificSpace('gestire un debito')) return;
+    const val = (key) => esc(debt?.[key] ?? '');
+    openModal(debt ? 'Modifica debito' : 'Nuovo debito',
+      '<form id="debtForm"><div class="formgrid">' +
+      '<div class="field full"><label>Nome</label><input name="name" required maxlength="120" value="' + val('name') + '"></div>' +
+      '<div class="field"><label>Creditore</label><input name="creditor" value="' + val('creditor') + '"></div>' +
+      '<div class="field"><label>Capitale iniziale (€)</label><input name="original_principal" type="number" min="0" step=".01" value="' + val('original_principal') + '"></div>' +
+      '<div class="field"><label>Capitale residuo verificato (€)</label><input name="principal_remaining" type="number" min="0" step=".01" value="' + val('principal_remaining') + '"></div>' +
+      '<div class="field"><label>Importo rata (€)</label><input name="installment_amount" type="number" min="0" step=".01" value="' + val('installment_amount') + '"></div>' +
+      '<div class="field"><label>Rate totali</label><input name="installments_total" type="number" min="0" step="1" value="' + val('installments_total') + '"></div>' +
+      '<div class="field"><label>Rate residue</label><input name="installments_remaining" type="number" min="0" step="1" value="' + val('installments_remaining') + '"></div>' +
+      '<div class="field"><label>TAN/TAEG (%)</label><input name="interest_rate" type="number" min="0" step=".0001" value="' + val('interest_rate') + '"></div>' +
+      '<div class="field"><label>Prossima scadenza</label><input name="next_due_on" type="date" value="' + val('next_due_on') + '"></div>' +
+      '<div class="field"><label>Stato</label><select name="status"><option value="active">Attivo</option><option value="paused">Sospeso</option><option value="paid">Estinto</option></select></div>' +
+      '<div class="field full"><label>Note</label><textarea name="notes">' + val('notes') + '</textarea></div></div>' +
+      '<p class="muted tiny">Il capitale residuo è facoltativo e non viene dedotto dalle rate residue.</p><button class="btn primary full" type="submit">Salva</button></form>');
+    if (debt) $('debtForm').elements.status.value = debt.status;
+    $('debtForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const n = (k) => f.get(k) === '' ? null : Number(f.get(k));
+      const payload = {space_id:debt?.space_id || activeSpaceId,name:String(f.get('name')).trim(),creditor:f.get('creditor')||null,
+        original_principal:n('original_principal'),principal_remaining:n('principal_remaining'),installment_amount:n('installment_amount'),
+        installments_total:n('installments_total'),installments_remaining:n('installments_remaining'),interest_rate:n('interest_rate'),
+        next_due_on:f.get('next_due_on')||null,status:f.get('status'),notes:f.get('notes')||null};
+      const message = validateDebtInput(payload); if (message) {notify(message,'error');return;}
+      const query = debt ? db.from('debts').update(payload).eq('id',debt.id).eq('space_id',activeSpaceId) : db.from('debts').insert(payload);
+      const {error} = await query; if(error){notify(error.message,'error');return;} closeModal(); notify('Debito salvato'); await loadData();
+    });
+  }
+
+  function openSavingsGoalForm(goal = null) {
+    if (!financeTablesReady || !requireSpecificSpace('gestire un obiettivo')) return;
+    const val = (key) => esc(goal?.[key] ?? '');
+    openModal(goal ? 'Modifica obiettivo' : 'Nuovo obiettivo',
+      '<form id="savingsGoalForm"><div class="formgrid"><div class="field full"><label>Nome del fondo</label><input name="name" required maxlength="120" value="' + val('name') + '"></div>' +
+      '<div class="field"><label>Importo obiettivo (€)</label><input name="target_amount" type="number" min=".01" step=".01" required value="' + val('target_amount') + '"></div>' +
+      '<div class="field"><label>Saldo iniziale (€)</label><input name="starting_balance" type="number" min="0" step=".01" value="' + (goal?.starting_balance ?? 0) + '"></div>' +
+      '<div class="field"><label>Data obiettivo</label><input name="target_date" type="date" value="' + val('target_date') + '"></div>' +
+      '<div class="field"><label>Stato</label><select name="status"><option value="active">Attivo</option><option value="paused">Sospeso</option><option value="completed">Completato</option></select></div>' +
+      '<div class="field full"><label>Note</label><textarea name="notes">' + val('notes') + '</textarea></div></div><button class="btn primary full" type="submit">Salva obiettivo</button></form>');
+    if (goal) $('savingsGoalForm').elements.status.value = goal.status;
+    $('savingsGoalForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target);
+      const payload = {space_id:goal?.space_id || activeSpaceId,name:String(f.get('name')).trim(),target_amount:Number(f.get('target_amount')),
+        starting_balance:Number(f.get('starting_balance')||0),target_date:f.get('target_date')||null,status:f.get('status'),notes:f.get('notes')||null};
+      const message = validateSavingsGoalInput(payload); if(message){notify(message,'error');return;}
+      const query = goal ? db.from('savings_goals').update(payload).eq('id',goal.id).eq('space_id',activeSpaceId) : db.from('savings_goals').insert(payload);
+      const {error}=await query; if(error){notify(error.message,'error');return;} closeModal();notify('Obiettivo salvato');await loadData();
+    });
+  }
+
+  function openDebtPaymentForm(id) {
+    const debt = debts.find((x) => x.id === id); if (!debt || debt.space_id !== activeSpaceId) return;
+    const candidates = scopedTransactions().filter((x) => x.type === 'expense' && x.status !== 'planned' && x.status !== 'verify');
+    openModal('Registra pagamento rata',
+      '<form id="debtPaymentForm"><div class="field"><label>Importo pagato (€)</label><input name="amount" type="number" min=".01" step=".01" required value="' + (debt.installment_amount ?? '') + '"></div>' +
+      '<div class="field"><label>Quota capitale (facoltativa)</label><input name="principal_component" type="number" min="0" step=".01"></div><div class="field"><label>Quota interessi (facoltativa)</label><input name="interest_component" type="number" min="0" step=".01"></div>' +
+      '<div class="field"><label>Data pagamento</label><input name="paid_on" type="date" value="' + today() + '" required></div><div class="field"><label>Collega alla spesa già registrata</label><select name="transaction_id"><option value="">Nessun collegamento</option>' +
+      candidates.map((x) => '<option value="' + esc(x.id) + '">' + esc(fmtDate(txDate(x))) + ' · ' + esc(x.description) + ' · ' + eur(x.amount) + '</option>').join('') +
+      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Non viene creata una seconda uscita.</p><button class="btn primary full" type="submit">Registra pagamento</button></form>');
+    $('debtPaymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const amount = Number(f.get('amount'));
+      const principal = f.get('principal_component') === '' ? null : Number(f.get('principal_component'));
+      const interest = f.get('interest_component') === '' ? null : Number(f.get('interest_component'));
+      if (!Number.isFinite(amount) || amount <= 0 || [principal,interest].some((x)=>x!=null&&(!Number.isFinite(x)||x<0)) ||
+        (principal != null && interest != null && principal + interest > amount)) {notify('Controlla gli importi inseriti.','error');return;}
+      const {error} = await db.from('debt_payments').insert({debt_id:id,space_id:debt.space_id,transaction_id:f.get('transaction_id')||null,
+        amount,principal_component:principal,interest_component:interest,paid_on:f.get('paid_on'),notes:f.get('notes')||null});
+      if(error){notify(error.message,'error');return;} closeModal();notify('Pagamento registrato');await loadData();
+    });
+  }
+
+  function openFundMovementForm(id, type) {
+    const goal = savingsGoals.find((x) => x.id === id); if (!goal || goal.space_id !== activeSpaceId) return;
+    const candidates = scopedTransactions().filter((x) => x.type === 'transfer' && x.status !== 'planned' && x.status !== 'verify');
+    openModal(type === 'contribution' ? 'Registra versamento' : 'Registra prelievo',
+      '<form id="fundMovementForm"><div class="field"><label>Importo (€)</label><input name="amount" type="number" min=".01" step=".01" required></div>' +
+      '<div class="field"><label>Data</label><input name="occurred_on" type="date" value="' + today() + '" required></div><div class="field"><label>Collega a un trasferimento già registrato (facoltativo)</label><select name="transaction_id"><option value="">Nessun collegamento</option>' +
+      candidates.map((x) => '<option value="' + esc(x.id) + '">' + esc(fmtDate(txDate(x))) + ' · ' + esc(x.description) + ' · ' + eur(x.amount) + '</option>').join('') +
+      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Il fondo si aggiorna senza creare un'altra spesa o entrata.</p><button class="btn primary full" type="submit">Conferma</button></form>');
+    $('fundMovementForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const payload = {goal_id:id,space_id:goal.space_id,movement_type:type,
+        amount:Number(f.get('amount')),occurred_on:f.get('occurred_on'),transaction_id:f.get('transaction_id')||null,notes:f.get('notes')||null};
+      const message = validateFundMovement(payload); if(message){notify(message,'error');return;}
+      const {error}=await db.from('savings_movements').insert(payload); if(error){notify(error.message,'error');return;}
+      closeModal();notify('Movimento del fondo registrato');await loadData();
+    });
+  }
+
   function formatAIAdvice(text) {
     const lines = String(text ?? '')
       .replace(/\r\n?/g, '\n')
