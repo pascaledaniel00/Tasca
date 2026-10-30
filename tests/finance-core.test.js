@@ -190,3 +190,15 @@ test('validazione ricorrenze controlla importo, frequenza, data e rate residue',
     /numero intero/
   );
 });
+
+
+test('i riepiloghi escludono i movimenti previsti e da verificare', () => {
+  const rows = [
+    { type: 'income', amount: 1000, status: 'confirmed', occurred_on: '2026-10-01' },
+    { type: 'income', amount: 300, status: 'planned', occurred_on: '2026-10-02' },
+    { type: 'expense', amount: 100, status: 'confirmed', occurred_on: '2026-10-03' },
+    { type: 'expense', amount: 40, status: 'verify', occurred_on: '2026-10-04' },
+  ];
+  assert.deepEqual(summarizeTransactions(rows), { income: 1000, expense: 100, transfer: 0, residual: 900 });
+  assert.deepEqual(monthlyTrend(rows, '2026-10', 1), [{ month: '2026-10', income: 1000, expense: 100 }]);
+});
