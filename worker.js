@@ -1,16 +1,16 @@
 /**
  * Tasca AI Worker.
- * Chat e consigli: Google Gemini Developer API (Gemini 3.8 Flash).
+ * Chat e consigli: Groq API (Qwen 3.8 27B).
  * Nudge e generazione quiz: Cloudflare Workers AI.
  *
  * Required Worker bindings/secrets:
  * - AI binding named AI (nudge e generazione quiz)
- * - GEMINI_API_KEY (secret; chat e consigli)
+ * - GROQ_API_KEY (secret; chat e consigli)
  * - SUPABASE_URL (secret/variable)
  * - SUPABASE_ANON_KEY (secret/variable; public project key)
  */
 const MODEL_NUDGE = '@cf/zai-org/glm-4.7-flash';
-const GEMINI_MODEL = 'gemini-3.8-flash';
+const GROQ_MODEL = 'qwen/qwen3.8-27b';
 const ALLOWED_ORIGINS = new Set(['https://pascaledaniel00.github.io']);
 
 const SYSTEM_PROMPTS = {
@@ -455,9 +455,9 @@ export default {
       return json({ error: 'Funzione IA non valida.' }, 400, allowedOrigin);
     }
     if (task === 'chat' || task === 'advice') {
-      if (!env.GEMINI_API_KEY) {
+      if (!env.GROQ_API_KEY) {
         return json(
-          { code: 'GEMINI_NOT_CONFIGURED', error: 'Gemini non è ancora configurato sul Worker.' },
+          { code: 'GROQ_NOT_CONFIGURED', error: 'Groq non è ancora configurato sul Worker.' },
           503,
           allowedOrigin
         );
@@ -588,79 +588,70 @@ export default {
     try {
       let text = '';
       if (task === 'chat' || task === 'advice') {
-        // Gemini Developer API: la chiave resta esclusivamente nel secret del Worker.
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-        const geminiBody = JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPTS[task] }],
-          },
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: task === 'chat' ? 1200 : maxTokens,
-            thinkingConfig: { thinkingLevel: 'medium' },
-          },
+        // Groq API: la chiave resta esclusivamente nel secret del Worker.
+        const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        const groqBody = JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPTS[task] },
+            { role: 'user', content: prompt },
+          ],
+          max_completion_tokens: task === 'chat' ? 1800 : 1600,
+          reasoning_effort: 'medium',
+          reasoning_format: 'hidden',
+          temperature: 1,
         });
 
-        // Gemini resta il provider principale con ragionamento medium.
-        // In caso di timeout o sovraccarico si passa al modello Cloudflare già usato da Tasca.
-        let geminiResponse;
+        // Qwen 3.8 27B è il provider principale. Le quote esaurite non vengono
+        // mascherate da risposte di qualità inferiore: il fallback resta per guasti temporanei.
+        let groqResponse;
         let payload = {};
-        let geminiFailure = null;
+        let providerFailure = null;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            geminiResponse = await fetch(geminiUrl, {
+            groqResponse = await fetch(groqUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-goog-api-key': env.GEMINI_API_KEY,
+                Authorization: 'Bearer ' + env.GROQ_API_KEY,
               },
-              body: geminiBody,
+              body: groqBody,
               signal: AbortSignal.timeout(35000),
             });
-            payload = await geminiResponse.json().catch(() => ({}));
+            payload = await groqResponse.json().catch(() => ({}));
           } catch (error) {
-            geminiFailure = String(error?.message || error || 'Timeout Gemini');
-            // Un timeout consuma già tempo prezioso: passa subito al fallback.
+            providerFailure = String(error?.message || error || 'Timeout Groq');
             break;
           }
 
-          if (geminiResponse.ok) break;
-          const message = String(payload?.error?.message || '');
-          const retryable = [503, 504].includes(geminiResponse.status) ||
-            (geminiResponse.status === 429 && !/quota|daily.?limit/i.test(message));
-          if (!retryable || attempt === 1) break;
+          if (groqResponse.ok) break;
+          // Un 429 può indicare il limite giornaliero o di frequenza: non ritentare
+          // e non consumare il fallback. I 5xx temporanei consentono un solo retry.
+          if (![503, 504].includes(groqResponse.status) || attempt === 1) break;
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        if (geminiResponse?.ok) {
-          text = (payload?.candidates?.[0]?.content?.parts || [])
-            .map((part) => typeof part.text === 'string' ? part.text : '')
-            .join('')
-            .trim();
-          if (!text && payload?.promptFeedback?.blockReason) {
-            return json(
-              { code: 'GEMINI_BLOCKED', error: 'Gemini ha bloccato la richiesta per motivi di sicurezza.' },
-              422,
-              allowedOrigin
-            );
-          }
+        if (groqResponse?.ok) {
+          text = String(payload?.choices?.[0]?.message?.content || '').trim();
         } else {
-          const providerMessage = String(payload?.error?.message || geminiFailure || '');
-          const status = geminiResponse?.status || 0;
-          const transient = !geminiResponse || [429, 503, 504].includes(status);
+          const providerMessage = String(
+            payload?.error?.message || payload?.message || providerFailure || ''
+          );
+          const status = groqResponse?.status || 0;
+          const quota = status === 429 ||
+            /rate.?limit|quota|requests per day|tokens per day|too many requests/i.test(providerMessage);
+          const transient = !groqResponse || [503, 504].includes(status);
           if (!transient || !env.AI) {
-            const quota = status === 429 ||
-              /quota|rate.?limit|resource exhausted/i.test(providerMessage);
             const busy = status === 503 || status === 504;
             return json(
               {
-                code: quota ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'GEMINI_API_ERROR',
+                code: quota ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'GROQ_API_ERROR',
                 error: quota
-                  ? 'La quota di Gemini è momentaneamente esaurita e il servizio alternativo non è disponibile.'
+                  ? 'Il limite gratuito di Groq è stato raggiunto. Riprova dopo il ripristino della quota.'
                   : busy
-                    ? 'Gemini è momentaneamente occupato e il servizio alternativo non è disponibile.'
-                    : 'Gemini non è riuscito a completare la richiesta.',
-                diagnostic: providerMessage.slice(0, 220) || 'Errore Gemini senza dettagli.',
+                    ? 'Groq è momentaneamente occupato e il servizio alternativo non è disponibile.'
+                    : 'Qwen non è riuscito a completare la richiesta.',
+                diagnostic: providerMessage.slice(0, 220) || 'Errore Groq senza dettagli.',
               },
               quota ? 429 : busy ? 503 : 502,
               allowedOrigin
@@ -668,7 +659,7 @@ export default {
           }
 
           console.warn(
-            'Gemini non disponibile; attivo il fallback Cloudflare AI.',
+            'Groq temporaneamente non disponibile; attivo il fallback Cloudflare AI.',
             status || 'timeout',
             providerMessage.slice(0, 120)
           );
