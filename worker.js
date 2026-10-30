@@ -615,7 +615,7 @@ export default {
                 'x-goog-api-key': env.GEMINI_API_KEY,
               },
               body: geminiBody,
-              signal: AbortSignal.timeout(12000),
+              signal: AbortSignal.timeout(35000),
             });
             payload = await geminiResponse.json().catch(() => ({}));
           } catch (error) {
