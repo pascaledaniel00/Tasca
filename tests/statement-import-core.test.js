@@ -17,7 +17,7 @@ test('parses Italian and international currency formats', () => {
 test('parses Italian dates and Excel serial dates', () => {
   assert.equal(parseStatementDate('30/10/2026'), '2026-10-30');
   assert.equal(parseStatementDate('2026-10-30'), '2026-10-30');
-  assert.equal(parseStatementDate(46325), '2026-10-03');
+  assert.equal(parseStatementDate(46325), '2026-10-30');
 });
 
 test('retains incomplete rows and separates transfers', () => {
