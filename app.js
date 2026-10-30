@@ -1890,12 +1890,15 @@ import {
     $('authScreen').classList.add('hidden');
     $('appScreen').classList.remove('hidden');
     $('mobileNav').classList.remove('hidden');
+    loadAIChat();
     maybeShowOnboarding();
   }
   function showLogin() {
     clearQuizSession();
     dataLoadSequence += 1;
     user = null;
+    aiChatMessages = [];
+    renderAIChat();
     transactions = [];
     budgets = [];
     recurring = [];
