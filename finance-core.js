@@ -1,10 +1,12 @@
+export const isConfirmedTransaction = (row) => !row?.status || row.status === 'confirmed';
+
 const amountOf = (row) => {
   const amount = Number(row?.amount);
   return Number.isFinite(amount) ? amount : 0;
 };
 
 export function summarizeTransactions(rows = []) {
-  const summary = rows.reduce(
+  const summary = rows.filter(isConfirmedTransaction).reduce(
     (totals, row) => {
       const amount = amountOf(row);
       if (row?.type === 'income' || row?.type === 'refund') totals.income += amount;
@@ -42,6 +44,7 @@ export function monthlyTrend(rows = [], endMonth, count = 6) {
   });
   const byMonth = new Map(months.map((month) => [month.month, month]));
   for (const row of rows) {
+    if (!isConfirmedTransaction(row)) continue;
     const month = byMonth.get(transactionMonth(row));
     if (!month) continue;
     const amount = amountOf(row);
@@ -57,7 +60,7 @@ export function categoryBreakdown(rows = [], month, limit = 5) {
   }
   const totals = new Map();
   for (const row of rows) {
-    if (row?.type !== 'expense' || transactionMonth(row) !== monthKey(month)) continue;
+    if (!isConfirmedTransaction(row) || row?.type !== 'expense' || transactionMonth(row) !== monthKey(month)) continue;
     const category = String(row.category || 'Da verificare');
     totals.set(category, (totals.get(category) || 0) + amountOf(row));
   }
@@ -82,6 +85,7 @@ export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
       const amount = Number.isFinite(cap) && cap > 0 ? cap : 0;
       const spent = rows.reduce((sum, row) => {
         if (
+          isConfirmedTransaction(row) &&
           row?.type === 'expense' &&
           row.space_id === budget.space_id &&
           row.category === budget.category &&
