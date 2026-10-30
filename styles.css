@@ -4137,6 +4137,14 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   max-height: none;
   flex: 1 1 auto;
 }
+@media (min-width: 721px) {
+  #appScreen.tasca-chat-active {
+    inset: 0 14px 0 258px;
+    max-width: none;
+    margin: 0;
+    padding: 22px 28px 12px;
+  }
+}
 @media (max-width: 720px) {
   #appScreen.tasca-chat-active {
     max-width: none;
