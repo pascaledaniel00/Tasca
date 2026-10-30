@@ -935,7 +935,7 @@ import {
     for (const row of statementImportRows.filter((item) => item.possibleDuplicate && item.duplicateSource === 'file')) {
       if (statementImportDecisions[row.sourceRow] === 'keep-candidate') skippedFileRows.add(row.duplicateOf);
     }
-    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !skippedFileRows.has(row.sourceRow) && row.amount > 0 && row.occurred_on && row.description && (!row.possibleDuplicate || ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow])));
+    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !skippedFileRows.has(row.sourceRow) && row.amount > 0 && row.occurred_on && row.description && (!row.possibleDuplicate || (row.duplicateSource === 'file' && ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow])) || (row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-both')));
     const updates = statementImportRows.filter((row) => row.possibleDuplicate && row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-candidate');
     if (!rows.length && !updates.length) { notify('Non ci sono movimenti da importare o aggiornare.', 'error'); return; }
     if (!confirm(`Stai per importare ${rows.length} movimenti e riconciliare ${updates.length} corrispondenze nello spazio attivo. I nuovi movimenti saranno marcati “Da verificare”. Vuoi continuare?`)) return;
