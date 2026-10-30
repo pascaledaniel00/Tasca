@@ -1869,6 +1869,61 @@ import {
   function saveAIChat() {
     cacheAIChatLocally();
   }
+  function appendAIInline(parent, source) {
+    const text = String(source || '');
+    const token = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*\n]+\*|_[^_\n]+_|\x60[^\x60]+\x60|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g;
+    let cursor = 0, match;
+    while ((match = token.exec(text))) {
+      if (match.index > cursor) parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+      const raw = match[0];
+      let node;
+      if (raw.startsWith('**') || raw.startsWith('__')) {
+        node = document.createElement('strong'); node.textContent = raw.slice(2, -2);
+      } else if (raw.startsWith('*') || raw.startsWith('_')) {
+        node = document.createElement('em'); node.textContent = raw.slice(1, -1);
+      } else if (raw.startsWith('\x60')) {
+        node = document.createElement('code'); node.textContent = raw.slice(1, -1);
+      } else {
+        const parts = raw.match(/^\[([^\]]+)\]\((https:\/\/[^\s)]+)\)$/);
+        node = document.createElement('a'); node.textContent = parts[1]; node.href = parts[2];
+        node.target = '_blank'; node.rel = 'noopener noreferrer';
+      }
+      parent.appendChild(node); cursor = token.lastIndex;
+    }
+    if (cursor < text.length) parent.appendChild(document.createTextNode(text.slice(cursor)));
+  }
+  function renderAIMessageContent(parent, content) {
+    const lines = String(content || '').replace(/\r\n?/g, '\n').split('\n');
+    let paragraph = [], list = null, listType = '';
+    const flushParagraph = () => {
+      if (!paragraph.length) return;
+      const p = document.createElement('p');
+      appendAIInline(p, paragraph.join(' ')); parent.appendChild(p); paragraph = [];
+    };
+    const flushList = () => { list = null; listType = ''; };
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) { flushParagraph(); flushList(); return; }
+      const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+      const bullet = trimmed.match(/^(?:[-•+]\s+)(.+)$/);
+      const numbered = trimmed.match(/^\d+[.)]\s+(.+)$/);
+      if (heading) {
+        flushParagraph(); flushList();
+        const h = document.createElement(heading[1].length === 1 ? 'h4' : 'h5');
+        appendAIInline(h, heading[2].replace(/\*\*/g, '')); parent.appendChild(h);
+      } else if (bullet || numbered) {
+        flushParagraph();
+        const type = bullet ? 'ul' : 'ol';
+        if (!list || listType !== type) {
+          flushList(); list = document.createElement(type); listType = type; parent.appendChild(list);
+        }
+        const li = document.createElement('li'); appendAIInline(li, (bullet || numbered)[1]); list.appendChild(li);
+      } else {
+        flushList(); paragraph.push(trimmed);
+      }
+    });
+    flushParagraph();
+  }
   function renderAIChat() {
     const host = $('aiChatMessages');
     if (!host) return;
@@ -1890,7 +1945,8 @@ import {
       }
       const bubble = document.createElement('div');
       bubble.className = 'ai-chat-bubble ' + role;
-      bubble.textContent = String(m.content || '');
+      if (role === 'assistant') renderAIMessageContent(bubble, m.content);
+      else bubble.textContent = String(m.content || '');
       row.appendChild(bubble);
       host.appendChild(row);
     });
