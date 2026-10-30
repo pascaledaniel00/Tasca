@@ -589,27 +589,47 @@ export default {
       let text = '';
       if (task === 'chat' || task === 'advice') {
         // Gemini Developer API: la chiave resta esclusivamente nel secret del Worker.
-        const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': env.GEMINI_API_KEY,
-            },
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: SYSTEM_PROMPTS[task] }],
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+        const geminiBody = JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: SYSTEM_PROMPTS[task] }],
+          },
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: task === 'chat' ? 1200 : maxTokens,
+            thinkingConfig: { thinkingLevel: 'medium' },
+          },
+        });
+
+        // Gemini può restituire 503 durante i picchi di domanda.
+        // Due tentativi con timeout individuale evitano di consumare tutti i 45s del client.
+        let geminiResponse;
+        let payload = {};
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            geminiResponse = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': env.GEMINI_API_KEY,
               },
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: {
-                maxOutputTokens: task === 'chat' ? 1200 : maxTokens,
-                thinkingConfig: { thinkingLevel: 'low' },
-              },
-            }),
+              body: geminiBody,
+              signal: AbortSignal.timeout(16000),
+            });
+            payload = await geminiResponse.json().catch(() => ({}));
+          } catch (error) {
+            if (attempt === 1) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 650));
+            continue;
           }
-        );
-        const payload = await geminiResponse.json().catch(() => ({}));
+
+          if (geminiResponse.ok) break;
+          const message = String(payload?.error?.message || '');
+          const retryable = [503, 504].includes(geminiResponse.status) ||
+            (geminiResponse.status === 429 && !/quota|daily.?limit/i.test(message));
+          if (!retryable || attempt === 1) break;
+          await new Promise((resolve) => setTimeout(resolve, 650));
+        }
         if (!geminiResponse.ok) {
           const providerMessage = String(payload?.error?.message || '');
           const quota = geminiResponse.status === 429 ||
