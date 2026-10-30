@@ -1872,13 +1872,27 @@ import {
   function renderAIChat() {
     const host = $('aiChatMessages');
     if (!host) return;
-    const rows = aiChatMessages.length ? aiChatMessages : [{ role: 'assistant', content: 'Ciao! Posso aiutarti con budget, rate, spese e fondo risparmio. Ogni modifica richiederà la tua conferma.' }];
+    const rows = aiChatMessages.length ? aiChatMessages : [{
+      role: 'assistant',
+      content: 'Ciao! Sono qui per aiutarti a leggere meglio le tue finanze. Possiamo analizzare le spese, valutare una rata o costruire un piano di risparmio. Ogni modifica al registro richiederà sempre la tua conferma.'
+    }];
     host.replaceChildren();
     rows.forEach((m) => {
+      const role = m.role === 'user' ? 'user' : 'assistant';
+      const row = document.createElement('div');
+      row.className = 'ai-chat-row ' + role;
+      if (role === 'assistant') {
+        const avatar = document.createElement('span');
+        avatar.className = 'ai-chat-avatar';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = '<svg viewBox="0 0 48 48" focusable="false"><path d="M24 4.5 40 13.7v20.6L24 43.5 8 34.3V13.7L24 4.5Z" fill="currentColor" opacity=".2"/><path d="M16 18.5c0-4.5 3.5-7.5 8-7.5s8 3 8 7.5v11c0 4.5-3.5 7.5-8 7.5s-8-3-8-7.5v-11Z" fill="currentColor"/><path d="M19.5 23h.1m8.8 0h.1" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><path d="M20 29c2.4 2.2 5.6 2.2 8 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+        row.appendChild(avatar);
+      }
       const bubble = document.createElement('div');
-      bubble.className = 'ai-chat-bubble ' + (m.role === 'user' ? 'user' : 'assistant');
+      bubble.className = 'ai-chat-bubble ' + role;
       bubble.textContent = String(m.content || '');
-      host.appendChild(bubble);
+      row.appendChild(bubble);
+      host.appendChild(row);
     });
     host.scrollTop = host.scrollHeight;
   }
