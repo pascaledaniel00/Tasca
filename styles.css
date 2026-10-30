@@ -3957,3 +3957,142 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   .ai-chat-row { max-width: 100%; }
   .ai-chat-bubble.assistant { padding: 13px 14px; font-size: 13px; }
 }
+
+/* Tasca AI chat workspace */
+.tasca-chat-shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  height: min(760px, calc(100dvh - 240px));
+  min-height: 540px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--white);
+  box-shadow: 0 16px 46px #173d320c;
+}
+.tasca-chat-sidebar {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 17px 12px 12px;
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--soft) 72%, var(--white));
+}
+.tasca-new-chat {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--g) 22%, var(--line));
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
+}
+.tasca-new-chat:hover { border-color: color-mix(in srgb, var(--g) 52%, var(--line)); background: var(--gs); }
+.tasca-new-chat:disabled { opacity: .55; cursor: wait; }
+.tasca-new-chat svg { width: 18px; height: 18px; color: var(--g); }
+.tasca-chat-sidebar-label {
+  margin: 23px 8px 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tasca-conversation-list { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 4px; overflow-y: auto; }
+.tasca-conversation-item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.tasca-conversation-item:hover { background: color-mix(in srgb, var(--white) 76%, var(--gs)); }
+.tasca-conversation-item[aria-current='page'] { border-color: color-mix(in srgb, var(--g) 14%, var(--line)); background: var(--white); box-shadow: 0 3px 12px #173d3208; }
+.tasca-conversation-item:disabled { cursor: wait; }
+.tasca-conversation-item-title, .tasca-conversation-item-preview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tasca-conversation-item-title { font-size: 11px; font-weight: 750; }
+.tasca-conversation-item-preview { color: var(--muted); font-size: 10px; }
+.tasca-chat-sidebar-note { margin: auto 7px 0; padding-top: 16px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.tasca-chat-main { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+.tasca-chat-topbar { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.tasca-chat-title { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.tasca-chat-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 12px; background: var(--g); color: #fff; font-size: 17px; font-weight: 850; }
+.tasca-chat-title h3 { margin: 0 0 2px; font-size: 13px; }
+.tasca-chat-title div > span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; }
+.tasca-chat-title i { width: 6px; height: 6px; border-radius: 50%; background: #26966a; }
+.tasca-chat-context { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.tasca-chat-context b { color: var(--ink); font-weight: 700; }
+.tasca-chat-shell .ai-chat-messages {
+  display: flex;
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 24px clamp(16px, 4vw, 52px);
+  border: 0;
+  border-radius: 0;
+  background: var(--white);
+  scroll-behavior: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.tasca-chat-welcome { width: min(100%, 560px); margin: auto; padding: 30px 12px; text-align: center; }
+.tasca-welcome-mark { display: grid; width: 48px; height: 48px; margin: 0 auto 16px; place-items: center; border-radius: 16px; background: var(--gs); color: var(--g); font-size: 22px; font-weight: 850; }
+.tasca-chat-welcome h4 { margin: 0 0 8px; font-size: clamp(20px, 2.5vw, 26px); letter-spacing: -.5px; }
+.tasca-chat-welcome > p { margin: 0 auto; max-width: 420px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.tasca-chat-prompts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
+.tasca-chat-prompts button { min-height: 62px; padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: var(--white); color: var(--ink); font: inherit; font-size: 10px; font-weight: 700; line-height: 1.4; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.tasca-chat-prompts button:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--g) 38%, var(--line)); background: var(--gs); }
+.tasca-chat-shell .ai-chat-row { max-width: min(94%, 760px); align-items: flex-start; }
+.tasca-chat-shell .ai-chat-row.user { margin-left: auto; }
+.tasca-chat-shell .ai-chat-bubble { padding: 13px 16px; font-size: 13px; }
+.tasca-chat-shell .ai-chat-form { align-items: flex-end; margin: 0 18px; padding: 8px 9px 8px 15px; border: 1px solid color-mix(in srgb, var(--g) 22%, var(--line)); border-radius: 18px; background: var(--white); box-shadow: 0 5px 22px #173d320b; }
+.tasca-chat-shell .ai-chat-form:focus-within { border-color: color-mix(in srgb, var(--g) 52%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--g) 9%, transparent), 0 5px 22px #173d320b; }
+.tasca-chat-shell .ai-chat-form textarea { min-height: 42px; max-height: 130px; padding: 10px 0; resize: none; font-size: 13px; }
+.tasca-chat-send { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 0; border-radius: 12px; background: var(--g); color: #fff; cursor: pointer; transition: opacity .16s ease, transform .16s ease; }
+.tasca-chat-send:hover { transform: translateY(-1px); }
+.tasca-chat-send:disabled { opacity: .5; cursor: wait; }
+.tasca-chat-send svg { width: 18px; height: 18px; }
+.tasca-chat-shell .tasca-chat-privacy { justify-content: center; margin: 9px 18px 13px; font-size: 9px; text-align: center; }
+@media (max-width: 720px) {
+  .tasca-chat-shell { grid-template-columns: minmax(0, 1fr); height: calc(100dvh - 230px); min-height: 500px; }
+  .tasca-chat-sidebar { min-height: 0; padding: 9px 10px 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .tasca-new-chat { width: auto; min-height: 35px; align-self: flex-start; padding: 0 10px; font-size: 10px; }
+  .tasca-new-chat svg { width: 15px; height: 15px; }
+  .tasca-chat-sidebar-label, .tasca-chat-sidebar-note { display: none; }
+  .tasca-conversation-list { flex: 0 0 auto; flex-direction: row; gap: 6px; margin-top: 7px; overflow-x: auto; overflow-y: hidden; }
+  .tasca-conversation-item { width: 190px; min-width: 190px; padding: 7px 9px; }
+  .tasca-conversation-item-preview { font-size: 9px; }
+  .tasca-chat-topbar { min-height: 54px; padding: 8px 12px; }
+  .tasca-chat-avatar { width: 32px; height: 32px; flex-basis: 32px; border-radius: 11px; }
+  .tasca-chat-shell .ai-chat-messages { gap: 12px; padding: 16px 12px; }
+  .tasca-chat-prompts { grid-template-columns: 1fr; gap: 7px; margin-top: 17px; }
+  .tasca-chat-prompts button { min-height: 42px; text-align: left; }
+  .tasca-chat-shell .ai-chat-row { max-width: 100%; }
+  .tasca-chat-shell .ai-chat-form { margin: 0 9px; }
+  .tasca-chat-shell .tasca-chat-privacy { margin: 8px 9px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tasca-new-chat, .tasca-chat-prompts button, .tasca-chat-send { transition: none; }
+  .tasca-chat-prompts button:hover, .tasca-chat-send:hover { transform: none; }
+}
