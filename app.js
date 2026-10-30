@@ -851,7 +851,7 @@ import {
     target.innerHTML = statementImportRows.length ? `
       <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Possibili duplicati: ${summary.duplicates} · Da verificare: ${summary.invalid + summary.review}</div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : formatMoney(row.amount)}</td><td>${row.duplicate ? 'Possibile duplicato' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
+      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Possibile duplicato' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
       </tbody></table></div>
       ${summary.total > 100 ? '<p class="muted tiny">Anteprima delle prime 100 righe; il controllo considera l’intero file.</p>' : ''}
       <button id="confirmStatementImport" class="btn primary" type="button" ${summary.ready ? '' : 'disabled'}>Conferma importazione di ${summary.ready} movimenti</button>
