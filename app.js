@@ -10,6 +10,11 @@ import {
   validateTransactionInput,
 } from './finance-core.js';
 import {
+  normalizeStatementRows,
+  findStatementDuplicates,
+  statementImportSummary,
+} from './statement-import-core.js?v=20261030-1';
+import {
   calculateQuizXP,
   getQuizBadges,
   getQuizLevel,
