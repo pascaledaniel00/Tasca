@@ -102,7 +102,10 @@ const dayDistance = (a, b) => {
   const left = String(a || '').slice(0, 10);
   const right = String(b || '').slice(0, 10);
   if (!left || !right) return Infinity;
-  return Math.abs(Date.parse(left + 'T00:00:00Z') - Date.parse(right + 'T00:00:00Z')) / 86400000;
+  const leftTime = Date.parse(left + 'T00:00:00Z');
+  const rightTime = Date.parse(right + 'T00:00:00Z');
+  if (!Number.isFinite(leftTime) || !Number.isFinite(rightTime)) return Infinity;
+  return Math.abs(leftTime - rightTime) / 86400000;
 };
 export function compareTransactionForDuplicate(candidate, existing, options = {}) {
   const toleranceDays = Number.isInteger(options.toleranceDays) ? options.toleranceDays : 2;
