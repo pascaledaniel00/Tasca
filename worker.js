@@ -582,7 +582,7 @@ export default {
     const maxTokens = task === 'chat' ? 1800 : task === 'advice' ? 1200 : task === 'nudge' ? 96 : 1800;
     const prompt = JSON.stringify(body.data).slice(
       0,
-      task === 'nudge' ? 7000 : task === 'chat' ? 22000 : 18000
+      task === 'nudge' ? 7000 : task === 'chat' ? 14000 : 12000
     );
 
     try {
@@ -603,8 +603,8 @@ export default {
               },
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
               generationConfig: {
-                maxOutputTokens: maxTokens,
-                temperature: task === 'chat' ? 0.45 : 0.3,
+                maxOutputTokens: task === 'chat' ? 1200 : maxTokens,
+                thinkingConfig: { thinkingLevel: 'low' },
               },
             }),
           }
