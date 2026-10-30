@@ -3858,3 +3858,26 @@ html[data-theme='dark'] .tasca-mascot-pills span{background:var(--white);border-
 html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(--line);color:var(--g)}
 @media(max-width:650px){.tasca-mascot-stage{grid-template-columns:minmax(0,1fr) 130px;gap:0;min-height:175px;padding:8px 12px}.tasca-mascot-copy{padding:12px 0}.tasca-mascot-copy h4{font-size:18px}.tasca-mascot-copy p{font-size:11px}.tasca-mascot-art{width:150px;max-width:none;max-height:175px;margin-right:-16px}.tasca-mascot-pills{gap:5px;margin-top:10px}.tasca-mascot-pills span{padding:5px 7px;font-size:9px}}
 @media(max-width:390px){.tasca-mascot-stage{grid-template-columns:minmax(0,1fr) 105px}.tasca-mascot-art{width:125px;margin-right:-18px}.tasca-mascot-copy h4{font-size:16px}}
+
+
+/* Debiti e risparmi: colonne perfettamente equilibrate. */
+#page-debts .layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+#page-debts .layout > .panel {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+#page-debts .panelhead {
+  min-height: 42px;
+}
+#page-debts .panelhead h3 {
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  #page-debts .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
