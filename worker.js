@@ -603,8 +603,8 @@ export default {
               },
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
               generationConfig: {
-                maxOutputTokens: maxTokens,
-                temperature: task === 'chat' ? 0.45 : 0.3,
+                maxOutputTokens: task === 'chat' ? 1200 : maxTokens,
+                thinkingConfig: { thinkingLevel: 'low' },
               },
             }),
           }
