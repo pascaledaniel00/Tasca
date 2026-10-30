@@ -601,10 +601,11 @@ export default {
           },
         });
 
-        // Gemini può restituire 503 durante i picchi di domanda.
-        // Due tentativi con timeout individuale evitano di consumare tutti i 45s del client.
+        // Gemini resta il provider principale con ragionamento medium.
+        // In caso di timeout o sovraccarico si passa al modello Cloudflare già usato da Tasca.
         let geminiResponse;
         let payload = {};
+        let geminiFailure = null;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             geminiResponse = await fetch(geminiUrl, {
@@ -614,13 +615,13 @@ export default {
                 'x-goog-api-key': env.GEMINI_API_KEY,
               },
               body: geminiBody,
-              signal: AbortSignal.timeout(16000),
+              signal: AbortSignal.timeout(12000),
             });
             payload = await geminiResponse.json().catch(() => ({}));
           } catch (error) {
-            if (attempt === 1) throw error;
-            await new Promise((resolve) => setTimeout(resolve, 650));
-            continue;
+            geminiFailure = String(error?.message || error || 'Timeout Gemini');
+            // Un timeout consuma già tempo prezioso: passa subito al fallback.
+            break;
           }
 
           if (geminiResponse.ok) break;
@@ -628,37 +629,66 @@ export default {
           const retryable = [503, 504].includes(geminiResponse.status) ||
             (geminiResponse.status === 429 && !/quota|daily.?limit/i.test(message));
           if (!retryable || attempt === 1) break;
-          await new Promise((resolve) => setTimeout(resolve, 650));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
-        if (!geminiResponse.ok) {
-          const providerMessage = String(payload?.error?.message || '');
-          const quota = geminiResponse.status === 429 ||
-            /quota|rate.?limit|resource exhausted/i.test(providerMessage);
-          const busy = geminiResponse.status === 503 || geminiResponse.status === 504;
-          return json(
-            {
-              code: quota ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'GEMINI_API_ERROR',
-              error: quota
-                ? 'La quota gratuita di Gemini è momentaneamente esaurita. Riprova più tardi.'
-                : busy
-                  ? 'Gemini è momentaneamente occupato. Riprova tra poco.'
-                  : 'Gemini non è riuscito a completare la richiesta.',
-              diagnostic: providerMessage.slice(0, 220) || 'Errore Gemini senza dettagli.',
-            },
-            quota ? 429 : busy ? 503 : 502,
-            allowedOrigin
+
+        if (geminiResponse?.ok) {
+          text = (payload?.candidates?.[0]?.content?.parts || [])
+            .map((part) => typeof part.text === 'string' ? part.text : '')
+            .join('')
+            .trim();
+          if (!text && payload?.promptFeedback?.blockReason) {
+            return json(
+              { code: 'GEMINI_BLOCKED', error: 'Gemini ha bloccato la richiesta per motivi di sicurezza.' },
+              422,
+              allowedOrigin
+            );
+          }
+        } else {
+          const providerMessage = String(payload?.error?.message || geminiFailure || '');
+          const status = geminiResponse?.status || 0;
+          const transient = !geminiResponse || [429, 503, 504].includes(status);
+          if (!transient || !env.AI) {
+            const quota = status === 429 ||
+              /quota|rate.?limit|resource exhausted/i.test(providerMessage);
+            const busy = status === 503 || status === 504;
+            return json(
+              {
+                code: quota ? 'QUOTA_EXHAUSTED' : busy ? 'AI_BUSY' : 'GEMINI_API_ERROR',
+                error: quota
+                  ? 'La quota di Gemini è momentaneamente esaurita e il servizio alternativo non è disponibile.'
+                  : busy
+                    ? 'Gemini è momentaneamente occupato e il servizio alternativo non è disponibile.'
+                    : 'Gemini non è riuscito a completare la richiesta.',
+                diagnostic: providerMessage.slice(0, 220) || 'Errore Gemini senza dettagli.',
+              },
+              quota ? 429 : busy ? 503 : 502,
+              allowedOrigin
+            );
+          }
+
+          console.warn(
+            'Gemini non disponibile; attivo il fallback Cloudflare AI.',
+            status || 'timeout',
+            providerMessage.slice(0, 120)
           );
-        }
-        text = (payload?.candidates?.[0]?.content?.parts || [])
-          .map((part) => typeof part.text === 'string' ? part.text : '')
-          .join('')
-          .trim();
-        if (!text && payload?.promptFeedback?.blockReason) {
-          return json(
-            { code: 'GEMINI_BLOCKED', error: 'Gemini ha bloccato la richiesta per motivi di sicurezza.' },
-            422,
-            allowedOrigin
-          );
+          const fallback = await env.AI.run(MODEL_NUDGE, {
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPTS[task] },
+              { role: 'user', content: prompt },
+            ],
+            max_tokens: task === 'chat' ? 1200 : maxTokens,
+            temperature: 0.15,
+            chat_template_kwargs: { enable_thinking: false },
+            reasoning_effort: 'low',
+          });
+          text = String(
+            fallback?.response ||
+              fallback?.result?.response ||
+              fallback?.choices?.[0]?.message?.content ||
+              fallback?.result?.choices?.[0]?.message?.content ||
+              ''
+          ).trim();
         }
       } else {
         const result = await env.AI.run(MODEL_NUDGE, {
