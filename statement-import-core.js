@@ -145,6 +145,7 @@ export function statementImportSummary(rows) {
     total: list.length,
     ready: list.filter((row) => row.status === 'needs_review' && !row.duplicate).length,
     duplicates: list.filter((row) => row.duplicate).length,
+    possibleDuplicates: list.filter((row) => row.possibleDuplicate).length,
     invalid: list.filter((row) => row.status === 'invalid').length,
     review: list.filter((row) => row.type === 'review').length,
     expenses: list.filter((row) => row.type === 'expense').reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
