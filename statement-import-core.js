@@ -1,8 +1,8 @@
 const DATE_KEYS = ['data', 'date', 'data operazione', 'data valuta', 'transaction date', 'booking date'];
 const DESCRIPTION_KEYS = ['descrizione', 'description', 'causale', 'operazione', 'merchant', 'beneficiario', 'dettagli'];
 const AMOUNT_KEYS = ['importo', 'amount', 'valore', 'totale'];
-const DEBIT_KEYS = ['addebito', 'uscite', 'debit', 'withdrawal', 'dare'];
-const CREDIT_KEYS = ['accredito', 'entrate', 'credit', 'deposit', 'avere'];
+const DEBIT_KEYS = ['addebito', 'importo addebito', 'importi dare', 'uscite', 'debit', 'withdrawal', 'dare'];
+const CREDIT_KEYS = ['accredito', 'importo accredito', 'importi avere', 'entrate', 'credit', 'deposit', 'avere'];
 const TYPE_KEYS = ['tipo', 'type', 'transaction type'];
 const normalizeKey = (value) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const findValue = (row, keys) => {
@@ -53,6 +53,7 @@ const classify = (row, signedAmount, description) => {
   if (/trasferimento|giroconto|transfer between|own account/.test(text)) return 'transfer';
   if (/rimborso|storno|reversal|refund/.test(text)) return signedAmount < 0 ? 'expense' : 'refund';
   if (/^(income|entrata|accredito|credit|salary|stipendio)$/.test(explicit)) return 'income';
+  if (/^(expense|uscita|addebito|debit|payment|pagamento)$/.test(explicit)) return 'expense';
   if (/^(transfer|trasferimento|giroconto)$/.test(explicit)) return 'transfer';
   if (/^(refund|rimborso|storno)$/.test(explicit)) return 'refund';
   return signedAmount < 0 ? 'expense' : 'income';
