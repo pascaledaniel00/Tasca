@@ -13,8 +13,8 @@
     <meta name="apple-mobile-web-app-title" content="Tasca" />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261030-2" />
-    <link rel="stylesheet" href="mobile-nav-fix.css?v=20261030-12" />
+    <link rel="stylesheet" href="styles.css?v=20261030-3" />
+    <link rel="stylesheet" href="mobile-nav-fix.css?v=20261030-13" />
   </head>
   <body>
     <div id="authScreen" class="authwrap">
@@ -173,6 +173,7 @@
       <symbol id="icon-quiz" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.4 1.9c-1.1.9-1.9 1.2-1.9 2.6M12 17.2v.1" /></symbol>
       <symbol id="icon-spaces" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M20 21v-2a4 4 0 0 0-3-3.9M16 3.2a4 4 0 0 1 0 7.6" /></symbol>
       <symbol id="icon-shortcut" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="m13.5 6.5-5 6h4l-1 5 5-7h-4l1-4Z" /></symbol>
+      <symbol id="icon-tasca-ai" viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/><path d="m12 9.8.7 1.5 1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7.7-1.5Z"/></symbol>
       <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3" /><circle cx="4" cy="12" r="2" /><circle cx="12" cy="6" r="2" /><circle cx="20" cy="16" r="2" /></symbol>
     </svg>
       <nav id="desktopNav" class="nav">
@@ -184,6 +185,7 @@
         <button data-page="recurring"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-recurring"></use></svg><span class="sidebar-nav-label">Ricorrenze</span></button>
         <button data-page="debts"><span class="sidebar-nav-label">Debiti e risparmi</span></button>
         <button data-page="advice"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-advice"></use></svg><span class="sidebar-nav-label">Consigli</span></button>
+        <button data-page="tasca-ai"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-tasca-ai"></use></svg><span class="sidebar-nav-label">Tasca IA</span></button>
         <button data-page="quiz"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-quiz"></use></svg><span class="sidebar-nav-label">Quiz</span></button>
         <button data-page="spaces"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spaces"></use></svg><span class="sidebar-nav-label">Spazi</span></button>
         <button data-page="shortcut"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-shortcut"></use></svg><span class="sidebar-nav-label">Comando Rapido</span></button>
@@ -414,6 +416,15 @@
             </button>
           </div>
           <div id="adviceList" class="layout"></div>
+
+        </section>
+        <section id="page-tasca-ai" class="section">
+          <div class="page-title">
+            <div>
+              <h2>Tasca IA</h2>
+              <p class="muted tiny">Un assistente per ragionare sulle tue finanze, usando i dati dello spazio selezionato.</p>
+            </div>
+          </div>
           <section class="panel tasca-chat-panel" aria-label="Chat con Tasca AI">
             <div class="panelhead">
               <div><h3>Parla con Tasca AI</h3><p class="muted tiny">Budget, rate, spese, estratti conto e obiettivi di risparmio.</p></div>
@@ -687,6 +698,9 @@
         </button>
         <button type="button" data-page="advice" aria-label="Consigli">
           <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-advice"></use></svg><span class="bottomnav-label">Consigli</span>
+        </button>
+        <button type="button" data-page="tasca-ai" aria-label="Tasca IA">
+          <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-tasca-ai"></use></svg><span class="bottomnav-label">Tasca IA</span>
         </button>
         <button type="button" data-page="settings" aria-label="Impostazioni">
           <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-settings"></use></svg><span class="bottomnav-label">Impostazioni</span>
