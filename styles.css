@@ -3836,3 +3836,25 @@ html[data-theme='dark'] .ai-chat-bubble.user { color: #fff; }
   .ai-chat-messages { scroll-behavior: auto; }
   .ai-chat-form { transition: none; }
 }
+
+
+/* Mascotte Tasca IA: illustrazione vettoriale integrata nella chat. */
+.tasca-mascot-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,360px);align-items:center;gap:12px;min-height:240px;margin:0 0 18px;padding:10px clamp(14px,3vw,28px);overflow:hidden;border:1px solid color-mix(in srgb,var(--g) 12%,var(--line));border-radius:22px;background:radial-gradient(ellipse at 75% 50%,#e4f3e9 0,transparent 48%),linear-gradient(115deg,#f8fbf7,#fff);}
+.tasca-mascot-copy{padding:18px 0;max-width:440px}
+.tasca-mascot-eyebrow{color:#32835c;font-size:9px;font-weight:850;letter-spacing:.14em}
+.tasca-mascot-copy h4{margin:8px 0;color:#173d32;font-size:clamp(20px,2.6vw,29px);line-height:1.15;letter-spacing:-.7px}
+.tasca-mascot-copy p{margin:0;color:#62766a;font-size:13px;line-height:1.55}
+.tasca-mascot-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
+.tasca-mascot-pills span{padding:6px 10px;border:1px solid #d7e9dc;border-radius:99px;background:#fff;color:#286347;font-size:10px;font-weight:700}
+.tasca-mascot-art{display:block;width:100%;max-width:340px;max-height:260px;justify-self:center}
+.debts-page-title{align-items:center;justify-content:flex-start;gap:13px}
+.debts-page-mark{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,#e6f3e9,#f8fbf8);border:1px solid #d4e7d9;color:#24724d;box-shadow:0 6px 18px #173d3210}
+.debts-page-mark svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-nav-icon{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+html[data-theme='dark'] .tasca-mascot-stage{background:radial-gradient(ellipse at 75% 50%,#263e32 0,transparent 48%),var(--soft);border-color:var(--line)}
+html[data-theme='dark'] .tasca-mascot-copy h4{color:var(--ink)}
+html[data-theme='dark'] .tasca-mascot-copy p{color:var(--muted)}
+html[data-theme='dark'] .tasca-mascot-pills span{background:var(--white);border-color:var(--line);color:var(--g)}
+html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(--line);color:var(--g)}
+@media(max-width:650px){.tasca-mascot-stage{grid-template-columns:minmax(0,1fr) 130px;gap:0;min-height:175px;padding:8px 12px}.tasca-mascot-copy{padding:12px 0}.tasca-mascot-copy h4{font-size:18px}.tasca-mascot-copy p{font-size:11px}.tasca-mascot-art{width:150px;max-width:none;max-height:175px;margin-right:-16px}.tasca-mascot-pills{gap:5px;margin-top:10px}.tasca-mascot-pills span{padding:5px 7px;font-size:9px}}
+@media(max-width:390px){.tasca-mascot-stage{grid-template-columns:minmax(0,1fr) 105px}.tasca-mascot-art{width:125px;margin-right:-18px}.tasca-mascot-copy h4{font-size:16px}}
