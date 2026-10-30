@@ -631,7 +631,8 @@ import {
         }))
         .slice(0, 20),
       dataQualityFlags: {
-        transactionsToVerify: allRows.filter((t) => t.status === 'verify').length,\n        transactionsPlanned: allRows.filter((t) => t.status === 'planned').length,
+        transactionsToVerify: allRows.filter((t) => t.status === 'verify').length,
+        transactionsPlanned: allRows.filter((t) => t.status === 'planned').length,
         monthsOfHistoryAvailable: Object.keys(months).length,
       },
     };
@@ -714,7 +715,7 @@ import {
         .sort((a, b) => b.pct - a.pct)[0];
       const day = new Date().getDate();
       const recentLargeExpenses = scopedTransactions()
-        .filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
+        .filter((t) => isConfirmedMovement(t) && t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
         .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
         .slice(0, 3)
         .map((t) => ({
@@ -731,6 +732,7 @@ import {
         scopedTransactions()
           .filter(
             (t) =>
+              isConfirmedMovement(t) &&
               t.type === 'expense' &&
               txDate(t).slice(0, 7) >= fromMonth &&
               String(t.description || '').trim()
