@@ -31,7 +31,12 @@ export function parseStatementAmount(value) {
   return Math.round((negativeByParens ? -Math.abs(parsed) : parsed) * 100) / 100;
 }
 export function parseStatementDate(value) {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
   if (typeof value === 'number' && value > 20000 && value < 80000) {
     const date = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
     return date.toISOString().slice(0, 10);
@@ -89,9 +94,10 @@ const normalizeDescription = (value) => normalizeKey(value).replace(/\b(card|car
 export function findStatementDuplicates(importRows, existingRows, options = {}) {
   const toleranceDays = Number.isInteger(options.toleranceDays) ? options.toleranceDays : 2;
   const existing = Array.isArray(existingRows) ? existingRows : [];
+  const seenInFile = [];
   return (Array.isArray(importRows) ? importRows : []).map((row) => {
     const description = normalizeDescription(row.description);
-    const matches = existing.filter((tx) => {
+    const matchesExisting = existing.filter((tx) => {
       if (String(tx.type) !== String(row.type)) return false;
       if (Math.abs(Number(tx.amount) - Number(row.amount)) > 0.005) return false;
       const txDate = String(tx.occurred_on || '').slice(0, 10);
@@ -102,7 +108,24 @@ export function findStatementDuplicates(importRows, existingRows, options = {}) 
       const txDescription = normalizeDescription(tx.description);
       return description && txDescription && (description === txDescription || description.includes(txDescription) || txDescription.includes(description));
     });
-    return { ...row, duplicate: matches.length > 0, duplicateOf: matches[0]?.id || null };
+    const matchesFile = seenInFile.find((prior) => {
+      if (String(prior.type) !== String(row.type)) return false;
+      if (Math.abs(Number(prior.amount) - Number(row.amount)) > 0.005) return false;
+      const priorDate = String(prior.occurred_on || '').slice(0, 10);
+      const rowDate = String(row.occurred_on || '').slice(0, 10);
+      if (!priorDate || !rowDate) return false;
+      const delta = Math.abs(Date.parse(priorDate + 'T00:00:00Z') - Date.parse(rowDate + 'T00:00:00Z')) / 86400000;
+      if (delta > toleranceDays) return false;
+      const priorDescription = normalizeDescription(prior.description);
+      return description && priorDescription && (description === priorDescription || description.includes(priorDescription) || priorDescription.includes(description));
+    });
+    seenInFile.push(row);
+    return {
+      ...row,
+      duplicate: matchesExisting.length > 0 || Boolean(matchesFile),
+      duplicateOf: matchesExisting[0]?.id || matchesFile?.sourceRow || null,
+      duplicateSource: matchesExisting.length ? 'existing' : matchesFile ? 'file' : null,
+    };
   });
 }
 export function statementImportSummary(rows) {
