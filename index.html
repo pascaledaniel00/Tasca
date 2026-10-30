@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Tasca" />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261030-1" />
+    <link rel="stylesheet" href="styles.css?v=20261030-2" />
     <link rel="stylesheet" href="mobile-nav-fix.css?v=20261030-12" />
   </head>
   <body>
@@ -182,6 +182,7 @@
         <button data-page="transactions"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-transactions"></use></svg><span class="sidebar-nav-label">Movimenti</span></button>
         <button data-page="budgets"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-budgets"></use></svg><span class="sidebar-nav-label">Budget</span></button>
         <button data-page="recurring"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-recurring"></use></svg><span class="sidebar-nav-label">Ricorrenze</span></button>
+        <button data-page="debts"><span class="sidebar-nav-label">Debiti e risparmi</span></button>
         <button data-page="advice"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-advice"></use></svg><span class="sidebar-nav-label">Consigli</span></button>
         <button data-page="quiz"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-quiz"></use></svg><span class="sidebar-nav-label">Quiz</span></button>
         <button data-page="spaces"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spaces"></use></svg><span class="sidebar-nav-label">Spazi</span></button>
@@ -342,6 +343,16 @@
             </div>
             <button id="newTransactionBtn" class="btn primary">＋ Aggiungi movimento</button>
           </div>
+          <div class="panel statement-import-panel">
+            <h3>Importa estratto conto</h3>
+            <p class="muted tiny">Seleziona un file Excel o CSV. Prima di registrare qualsiasi movimento potrai controllare tutte le righe e confermare l'importazione.</p>
+            <div class="toolbar">
+              <input id="statementFile" type="file" accept=".xlsx,.xls,.csv" />
+              <button id="previewStatementBtn" class="btn secondary" type="button">Analizza file</button>
+            </div>
+            <p id="statementImportStatus" class="muted tiny" aria-live="polite">Nessun file selezionato.</p>
+            <div id="statementImportPreview"></div>
+          </div>
           <div class="panel">
             <div class="toolbar">
               <input id="searchMovements" placeholder="Cerca descrizione o categoria" /><select
@@ -390,7 +401,7 @@
             </div>
           </div>
         </section>
-        <section id="page-advice" class="section">
+        <section id="page-debts" class="section"><div class="page-title"><h2>Debiti e risparmi</h2></div><div id="debtSavingsNotice" class="notice warn">Esegui la migrazione SQL su Supabase.</div><div class="layout"><div class="panel"><div class="panelhead"><h3>Debiti e finanziamenti</h3><button id="newDebtBtn" class="btn primary small" type="button">＋ Nuovo debito</button></div><div id="debtsList"></div></div><div class="panel"><div class="panelhead"><h3>Obiettivi di risparmio</h3><button id="newSavingsGoalBtn" class="btn primary small" type="button">＋ Nuovo obiettivo</button></div><div id="savingsGoalsList"></div></div></div></section><section id="page-advice" class="section">
           <div class="page-title">
             <div>
               <h2>Consigli</h2>
@@ -403,6 +414,21 @@
             </button>
           </div>
           <div id="adviceList" class="layout"></div>
+          <section class="panel tasca-chat-panel" aria-label="Chat con Tasca AI">
+            <div class="panelhead">
+              <div><h3>Parla con Tasca AI</h3><p class="muted tiny">Budget, rate, spese, estratti conto e obiettivi di risparmio.</p></div>
+              <span class="pill">Consulente IA</span>
+            </div>
+            <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite">
+              <div class="ai-chat-bubble assistant">Ciao! Posso aiutarti a capire le spese, valutare una rata, impostare un budget o costruire un fondo risparmio. Le modifiche al registro richiederanno sempre la tua conferma.</div>
+            </div>
+            <form id="aiChatForm" class="ai-chat-form">
+              <label class="sr-only" for="aiChatInput">Scrivi un messaggio a Tasca AI</label>
+              <textarea id="aiChatInput" rows="2" maxlength="3000" placeholder="Es. Posso aumentare la rata a 250 € senza compromettere i risparmi?" required></textarea>
+              <button class="btn primary" id="aiChatSend" type="submit">Invia</button>
+            </form>
+            <p class="tiny muted">La conversazione di questa prima versione resta sul dispositivo e non esegue operazioni automaticamente.</p>
+          </section>
         </section>
         <section id="page-quiz" class="section">
           <div class="page-title">
@@ -705,6 +731,7 @@
       </div>
     </div>
     <div id="toast" class="toast hidden" role="status"></div>
-    <script type="module" src="app.js?v=20261030-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="app.js?v=20261030-10"></script>
   </body>
 </html>

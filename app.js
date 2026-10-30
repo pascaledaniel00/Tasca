@@ -1,5 +1,10 @@
 import {
   budgetComparison,
+  calculateDebtSummary,
+  calculateSavingsSummary,
+  validateDebtInput,
+  validateSavingsGoalInput,
+  validateFundMovement,
   calculateParticipantBalances,
   categoryBreakdown,
   monthlyTrend,
@@ -9,6 +14,12 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
+import {
+  normalizeStatementRows,
+  findStatementDuplicates,
+  compareTransactionForDuplicate,
+  statementImportSummary,
+} from './statement-import-core.js?v=20261030-2';
 import {
   calculateQuizXP,
   getQuizBadges,
@@ -87,6 +98,7 @@ import {
     transactions = [],
     budgets = [],
     recurring = [],
+    debts = [], debtPayments = [], savingsGoals = [], savingsMovements = [], financeTablesReady = false,
     spaces = [],
     editingTransaction = null,
     editingBudget = null,
@@ -111,7 +123,9 @@ import {
     aiNudgePending = false,
     aiAdviceKey = '',
     aiAdviceText = '',
-    aiAdvicePending = false;
+    aiAdvicePending = false,
+    aiChatMessages = [],
+    aiChatPending = false;
   let goal = 40;
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
@@ -236,7 +250,7 @@ import {
       const dockTrack = $('mobileNavTrack');
       const targetPage = dockTrack?.querySelector(
         '.mobile-nav-page[data-nav-page="' +
-          (['spaces', 'recurring', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
+          (['spaces', 'recurring', 'debts', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
           '"]'
       );
       if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
@@ -258,6 +272,41 @@ import {
     $('modal').classList.remove('open');
     $('modalBody').innerHTML = '';
     closeAccountPopover();
+  }
+  function requestDuplicateDecision(existing, candidate, existingLabel = 'Movimento già registrato', candidateLabel = 'Nuovo movimento') {
+    return new Promise((resolve) => {
+      const details = (item) => `<div class="panel"><strong>${esc(item.description || 'Senza descrizione')}</strong><p class="muted tiny">${esc(fmtDate(txDate(item) || item.occurred_on))} · ${eur(item.amount)} · ${esc(item.payment_method || 'Metodo non specificato')}</p></div>`;
+      openModal('Verifica possibile duplicato', `
+        <p>Importo e data sono simili, ma non possiamo stabilire con certezza se si tratti dello stesso pagamento. Confronta i due movimenti:</p>
+        <div class="formgrid"><div class="field"><label>${esc(existingLabel)}</label>${details(existing)}</div><div class="field"><label>${esc(candidateLabel)}</label>${details(candidate)}</div></div>
+        <p class="muted tiny">La scelta “Tieni entrambi” registra due spese distinte. Se scegli una sola versione, Tasca conserva la tracciabilità della riconciliazione nelle note.</p>
+        <div class="layout">
+          <button class="btn full" type="button" data-duplicate-choice="keep-existing">Tieni il movimento già registrato</button>
+          <button class="btn full" type="button" data-duplicate-choice="keep-candidate">Tieni il nuovo movimento</button>
+          <button class="btn primary full" type="button" data-duplicate-choice="keep-both">Sono due spese diverse · tieni entrambi</button>
+        </div>`);
+      const body = $('modalBody');
+      const finish = (choice) => {
+        body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => button.removeEventListener('click', button._duplicateHandler));
+        closeModal(true);
+        resolve(choice);
+      };
+      body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => {
+        button._duplicateHandler = () => finish(button.dataset.duplicateChoice);
+        button.addEventListener('click', button._duplicateHandler);
+      });
+    });
+  }
+  async function updateTransactionFromDuplicate(existing, candidate, sourceLabel) {
+    const previous = `Riconciliazione: mantenuta la versione ${sourceLabel}. Dati precedenti: ${existing.description || '—'} · ${txDate(existing)} · ${eur(existing.amount)} · ${existing.payment_method || 'metodo non specificato'}.`;
+    const notes = [existing.notes, previous, candidate.notes].filter(Boolean).join(' · ').slice(0, 1000);
+    const { error } = await db.from('transactions').update({
+      description: String(candidate.description || existing.description).slice(0, 160),
+      occurred_on: candidate.occurred_on || txDate(existing),
+      payment_method: candidate.payment_method || existing.payment_method || null,
+      notes,
+    }).eq('id', existing.id).eq('space_id', existing.space_id);
+    if (error) throw error;
   }
   function closeAccountPopover() {
     const p = $('accountPopover');
@@ -375,10 +424,14 @@ import {
   function emptyHtml(title, body) {
     return `<div class="empty"><b>${esc(title)}</b>${esc(body)}</div>`;
   }
+  function isConfirmedMovement(t) {
+    return !t?.status || t.status === 'confirmed';
+  }
   function monthBudgetSpend(b) {
     return transactions
       .filter(
         (t) =>
+          isConfirmedMovement(t) &&
           t.space_id === b.space_id &&
           t.type === 'expense' &&
           txDate(t).slice(0, 7) === budgetMonth(b) &&
@@ -502,7 +555,8 @@ import {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const fromMonth = start.toLocaleDateString('sv-SE').slice(0, 7);
-    const rows = scopedTransactions().filter((t) => txDate(t).slice(0, 7) >= fromMonth);
+    const allRows = scopedTransactions().filter((t) => txDate(t).slice(0, 7) >= fromMonth);
+    const rows = allRows.filter(isConfirmedMovement);
     const months = {};
     rows.forEach((t) => {
       const month = txDate(t).slice(0, 7);
@@ -583,7 +637,8 @@ import {
         }))
         .slice(0, 20),
       dataQualityFlags: {
-        transactionsToVerify: rows.filter((t) => t.status === 'verify').length,
+        transactionsToVerify: allRows.filter((t) => t.status === 'verify').length,
+        transactionsPlanned: allRows.filter((t) => t.status === 'planned').length,
         monthsOfHistoryAvailable: Object.keys(months).length,
       },
     };
@@ -666,7 +721,7 @@ import {
         .sort((a, b) => b.pct - a.pct)[0];
       const day = new Date().getDate();
       const recentLargeExpenses = scopedTransactions()
-        .filter((t) => t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
+        .filter((t) => isConfirmedMovement(t) && t.type === 'expense' && txDate(t).slice(0, 7) === monthNow())
         .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
         .slice(0, 3)
         .map((t) => ({
@@ -683,6 +738,7 @@ import {
         scopedTransactions()
           .filter(
             (t) =>
+              isConfirmedMovement(t) &&
               t.type === 'expense' &&
               txDate(t).slice(0, 7) >= fromMonth &&
               String(t.description || '').trim()
@@ -835,6 +891,92 @@ import {
         .join('') ||
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
+  let statementImportRows = [];
+  let statementImportDecisions = {};
+  function renderStatementPreview() {
+    const target = $('statementImportPreview');
+    if (!target) return;
+    const summary = statementImportSummary(statementImportRows);
+    const rows = statementImportRows;
+    const unresolved = rows.filter((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]).length;
+    const ready = rows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || statementImportDecisions[row.sourceRow] === 'keep-both' || statementImportDecisions[row.sourceRow] === 'keep-candidate')).length;
+    target.innerHTML = rows.length ? `
+      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${ready} · Duplicati probabili: ${summary.duplicates} · Corrispondenze da decidere: ${unresolved} · Righe incomplete: ${summary.invalid + summary.review}</div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
+      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Duplicato probabile · escluso' : row.possibleDuplicate ? (statementImportDecisions[row.sourceRow] ? 'Decisione: ' + esc(statementImportDecisions[row.sourceRow]) : 'Confronto da decidere') : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${rows.filter((row) => row.possibleDuplicate).map((row) => {
+        const match = row.duplicateSource === 'existing' ? transactions.find((tx) => tx.id === row.duplicateOf) : rows.find((item) => item.sourceRow === row.duplicateOf);
+        const decision = statementImportDecisions[row.sourceRow];
+        return `<div class="panel"><strong>Possibile corrispondenza · riga ${row.sourceRow}</strong><div class="formgrid"><div class="field"><label>${row.duplicateSource === 'existing' ? 'Movimento già registrato' : 'Movimento precedente nel file'}</label><p>${esc(match?.description || 'Movimento non disponibile')}</p><small class="muted">${esc(match ? fmtDate(txDate(match) || match.occurred_on) : '—')} · ${eur(match?.amount)} · ${esc(match?.payment_method || 'Metodo non specificato')}</small></div><div class="field"><label>Movimento da importare</label><p>${esc(row.description)}</p><small class="muted">${esc(fmtDate(row.occurred_on))} · ${eur(row.amount)} · Metodo: non indicato nell’estratto</small></div></div><div class="row"><button class="btn small" type="button" data-statement-decision="keep-existing" data-source-row="${row.sourceRow}">Tieni il precedente</button><button class="btn small" type="button" data-statement-decision="keep-candidate" data-source-row="${row.sourceRow}">Tieni quello bancario</button><button class="btn small primary" type="button" data-statement-decision="keep-both" data-source-row="${row.sourceRow}">Sono due spese · tieni entrambi</button></div>${decision ? '<p class="muted tiny">Scelta: ' + esc(decision) + '</p>' : '<p class="muted tiny">In attesa della tua scelta: nessuna nuova spesa verrà registrata.</p>'}</div>`;
+      }).join('')}
+      ${summary.total > 100 ? '<p class="muted tiny">Sono visualizzate tutte le righe del file.</p>' : ''}
+      <button id="confirmStatementImport" class="btn primary" type="button" ${ready && !unresolved ? '' : 'disabled'}>Conferma importazione di ${ready} movimenti</button>
+    ` : '';
+    target.querySelectorAll('[data-statement-decision]').forEach((button) => button.addEventListener('click', () => {
+      statementImportDecisions[button.dataset.sourceRow] = button.dataset.statementDecision;
+      renderStatementPreview();
+    }));
+    const button = $('confirmStatementImport');
+    if (button) button.addEventListener('click', importStatementRows);
+  }
+  async function previewStatementFile() {
+    const file = $('statementFile')?.files?.[0];
+    const status = $('statementImportStatus');
+    statementImportRows = [];
+    renderStatementPreview();
+    if (!file) { if (status) status.textContent = 'Seleziona prima un file.'; return; }
+    if (!window.XLSX) { if (status) status.textContent = 'Lettore Excel non disponibile. Riprova più tardi.'; return; }
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+      statementImportDecisions = {};
+      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows), scopedTransactions());
+      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette dal primo foglio. Nessun dato è stato ancora salvato.`;
+      renderStatementPreview();
+    } catch (error) {
+      if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
+    }
+  }
+  async function importStatementRows() {
+    if (!db || !user || !statementImportRows.length) return;
+    if (!requireSpecificSpace('importare un estratto conto')) return;
+    const unresolved = statementImportRows.some((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]);
+    if (unresolved) { notify('Decidi prima come riconciliare tutte le possibili corrispondenze.', 'error'); return; }
+    const skippedFileRows = new Set();
+    for (const row of statementImportRows.filter((item) => item.possibleDuplicate && item.duplicateSource === 'file')) {
+      if (statementImportDecisions[row.sourceRow] === 'keep-candidate') skippedFileRows.add(row.duplicateOf);
+    }
+    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !skippedFileRows.has(row.sourceRow) && row.amount > 0 && row.occurred_on && row.description && (!row.possibleDuplicate || (row.duplicateSource === 'file' && ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow])) || (row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-both')));
+    const updates = statementImportRows.filter((row) => row.possibleDuplicate && row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-candidate');
+    if (!rows.length && !updates.length) { notify('Non ci sono movimenti da importare o aggiornare.', 'error'); return; }
+    if (!confirm(`Stai per importare ${rows.length} movimenti e riconciliare ${updates.length} corrispondenze nello spazio attivo. I nuovi movimenti saranno marcati “Da verificare”. Vuoi continuare?`)) return;
+    try {
+      for (const row of updates) {
+        const existing = transactions.find((tx) => tx.id === row.duplicateOf);
+        if (!existing) throw new Error('Non trovo più il movimento da riconciliare per la riga ' + row.sourceRow + '. Ricarica l’estratto conto.');
+        await updateTransactionFromDuplicate(existing, { ...row, payment_method: existing.payment_method, notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow].filter(Boolean).join(' · ') }, 'bancaria');
+      }
+      const payload = rows.map((row) => ({
+        space_id: activeSpaceId, type: row.type, amount: row.amount, currency: 'EUR',
+        description: row.description.slice(0, 160), category: row.category, occurred_on: row.occurred_on,
+        paid_by: user.id, created_by: user.id, payment_method: null, status: 'verify',
+        notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow, row.possibleDuplicate ? 'Riconciliazione: scelta esplicita di mantenere anche questa voce.' : null].filter(Boolean).join(' · ').slice(0, 1000),
+      }));
+      if (payload.length) {
+        const { error } = await db.from('transactions').insert(payload);
+        if (error) throw error;
+      }
+      statementImportRows = []; statementImportDecisions = {};
+      $('statementImportPreview').innerHTML = '';
+      $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”; le riconciliazioni sono annotate.';
+      $('statementFile').value = '';
+      notify(rows.length + ' movimenti importati · ' + updates.length + ' riconciliati');
+      await loadData();
+    } catch (error) { notify(error.message || 'Errore durante l’importazione', 'error'); }
+  }
   function renderTransactions() {
     const query = $('searchMovements').value.trim().toLowerCase(),
       type = $('filterType').value,
@@ -882,6 +1024,124 @@ import {
         'Aggiungi abbonamenti, rate e pagamenti previsti.'
       );
   }
+  function renderDebtSavings() {
+    if (!$('debtsList')) return;
+    $('debtSavingsNotice').textContent = financeTablesReady
+      ? 'Archivio attivo. I pagamenti collegati non duplicano i movimenti del registro.'
+      : 'Archivio non attivo: esegui supabase/migrations/20261030_debts_savings.sql nel progetto Supabase.';
+    $('newDebtBtn').disabled = !financeTablesReady;
+    $('newSavingsGoalBtn').disabled = !financeTablesReady;
+    const ds = debts.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const ps = debtPayments.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const gs = savingsGoals.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const ms = savingsMovements.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    $('debtsList').innerHTML = calculateDebtSummary(ds, ps).map((d) =>
+      '<div class="movement"><div class="movinfo"><strong>' + esc(d.name) + '</strong><small>' +
+      esc(d.creditor || 'Creditore non indicato') + ' · ' +
+      (d.installments_remaining == null ? 'Rate residue da verificare' : esc(d.installments_remaining + ' rate residue')) +
+      '</small><small>' + (d.principalRemaining == null ? 'Capitale residuo non indicato' : 'Capitale residuo: ' + eur(d.principalRemaining)) +
+      ' · Pagamenti registrati: ' + eur(d.paidTotal) + '</small></div><div class="row-actions"><button class="btn small" data-debt-payment="' +
+      esc(d.id) + '">Pagamento</button><button class="btn small" data-edit-debt="' + esc(d.id) + '">Modifica</button></div></div>'
+    ).join('') || emptyHtml('Nessun debito registrato', 'Aggiungi un finanziamento o una rata.');
+    $('savingsGoalsList').innerHTML = calculateSavingsSummary(gs, ms).map((g) =>
+      '<div class="movement"><div class="movinfo"><strong>' + esc(g.name) + '</strong><small>Saldo fondo: ' + eur(g.balance) +
+      ' · Obiettivo: ' + eur(g.target_amount) + '</small><small>Da raggiungere: ' + eur(g.remaining) +
+      ' · Avanzamento: ' + Math.round(g.percent) + '%</small></div><div class="row-actions"><button class="btn small" data-fund-movement="' +
+      esc(g.id) + '" data-fund-type="contribution">＋ Versa</button><button class="btn small" data-fund-movement="' +
+      esc(g.id) + '" data-fund-type="withdrawal">Preleva</button><button class="btn small" data-edit-goal="' +
+      esc(g.id) + '">Modifica</button></div></div>'
+    ).join('') || emptyHtml('Nessun obiettivo creato', 'Crea un fondo emergenze o un obiettivo di risparmio.');
+  }
+
+  function openDebtForm(debt = null) {
+    if (!financeTablesReady || !requireSpecificSpace('gestire un debito')) return;
+    const val = (key) => esc(debt?.[key] ?? '');
+    openModal(debt ? 'Modifica debito' : 'Nuovo debito',
+      '<form id="debtForm"><div class="formgrid">' +
+      '<div class="field full"><label>Nome</label><input name="name" required maxlength="120" value="' + val('name') + '"></div>' +
+      '<div class="field"><label>Creditore</label><input name="creditor" value="' + val('creditor') + '"></div>' +
+      '<div class="field"><label>Capitale iniziale (€)</label><input name="original_principal" type="number" min="0" step=".01" value="' + val('original_principal') + '"></div>' +
+      '<div class="field"><label>Capitale residuo verificato (€)</label><input name="principal_remaining" type="number" min="0" step=".01" value="' + val('principal_remaining') + '"></div>' +
+      '<div class="field"><label>Importo rata (€)</label><input name="installment_amount" type="number" min="0" step=".01" value="' + val('installment_amount') + '"></div>' +
+      '<div class="field"><label>Rate totali</label><input name="installments_total" type="number" min="0" step="1" value="' + val('installments_total') + '"></div>' +
+      '<div class="field"><label>Rate residue</label><input name="installments_remaining" type="number" min="0" step="1" value="' + val('installments_remaining') + '"></div>' +
+      '<div class="field"><label>TAN/TAEG (%)</label><input name="interest_rate" type="number" min="0" step=".0001" value="' + val('interest_rate') + '"></div>' +
+      '<div class="field"><label>Prossima scadenza</label><input name="next_due_on" type="date" value="' + val('next_due_on') + '"></div>' +
+      '<div class="field"><label>Stato</label><select name="status"><option value="active">Attivo</option><option value="paused">Sospeso</option><option value="paid">Estinto</option></select></div>' +
+      '<div class="field full"><label>Note</label><textarea name="notes">' + val('notes') + '</textarea></div></div>' +
+      '<p class="muted tiny">Il capitale residuo è facoltativo e non viene dedotto dalle rate residue.</p><button class="btn primary full" type="submit">Salva</button></form>');
+    if (debt) $('debtForm').elements.status.value = debt.status;
+    $('debtForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const n = (k) => f.get(k) === '' ? null : Number(f.get(k));
+      const payload = {space_id:debt?.space_id || activeSpaceId,name:String(f.get('name')).trim(),creditor:f.get('creditor')||null,
+        original_principal:n('original_principal'),principal_remaining:n('principal_remaining'),installment_amount:n('installment_amount'),
+        installments_total:n('installments_total'),installments_remaining:n('installments_remaining'),interest_rate:n('interest_rate'),
+        next_due_on:f.get('next_due_on')||null,status:f.get('status'),notes:f.get('notes')||null};
+      const message = validateDebtInput(payload); if (message) {notify(message,'error');return;}
+      const query = debt ? db.from('debts').update(payload).eq('id',debt.id).eq('space_id',activeSpaceId) : db.from('debts').insert(payload);
+      const {error} = await query; if(error){notify(error.message,'error');return;} closeModal(); notify('Debito salvato'); await loadData();
+    });
+  }
+
+  function openSavingsGoalForm(goal = null) {
+    if (!financeTablesReady || !requireSpecificSpace('gestire un obiettivo')) return;
+    const val = (key) => esc(goal?.[key] ?? '');
+    openModal(goal ? 'Modifica obiettivo' : 'Nuovo obiettivo',
+      '<form id="savingsGoalForm"><div class="formgrid"><div class="field full"><label>Nome del fondo</label><input name="name" required maxlength="120" value="' + val('name') + '"></div>' +
+      '<div class="field"><label>Importo obiettivo (€)</label><input name="target_amount" type="number" min=".01" step=".01" required value="' + val('target_amount') + '"></div>' +
+      '<div class="field"><label>Saldo iniziale (€)</label><input name="starting_balance" type="number" min="0" step=".01" value="' + (goal?.starting_balance ?? 0) + '"></div>' +
+      '<div class="field"><label>Data obiettivo</label><input name="target_date" type="date" value="' + val('target_date') + '"></div>' +
+      '<div class="field"><label>Stato</label><select name="status"><option value="active">Attivo</option><option value="paused">Sospeso</option><option value="completed">Completato</option></select></div>' +
+      '<div class="field full"><label>Note</label><textarea name="notes">' + val('notes') + '</textarea></div></div><button class="btn primary full" type="submit">Salva obiettivo</button></form>');
+    if (goal) $('savingsGoalForm').elements.status.value = goal.status;
+    $('savingsGoalForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target);
+      const payload = {space_id:goal?.space_id || activeSpaceId,name:String(f.get('name')).trim(),target_amount:Number(f.get('target_amount')),
+        starting_balance:Number(f.get('starting_balance')||0),target_date:f.get('target_date')||null,status:f.get('status'),notes:f.get('notes')||null};
+      const message = validateSavingsGoalInput(payload); if(message){notify(message,'error');return;}
+      const query = goal ? db.from('savings_goals').update(payload).eq('id',goal.id).eq('space_id',activeSpaceId) : db.from('savings_goals').insert(payload);
+      const {error}=await query; if(error){notify(error.message,'error');return;} closeModal();notify('Obiettivo salvato');await loadData();
+    });
+  }
+
+  function openDebtPaymentForm(id) {
+    const debt = debts.find((x) => x.id === id); if (!debt || debt.space_id !== activeSpaceId) return;
+    const candidates = scopedTransactions().filter((x) => x.type === 'expense' && x.status !== 'planned' && x.status !== 'verify');
+    openModal('Registra pagamento rata',
+      '<form id="debtPaymentForm"><div class="field"><label>Importo pagato (€)</label><input name="amount" type="number" min=".01" step=".01" required value="' + (debt.installment_amount ?? '') + '"></div>' +
+      '<div class="field"><label>Quota capitale (facoltativa)</label><input name="principal_component" type="number" min="0" step=".01"></div><div class="field"><label>Quota interessi (facoltativa)</label><input name="interest_component" type="number" min="0" step=".01"></div>' +
+      '<div class="field"><label>Data pagamento</label><input name="paid_on" type="date" value="' + today() + '" required></div><div class="field"><label>Collega alla spesa già registrata</label><select name="transaction_id"><option value="">Nessun collegamento</option>' +
+      candidates.map((x) => '<option value="' + esc(x.id) + '">' + esc(fmtDate(txDate(x))) + ' · ' + esc(x.description) + ' · ' + eur(x.amount) + '</option>').join('') +
+      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Non viene creata una seconda uscita.</p><button class="btn primary full" type="submit">Registra pagamento</button></form>');
+    $('debtPaymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const amount = Number(f.get('amount'));
+      const principal = f.get('principal_component') === '' ? null : Number(f.get('principal_component'));
+      const interest = f.get('interest_component') === '' ? null : Number(f.get('interest_component'));
+      if (!Number.isFinite(amount) || amount <= 0 || [principal,interest].some((x)=>x!=null&&(!Number.isFinite(x)||x<0)) ||
+        (principal != null && interest != null && principal + interest > amount)) {notify('Controlla gli importi inseriti.','error');return;}
+      const {error} = await db.from('debt_payments').insert({debt_id:id,space_id:debt.space_id,transaction_id:f.get('transaction_id')||null,
+        amount,principal_component:principal,interest_component:interest,paid_on:f.get('paid_on'),notes:f.get('notes')||null});
+      if(error){notify(error.message,'error');return;} closeModal();notify('Pagamento registrato');await loadData();
+    });
+  }
+
+  function openFundMovementForm(id, type) {
+    const goal = savingsGoals.find((x) => x.id === id); if (!goal || goal.space_id !== activeSpaceId) return;
+    const candidates = scopedTransactions().filter((x) => x.type === 'transfer' && x.status !== 'planned' && x.status !== 'verify');
+    openModal(type === 'contribution' ? 'Registra versamento' : 'Registra prelievo',
+      '<form id="fundMovementForm"><div class="field"><label>Importo (€)</label><input name="amount" type="number" min=".01" step=".01" required></div>' +
+      '<div class="field"><label>Data</label><input name="occurred_on" type="date" value="' + today() + '" required></div><div class="field"><label>Collega a un trasferimento già registrato (facoltativo)</label><select name="transaction_id"><option value="">Nessun collegamento</option>' +
+      candidates.map((x) => '<option value="' + esc(x.id) + '">' + esc(fmtDate(txDate(x))) + ' · ' + esc(x.description) + ' · ' + eur(x.amount) + '</option>').join('') +
+      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Il fondo si aggiorna senza creare una seconda spesa o entrata.</p><button class="btn primary full" type="submit">Conferma</button></form>');
+    $('fundMovementForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target); const payload = {goal_id:id,space_id:goal.space_id,movement_type:type,
+        amount:Number(f.get('amount')),occurred_on:f.get('occurred_on'),transaction_id:f.get('transaction_id')||null,notes:f.get('notes')||null};
+      const message = validateFundMovement(payload); if(message){notify(message,'error');return;}
+      const {error}=await db.from('savings_movements').insert(payload); if(error){notify(error.message,'error');return;}
+      closeModal();notify('Movimento del fondo registrato');await loadData();
+    });
+  }
+
   function formatAIAdvice(text) {
     const lines = String(text ?? '')
       .replace(/\r\n?/g, '\n')
@@ -1548,6 +1808,75 @@ import {
     }
   }
 
+  function loadAIChat() {
+    aiChatMessages = [];
+    try {
+      const key = user?.id ? 'tasca_ai_chat:' + user.id : null;
+      const saved = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
+      if (Array.isArray(saved)) aiChatMessages = saved.slice(-20);
+    } catch {}
+    renderAIChat();
+  }
+  function saveAIChat() {
+    if (!user?.id) return;
+    try { localStorage.setItem('tasca_ai_chat:' + user.id, JSON.stringify(aiChatMessages.slice(-20))); } catch {}
+  }
+  function renderAIChat() {
+    const host = $('aiChatMessages');
+    if (!host) return;
+    const rows = aiChatMessages.length ? aiChatMessages : [{ role: 'assistant', content: 'Ciao! Posso aiutarti con budget, rate, spese e fondo risparmio. Ogni modifica richiederà la tua conferma.' }];
+    host.replaceChildren();
+    rows.forEach((m) => {
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-chat-bubble ' + (m.role === 'user' ? 'user' : 'assistant');
+      bubble.textContent = String(m.content || '');
+      host.appendChild(bubble);
+    });
+    host.scrollTop = host.scrollHeight;
+  }
+  async function sendAIChatMessage(event) {
+    event.preventDefault();
+    const input = $('aiChatInput');
+    const message = String(input?.value || '').trim();
+    if (!message || aiChatPending) return;
+    if (!isAIConfigured() || !user) { notify('Accedi e verifica la configurazione del servizio IA.', 'error'); return; }
+    aiChatMessages.push({ role: 'user', content: message });
+    input.value = '';
+    aiChatPending = true;
+    const send = $('aiChatSend');
+    if (send) send.disabled = true;
+    aiChatMessages.push({ role: 'assistant', content: 'Sto analizzando i dati di Tasca…' });
+    renderAIChat();
+    try {
+      const snapshot = buildAdviceSnapshot();
+      const recent = scopedTransactions()
+        .slice()
+        .sort((x, y) => String(txDate(y)).localeCompare(String(txDate(x))))
+        .slice(0, 100)
+        .map((t) => ({
+          date: txDate(t),
+          type: t.type,
+          amount: Number(t.amount) || 0,
+          category: t.category || 'Da classificare',
+          description: String(t.description || t.name || '').slice(0, 100),
+          paymentMethod: t.payment_method || null,
+          status: t.status || 'confirmed',
+          notes: String(t.notes || '').slice(0, 160),
+        }));
+      const plans = scopedRecurring().filter(planActive).slice(0, 30).map((p) => ({ name: p.name, amount: Number(p.amount) || 0, category: p.category, cadence: p.cadence, next_due_on: p.next_due_on, remaining_installments: p.remaining_installments }));
+      const context = { currentSpace: activeSpace()?.name || 'Spazio non selezionato', financialSnapshot: snapshot, recentTransactions: recent, activeRecurring: plans, conversation: aiChatMessages.slice(-11).map((m) => ({ role: m.role, content: String(m.content).slice(0, 1500) })) };
+      const answer = await callTascaAI('chat', context);
+      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: answer || 'Non ho ricevuto una risposta utilizzabile.' };
+      saveAIChat();
+    } catch (error) {
+      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: 'Servizio non disponibile: ' + (error.message || 'errore imprevisto') };
+    } finally {
+      aiChatPending = false;
+      if (send) send.disabled = false;
+      renderAIChat();
+      input?.focus();
+    }
+  }
   function renderAdvice() {
     const s = monthSummary(),
       rows = monthRows(monthNow()).filter((t) => t.type === 'expense'),
@@ -1586,8 +1915,8 @@ import {
     ]);
     cards.push([
       'Qualità dei dati',
-      scopedTransactions().some((t) => t.status === 'verify')
-        ? 'Ci sono movimenti da verificare: controlla importi e categorie.'
+      scopedTransactions().some((t) => t.status === 'verify' || t.status === 'planned')
+        ? `Movimenti esclusi dai totali confermati: ${scopedTransactions().filter((t) => t.status === 'verify').length} da verificare e ${scopedTransactions().filter((t) => t.status === 'planned').length} previsti. Controllali per aggiornare i totali.`
         : 'Controlla periodicamente il registro rispetto all’estratto conto.',
       'warn',
     ]);
@@ -1631,6 +1960,7 @@ import {
     renderTransactions();
     renderBudgets();
     renderRecurring();
+    renderDebtSavings();
     renderAdvice();
     renderSpaces();
   }
@@ -1832,12 +2162,15 @@ import {
     $('authScreen').classList.add('hidden');
     $('appScreen').classList.remove('hidden');
     $('mobileNav').classList.remove('hidden');
+    loadAIChat();
     maybeShowOnboarding();
   }
   function showLogin() {
     clearQuizSession();
     dataLoadSequence += 1;
     user = null;
+    aiChatMessages = [];
+    renderAIChat();
     transactions = [];
     budgets = [];
     recurring = [];
@@ -1890,6 +2223,18 @@ import {
       budgets = bg;
       recurring = rc;
       spaces = sp;
+      try {
+        const [d, dp, g, gm] = await Promise.all([
+          fetchAllRows(() => db.from('debts').select('*').order('created_at', {ascending:false})),
+          fetchAllRows(() => db.from('debt_payments').select('*').order('paid_on', {ascending:false})),
+          fetchAllRows(() => db.from('savings_goals').select('*').order('created_at', {ascending:false})),
+          fetchAllRows(() => db.from('savings_movements').select('*').order('occurred_on', {ascending:false})),
+        ]);
+        debts=d; debtPayments=dp; savingsGoals=g; savingsMovements=gm; financeTablesReady=true;
+      } catch (financeError) {
+        debts=[]; debtPayments=[]; savingsGoals=[]; savingsMovements=[]; financeTablesReady=false;
+        console.warn('Archivio debiti/risparmi non disponibile:', financeError.message);
+      }
       aiNudgeKey = '';
       aiNudgeText = '';
       aiAdviceKey = '';
@@ -2874,6 +3219,8 @@ import {
     $('newRecurringBtn').addEventListener('click', () => {
       if (requireSpecificSpace('creare una ricorrenza')) openRecurringForm();
     });
+    $('newDebtBtn')?.addEventListener('click', () => financeTablesReady ? openDebtForm() : notify('Esegui prima la migrazione SQL su Supabase.','error'));
+    $('newSavingsGoalBtn')?.addEventListener('click', () => financeTablesReady ? openSavingsGoalForm() : notify('Esegui prima la migrazione SQL su Supabase.','error'));
     $('newSpaceBtn').addEventListener('click', () => openSpaceForm());
     $('homeCreatePersonalSpace').addEventListener('click', () => openSpaceForm('personal'));
     $('homeCreateSharedSpace').addEventListener('click', () => openSpaceForm('shared'));
@@ -2894,8 +3241,15 @@ import {
     $('searchMovements').addEventListener('input', renderTransactions);
     $('filterType').addEventListener('change', renderTransactions);
     $('filterMonth').addEventListener('change', renderTransactions);
+    $('previewStatementBtn')?.addEventListener('click', previewStatementFile);
+    $('statementFile')?.addEventListener('change', () => {
+      statementImportRows = [];
+      $('statementImportPreview').innerHTML = '';
+      $('statementImportStatus').textContent = 'File selezionato. Premi “Analizza file” per visualizzare le righe.';
+    });
     $('budgetMonth').addEventListener('change', renderBudgets);
     $('refreshBtn').addEventListener('click', loadData);
+    $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
     $('modalClose').addEventListener('click', closeModal);
     $('modalBody').addEventListener('click', (e) => {
       if (e.target.closest('#shortcutCloseInfo')) closeModal();
@@ -2951,6 +3305,10 @@ import {
         }
         return;
       }
+      const debtPay = e.target.closest('[data-debt-payment]'); if(debtPay){openDebtPaymentForm(debtPay.dataset.debtPayment);return;}
+      const debtEdit = e.target.closest('[data-edit-debt]'); if(debtEdit){const item=debts.find((x)=>x.id===debtEdit.dataset.editDebt);if(item)openDebtForm(item);return;}
+      const fundMove = e.target.closest('[data-fund-movement]'); if(fundMove){openFundMovementForm(fundMove.dataset.fundMovement,fundMove.dataset.fundType);return;}
+      const goalEdit = e.target.closest('[data-edit-goal]'); if(goalEdit){const item=savingsGoals.find((x)=>x.id===goalEdit.dataset.editGoal);if(item)openSavingsGoalForm(item);return;}
       const b = e.target.closest('[data-edit-tx]');
       if (b) {
         const t = transactions.find((x) => x.id === b.dataset.editTx);
@@ -3166,25 +3524,35 @@ import {
       }
       targetSpace = eligibleSpaces[selectedIndex];
     }
-    const normalized = (s) =>
-      String(s || '')
-        .trim()
-        .toLocaleLowerCase('it-IT')
-        .replace(/\s+/g, ' ');
-    const duplicate = transactions.some(
-      (t) =>
-        t.space_id === targetSpace.id &&
-        txDate(t) === date &&
-        Math.round(Number(t.amount) * 100) === Math.round(amount * 100) &&
-        normalized(t.description) === normalized(description)
-    );
-    if (duplicate) {
+    const matchingTransactions = transactions.filter((t) => t.space_id === targetSpace.id);
+    const duplicateCandidate = { type, amount, occurred_on: date, description };
+    const duplicateMatches = matchingTransactions
+      .map((t) => ({ transaction: t, confidence: compareTransactionForDuplicate(duplicateCandidate, t) }))
+      .filter((match) => match.confidence !== 'none')
+      .sort((a, b) => (a.confidence === 'strong' ? 0 : 1) - (b.confidence === 'strong' ? 0 : 1));
+    const duplicateMatch = duplicateMatches[0];
+    if (duplicateMatch?.confidence === 'strong') {
       notify(
-        'Possibile duplicato: questo importo e questo esercente risultano già registrati nella stessa data.',
+        'Pagamento non importato: una registrazione corrispondente è già presente in Tasca.',
         'error'
       );
       clearShortcutParams();
       return;
+    }
+    let duplicateDecision = null;
+    if (duplicateMatch?.confidence === 'possible') {
+      duplicateDecision = await requestDuplicateDecision(
+        duplicateMatch.transaction,
+        { description, amount, occurred_on: date, payment_method: method },
+        'Movimento già presente',
+        'Nuovo movimento Wallet'
+      );
+      if (!duplicateDecision) { clearShortcutParams(); return; }
+      if (duplicateDecision === 'keep-existing') {
+        clearShortcutParams();
+        notify('Mantenuto il movimento già registrato: nessun doppione creato.');
+        return;
+      }
     }
     shortcutImportRunning = true;
     try {
@@ -3224,10 +3592,17 @@ import {
             ? 'Importato dal Comando Rapido: categoria da verificare.'
             : 'Importato dal Comando Rapido.',
       };
-      const { error } = await db.from('transactions').insert(payload);
-      if (error) throw error;
-      clearShortcutParams();
-      notify('Pagamento importato da Comando Rapido.');
+      if (duplicateDecision === 'keep-candidate') {
+        const existing = duplicateMatch.transaction;
+        await updateTransactionFromDuplicate(existing, { ...payload, occurred_on: date }, 'Wallet');
+        clearShortcutParams();
+        notify('Movimento riconciliato: mantenuta la versione Wallet, con traccia dei dati precedenti.');
+      } else {
+        const { error } = await db.from('transactions').insert(payload);
+        if (error) throw error;
+        clearShortcutParams();
+        notify(duplicateDecision === 'keep-both' ? 'Registrato: confermato che sono due spese distinte.' : 'Pagamento importato da Comando Rapido.');
+      }
       await loadData();
     } catch (err) {
       notify(

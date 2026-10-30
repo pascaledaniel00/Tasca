@@ -1,10 +1,83 @@
+export function calculateDebtSummary(debts = [], payments = []) {
+  return debts.map((debt) => {
+    const linked = payments.filter((payment) => payment.debt_id === debt.id);
+    const paid = linked.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    const principalPaid = linked.reduce((sum, payment) => sum + Number(payment.principal_component || 0), 0);
+    return {
+      ...debt,
+      paymentsCount: linked.length,
+      paidTotal: Math.round(paid * 100) / 100,
+      principalPaid: Math.round(principalPaid * 100) / 100,
+      // Il residuo viene mostrato solo se inserito esplicitamente: non lo deduciamo dalle rate.
+      principalRemaining: debt.principal_remaining == null ? null : Number(debt.principal_remaining),
+    };
+  });
+}
+
+export function calculateSavingsSummary(goals = [], movements = []) {
+  return goals.map((goal) => {
+    const linked = movements.filter((movement) => movement.goal_id === goal.id);
+    const contributions = linked
+      .filter((movement) => movement.movement_type === 'contribution')
+      .reduce((sum, movement) => sum + Number(movement.amount || 0), 0);
+    const withdrawals = linked
+      .filter((movement) => movement.movement_type === 'withdrawal')
+      .reduce((sum, movement) => sum + Number(movement.amount || 0), 0);
+    const balance = Math.round((Number(goal.starting_balance || 0) + contributions - withdrawals) * 100) / 100;
+    const target = Number(goal.target_amount || 0);
+    return {
+      ...goal,
+      contributions: Math.round(contributions * 100) / 100,
+      withdrawals: Math.round(withdrawals * 100) / 100,
+      balance,
+      remaining: Math.max(0, Math.round((target - balance) * 100) / 100),
+      percent: target > 0 ? Math.min(100, Math.max(0, (balance / target) * 100)) : 0,
+    };
+  });
+}
+
+export function validateDebtInput(payload = {}) {
+  if (!payload.space_id) return 'Seleziona uno spazio.';
+  if (!String(payload.name || '').trim()) return 'Inserisci il nome del debito.';
+  for (const field of ['original_principal','principal_remaining','installment_amount','interest_rate']) {
+    if (payload[field] != null && payload[field] !== '' && (!Number.isFinite(Number(payload[field])) || Number(payload[field]) < 0))
+      return 'Gli importi e il tasso devono essere numeri pari o superiori a zero.';
+  }
+  for (const field of ['installments_total','installments_remaining']) {
+    if (payload[field] != null && payload[field] !== '' && (!Number.isInteger(Number(payload[field])) || Number(payload[field]) < 0))
+      return 'Il numero di rate deve essere un intero pari o superiore a zero.';
+  }
+  if (!['active','paid','paused'].includes(payload.status || 'active')) return 'Stato del debito non valido.';
+  return null;
+}
+
+export function validateSavingsGoalInput(payload = {}) {
+  if (!payload.space_id) return 'Seleziona uno spazio.';
+  if (!String(payload.name || '').trim()) return 'Inserisci il nome dell’obiettivo.';
+  if (!Number.isFinite(Number(payload.target_amount)) || Number(payload.target_amount) <= 0)
+    return 'L’importo obiettivo deve essere maggiore di zero.';
+  if (!Number.isFinite(Number(payload.starting_balance || 0)) || Number(payload.starting_balance || 0) < 0)
+    return 'Il saldo iniziale non può essere negativo.';
+  return null;
+}
+
+export function validateFundMovement(payload = {}) {
+  if (!payload.space_id || !payload.goal_id) return 'Obiettivo o spazio mancante.';
+  if (!['contribution','withdrawal'].includes(payload.movement_type)) return 'Tipo di movimento non valido.';
+  if (!Number.isFinite(Number(payload.amount)) || Number(payload.amount) <= 0) return 'Inserisci un importo maggiore di zero.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.occurred_on || ''))) return 'Inserisci una data valida.';
+  return null;
+}
+
+export const isConfirmedTransaction = (row) => !row?.status || row.status === 'confirmed';
+
 const amountOf = (row) => {
   const amount = Number(row?.amount);
   return Number.isFinite(amount) ? amount : 0;
 };
 
 export function summarizeTransactions(rows = []) {
-  const summary = rows.reduce(
+  const summary = rows.filter(isConfirmedTransaction).reduce(
     (totals, row) => {
       const amount = amountOf(row);
       if (row?.type === 'income' || row?.type === 'refund') totals.income += amount;
@@ -42,6 +115,7 @@ export function monthlyTrend(rows = [], endMonth, count = 6) {
   });
   const byMonth = new Map(months.map((month) => [month.month, month]));
   for (const row of rows) {
+    if (!isConfirmedTransaction(row)) continue;
     const month = byMonth.get(transactionMonth(row));
     if (!month) continue;
     const amount = amountOf(row);
@@ -57,7 +131,7 @@ export function categoryBreakdown(rows = [], month, limit = 5) {
   }
   const totals = new Map();
   for (const row of rows) {
-    if (row?.type !== 'expense' || transactionMonth(row) !== monthKey(month)) continue;
+    if (!isConfirmedTransaction(row) || row?.type !== 'expense' || transactionMonth(row) !== monthKey(month)) continue;
     const category = String(row.category || 'Da verificare');
     totals.set(category, (totals.get(category) || 0) + amountOf(row));
   }
@@ -82,6 +156,7 @@ export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
       const amount = Number.isFinite(cap) && cap > 0 ? cap : 0;
       const spent = rows.reduce((sum, row) => {
         if (
+          isConfirmedTransaction(row) &&
           row?.type === 'expense' &&
           row.space_id === budget.space_id &&
           row.category === budget.category &&
