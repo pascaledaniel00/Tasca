@@ -403,6 +403,21 @@
             </button>
           </div>
           <div id="adviceList" class="layout"></div>
+          <section class="panel tasca-chat-panel" aria-label="Chat con Tasca AI">
+            <div class="panelhead">
+              <div><h3>Parla con Tasca AI</h3><p class="muted tiny">Budget, rate, spese, estratti conto e obiettivi di risparmio.</p></div>
+              <span class="pill">Consulente IA</span>
+            </div>
+            <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite">
+              <div class="ai-chat-bubble assistant">Ciao! Posso aiutarti a capire le spese, valutare una rata, impostare un budget o costruire un fondo risparmio. Le modifiche al registro richiederanno sempre la tua conferma.</div>
+            </div>
+            <form id="aiChatForm" class="ai-chat-form">
+              <label class="sr-only" for="aiChatInput">Scrivi un messaggio a Tasca AI</label>
+              <textarea id="aiChatInput" rows="2" maxlength="3000" placeholder="Es. Posso aumentare la rata a 250 € senza compromettere i risparmi?" required></textarea>
+              <button class="btn primary" id="aiChatSend" type="submit">Invia</button>
+            </form>
+            <p class="tiny muted">La conversazione di questa prima versione resta sul dispositivo e non esegue operazioni automaticamente.</p>
+          </section>
         </section>
         <section id="page-quiz" class="section">
           <div class="page-title">
