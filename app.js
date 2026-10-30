@@ -14,7 +14,7 @@ import {
   findStatementDuplicates,
   compareTransactionForDuplicate,
   statementImportSummary,
-} from './statement-import-core.js?v=20261030-1';
+} from './statement-import-core.js?v=20261030-2';
 import {
   calculateQuizXP,
   getQuizBadges,
@@ -266,6 +266,41 @@ import {
     $('modal').classList.remove('open');
     $('modalBody').innerHTML = '';
     closeAccountPopover();
+  }
+  function requestDuplicateDecision(existing, candidate, existingLabel = 'Movimento già registrato', candidateLabel = 'Nuovo movimento') {
+    return new Promise((resolve) => {
+      const details = (item) => `<div class="panel"><strong>${esc(item.description || 'Senza descrizione')}</strong><p class="muted tiny">${esc(fmtDate(txDate(item) || item.occurred_on))} · ${eur(item.amount)} · ${esc(item.payment_method || 'Metodo non specificato')}</p></div>`;
+      openModal('Verifica possibile duplicato', `
+        <p>Importo e data sono simili, ma non possiamo stabilire con certezza se si tratti dello stesso pagamento. Confronta i due movimenti:</p>
+        <div class="formgrid"><div class="field"><label>${esc(existingLabel)}</label>${details(existing)}</div><div class="field"><label>${esc(candidateLabel)}</label>${details(candidate)}</div></div>
+        <p class="muted tiny">La scelta “Tieni entrambi” registra due spese distinte. Se scegli una sola versione, Tasca conserva la tracciabilità della riconciliazione nelle note.</p>
+        <div class="layout">
+          <button class="btn full" type="button" data-duplicate-choice="keep-existing">Tieni il movimento già registrato</button>
+          <button class="btn full" type="button" data-duplicate-choice="keep-candidate">Tieni il nuovo movimento</button>
+          <button class="btn primary full" type="button" data-duplicate-choice="keep-both">Sono due spese diverse · tieni entrambi</button>
+        </div>`);
+      const body = $('modalBody');
+      const finish = (choice) => {
+        body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => button.removeEventListener('click', button._duplicateHandler));
+        closeModal(true);
+        resolve(choice);
+      };
+      body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => {
+        button._duplicateHandler = () => finish(button.dataset.duplicateChoice);
+        button.addEventListener('click', button._duplicateHandler);
+      });
+    });
+  }
+  async function updateTransactionFromDuplicate(existing, candidate, sourceLabel) {
+    const previous = `Riconciliazione: mantenuta la versione ${sourceLabel}. Dati precedenti: ${existing.description || '—'} · ${txDate(existing)} · ${eur(existing.amount)} · ${existing.payment_method || 'metodo non specificato'}.`;
+    const notes = [existing.notes, previous, candidate.notes].filter(Boolean).join(' · ').slice(0, 1000);
+    const { error } = await db.from('transactions').update({
+      description: String(candidate.description || existing.description).slice(0, 160),
+      occurred_on: candidate.occurred_on || txDate(existing),
+      payment_method: candidate.payment_method || existing.payment_method || null,
+      notes,
+    }).eq('id', existing.id).eq('space_id', existing.space_id);
+    if (error) throw error;
   }
   function closeAccountPopover() {
     const p = $('accountPopover');
@@ -843,20 +878,31 @@ import {
         .join('') ||
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
-  let statementImportRows = [];
+  let statementImportRows = [];\n  let statementImportDecisions = {};
   function renderStatementPreview() {
     const target = $('statementImportPreview');
     if (!target) return;
     const summary = statementImportSummary(statementImportRows);
     const rows = statementImportRows;
-    target.innerHTML = statementImportRows.length ? `
-      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Duplicati probabili: ${summary.duplicates} · Corrispondenze da verificare: ${summary.possibleDuplicates} · Righe incomplete: ${summary.invalid + summary.review}</div>
+    const unresolved = rows.filter((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]).length;
+    const ready = rows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || statementImportDecisions[row.sourceRow] === 'keep-both' || statementImportDecisions[row.sourceRow] === 'keep-candidate')).length;
+    target.innerHTML = rows.length ? `
+      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${ready} · Duplicati probabili: ${summary.duplicates} · Corrispondenze da decidere: ${unresolved} · Righe incomplete: ${summary.invalid + summary.review}</div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Duplicato probabile · escluso' : row.possibleDuplicate ? 'Possibile corrispondenza · verificare' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
+      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Duplicato probabile · escluso' : row.possibleDuplicate ? (statementImportDecisions[row.sourceRow] ? 'Decisione: ' + esc(statementImportDecisions[row.sourceRow]) : 'Confronto da decidere') : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
       </tbody></table></div>
+      ${rows.filter((row) => row.possibleDuplicate).map((row) => {
+        const match = row.duplicateSource === 'existing' ? transactions.find((tx) => tx.id === row.duplicateOf) : rows.find((item) => item.sourceRow === row.duplicateOf);
+        const decision = statementImportDecisions[row.sourceRow];
+        return `<div class="panel"><strong>Possibile corrispondenza · riga ${row.sourceRow}</strong><div class="formgrid"><div class="field"><label>${row.duplicateSource === 'existing' ? 'Movimento già registrato' : 'Movimento precedente nel file'}</label><p>${esc(match?.description || 'Movimento non disponibile')}</p><small class="muted">${esc(match ? fmtDate(txDate(match) || match.occurred_on) : '—')} · ${eur(match?.amount)} · ${esc(match?.payment_method || 'Metodo non specificato')}</small></div><div class="field"><label>Movimento da importare</label><p>${esc(row.description)}</p><small class="muted">${esc(fmtDate(row.occurred_on))} · ${eur(row.amount)} · Metodo: non indicato nell’estratto</small></div></div><div class="row"><button class="btn small" type="button" data-statement-decision="keep-existing" data-source-row="${row.sourceRow}">Tieni il precedente</button><button class="btn small" type="button" data-statement-decision="keep-candidate" data-source-row="${row.sourceRow}">Tieni quello bancario</button><button class="btn small primary" type="button" data-statement-decision="keep-both" data-source-row="${row.sourceRow}">Sono due spese · tieni entrambi</button></div>${decision ? '<p class="muted tiny">Scelta: ' + esc(decision) + '</p>' : '<p class="muted tiny">In attesa della tua scelta: nessuna nuova spesa verrà registrata.</p>'}</div>`;
+      }).join('')}
       ${summary.total > 100 ? '<p class="muted tiny">Sono visualizzate tutte le righe del file.</p>' : ''}
-      <button id="confirmStatementImport" class="btn primary" type="button" ${summary.ready ? '' : 'disabled'}>Conferma importazione di ${summary.ready} movimenti</button>
+      <button id="confirmStatementImport" class="btn primary" type="button" ${ready && !unresolved ? '' : 'disabled'}>Conferma importazione di ${ready} movimenti</button>
     ` : '';
+    target.querySelectorAll('[data-statement-decision]').forEach((button) => button.addEventListener('click', () => {
+      statementImportDecisions[button.dataset.sourceRow] = button.dataset.statementDecision;
+      renderStatementPreview();
+    }));
     const button = $('confirmStatementImport');
     if (button) button.addEventListener('click', importStatementRows);
   }
@@ -872,6 +918,7 @@ import {
       const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+      statementImportDecisions = {};
       statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows), scopedTransactions());
       if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette dal primo foglio. Nessun dato è stato ancora salvato.`;
       renderStatementPreview();
@@ -882,32 +929,39 @@ import {
   async function importStatementRows() {
     if (!db || !user || !statementImportRows.length) return;
     if (!requireSpecificSpace('importare un estratto conto')) return;
-    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !row.possibleDuplicate && row.amount > 0 && row.occurred_on && row.description);
-    if (!rows.length) { notify('Non ci sono righe importabili.', 'error'); return; }
-    const approved = confirm(`Stai per registrare ${rows.length} movimenti nello spazio attivo. Le righe incomplete, i duplicati probabili e le possibili corrispondenze saranno esclusi per evitare doppioni. Tutti i movimenti importati saranno marcati “Da verificare”. Vuoi continuare?`);
-    if (!approved) return;
-    const payload = rows.map((row) => ({
-      space_id: activeSpaceId,
-      type: row.type,
-      amount: row.amount,
-      currency: 'EUR',
-      description: row.description.slice(0, 160),
-      category: row.category,
-      occurred_on: row.occurred_on,
-      paid_by: user.id,
-      created_by: user.id,
-      payment_method: null,
-      status: 'verify',
-      notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow].filter(Boolean).join(' · ').slice(0, 1000),
-    }));
-    const { error } = await db.from('transactions').insert(payload);
-    if (error) { notify(error.message || 'Errore durante l’importazione', 'error'); return; }
-    statementImportRows = [];
-    $('statementImportPreview').innerHTML = '';
-    $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”.';
-    $('statementFile').value = '';
-    notify(rows.length + ' movimenti importati');
-    await loadData();
+    const unresolved = statementImportRows.some((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]);
+    if (unresolved) { notify('Decidi prima come riconciliare tutte le possibili corrispondenze.', 'error'); return; }
+    const skippedFileRows = new Set();
+    for (const row of statementImportRows.filter((item) => item.possibleDuplicate && item.duplicateSource === 'file')) {
+      if (statementImportDecisions[row.sourceRow] === 'keep-candidate') skippedFileRows.add(row.duplicateOf);
+    }
+    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !skippedFileRows.has(row.sourceRow) && row.amount > 0 && row.occurred_on && row.description && (!row.possibleDuplicate || ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow])));
+    const updates = statementImportRows.filter((row) => row.possibleDuplicate && row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-candidate');
+    if (!rows.length && !updates.length) { notify('Non ci sono movimenti da importare o aggiornare.', 'error'); return; }
+    if (!confirm(`Stai per importare ${rows.length} movimenti e riconciliare ${updates.length} corrispondenze nello spazio attivo. I nuovi movimenti saranno marcati “Da verificare”. Vuoi continuare?`)) return;
+    try {
+      for (const row of updates) {
+        const existing = transactions.find((tx) => tx.id === row.duplicateOf);
+        if (!existing) throw new Error('Non trovo più il movimento da riconciliare per la riga ' + row.sourceRow + '. Ricarica l’estratto conto.');
+        await updateTransactionFromDuplicate(existing, { ...row, payment_method: existing.payment_method, notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow].filter(Boolean).join(' · ') }, 'bancaria');
+      }
+      const payload = rows.map((row) => ({
+        space_id: activeSpaceId, type: row.type, amount: row.amount, currency: 'EUR',
+        description: row.description.slice(0, 160), category: row.category, occurred_on: row.occurred_on,
+        paid_by: user.id, created_by: user.id, payment_method: null, status: 'verify',
+        notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow, row.possibleDuplicate ? 'Riconciliazione: scelta esplicita di mantenere anche questa voce.' : null].filter(Boolean).join(' · ').slice(0, 1000),
+      }));
+      if (payload.length) {
+        const { error } = await db.from('transactions').insert(payload);
+        if (error) throw error;
+      }
+      statementImportRows = []; statementImportDecisions = {};
+      $('statementImportPreview').innerHTML = '';
+      $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”; le riconciliazioni sono annotate.';
+      $('statementFile').value = '';
+      notify(rows.length + ' movimenti importati · ' + updates.length + ' riconciliati');
+      await loadData();
+    } catch (error) { notify(error.message || 'Errore durante l’importazione', 'error'); }
   }
   function renderTransactions() {
     const query = $('searchMovements').value.trim().toLowerCase(),
@@ -3334,17 +3388,18 @@ import {
       clearShortcutParams();
       return;
     }
+    let duplicateDecision = null;
     if (duplicateMatch?.confidence === 'possible') {
-      const proceed = confirm(
-        'Attenzione: esiste già un movimento con stesso importo e data vicina, ma la descrizione è diversa. Potrebbe essere lo stesso pagamento già registrato tramite banca o Wallet.\\n\\nMovimento esistente: ' +
-          duplicateMatch.transaction.description + ' · ' + eur(duplicateMatch.transaction.amount) +
-          ' · ' + txDate(duplicateMatch.transaction) +
-          '\\nNuovo movimento: ' + description + ' · ' + eur(amount) + ' · ' + date +
-          '\\n\\nVuoi registrarlo comunque? Scegli Annulla se potrebbe essere un duplicato.'
+      duplicateDecision = await requestDuplicateDecision(
+        duplicateMatch.transaction,
+        { description, amount, occurred_on: date, payment_method: method },
+        'Movimento già presente',
+        'Nuovo movimento Wallet'
       );
-      if (!proceed) {
+      if (!duplicateDecision) { clearShortcutParams(); return; }
+      if (duplicateDecision === 'keep-existing') {
         clearShortcutParams();
-        notify('Registrazione annullata per evitare un possibile duplicato.');
+        notify('Mantenuto il movimento già registrato: nessun doppione creato.');
         return;
       }
     }
@@ -3386,10 +3441,17 @@ import {
             ? 'Importato dal Comando Rapido: categoria da verificare.'
             : 'Importato dal Comando Rapido.',
       };
-      const { error } = await db.from('transactions').insert(payload);
-      if (error) throw error;
-      clearShortcutParams();
-      notify('Pagamento importato da Comando Rapido.');
+      if (duplicateDecision === 'keep-candidate') {
+        const existing = duplicateMatch.transaction;
+        await updateTransactionFromDuplicate(existing, { ...payload, occurred_on: date }, 'Wallet');
+        clearShortcutParams();
+        notify('Movimento riconciliato: mantenuta la versione Wallet, con traccia dei dati precedenti.');
+      } else {
+        const { error } = await db.from('transactions').insert(payload);
+        if (error) throw error;
+        clearShortcutParams();
+        notify(duplicateDecision === 'keep-both' ? 'Registrato: confermato che sono due spese distinte.' : 'Pagamento importato da Comando Rapido.');
+      }
       await loadData();
     } catch (err) {
       notify(
