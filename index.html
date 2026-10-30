@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Tasca" />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261030-1" />
+    <link rel="stylesheet" href="styles.css?v=20261030-2" />
     <link rel="stylesheet" href="mobile-nav-fix.css?v=20261030-12" />
   </head>
   <body>
@@ -182,6 +182,7 @@
         <button data-page="transactions"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-transactions"></use></svg><span class="sidebar-nav-label">Movimenti</span></button>
         <button data-page="budgets"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-budgets"></use></svg><span class="sidebar-nav-label">Budget</span></button>
         <button data-page="recurring"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-recurring"></use></svg><span class="sidebar-nav-label">Ricorrenze</span></button>
+        <button data-page="debts"><span class="sidebar-nav-label">Debiti e risparmi</span></button>
         <button data-page="advice"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-advice"></use></svg><span class="sidebar-nav-label">Consigli</span></button>
         <button data-page="quiz"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-quiz"></use></svg><span class="sidebar-nav-label">Quiz</span></button>
         <button data-page="spaces"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spaces"></use></svg><span class="sidebar-nav-label">Spazi</span></button>
@@ -400,7 +401,7 @@
             </div>
           </div>
         </section>
-        <section id="page-advice" class="section">
+        <section id="page-debts" class="section"><div class="page-title"><h2>Debiti e risparmi</h2></div><div id="debtSavingsNotice" class="notice warn">Esegui la migrazione SQL su Supabase.</div><div class="layout"><div class="panel"><div class="panelhead"><h3>Debiti e finanziamenti</h3><button id="newDebtBtn" class="btn primary small" type="button">＋ Nuovo debito</button></div><div id="debtsList"></div></div><div class="panel"><div class="panelhead"><h3>Obiettivi di risparmio</h3><button id="newSavingsGoalBtn" class="btn primary small" type="button">＋ Nuovo obiettivo</button></div><div id="savingsGoalsList"></div></div></div></section><section id="page-advice" class="section">
           <div class="page-title">
             <div>
               <h2>Consigli</h2>
