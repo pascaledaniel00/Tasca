@@ -104,7 +104,7 @@ begin
   end if;
   if new.transaction_id is not null and not exists (
     select 1 from public.transactions tx
-    where tx.id = new.transaction_id and tx.space_id = new.space_id and tx.status = 'confirmed'
+    where tx.id = new.transaction_id and tx.space_id = new.space_id and (tx.status is null or tx.status = 'confirmed')
   ) then
     raise exception 'Il movimento collegato deve essere una transazione confermata dello stesso spazio';
   end if;
