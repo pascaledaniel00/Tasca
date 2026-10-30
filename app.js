@@ -878,7 +878,8 @@ import {
         .join('') ||
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
-  let statementImportRows = [];\n  let statementImportDecisions = {};
+  let statementImportRows = [];
+  let statementImportDecisions = {};
   function renderStatementPreview() {
     const target = $('statementImportPreview');
     if (!target) return;
