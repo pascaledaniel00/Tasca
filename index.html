@@ -342,6 +342,16 @@
             </div>
             <button id="newTransactionBtn" class="btn primary">＋ Aggiungi movimento</button>
           </div>
+          <div class="panel statement-import-panel">
+            <h3>Importa estratto conto</h3>
+            <p class="muted tiny">Seleziona un file Excel o CSV. Prima di registrare qualsiasi movimento potrai controllare tutte le righe e confermare l'importazione.</p>
+            <div class="toolbar">
+              <input id="statementFile" type="file" accept=".xlsx,.xls,.csv" />
+              <button id="previewStatementBtn" class="btn secondary" type="button">Analizza file</button>
+            </div>
+            <p id="statementImportStatus" class="muted tiny" aria-live="polite">Nessun file selezionato.</p>
+            <div id="statementImportPreview"></div>
+          </div>
           <div class="panel">
             <div class="toolbar">
               <input id="searchMovements" placeholder="Cerca descrizione o categoria" /><select
