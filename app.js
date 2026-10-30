@@ -475,7 +475,7 @@ import {
 
     const controller = new AbortController();
     // Mantiene una finestra ragionevole per la generazione; gli errori non-quota non attivano il fallback verificato.
-    const timeoutMs = 45000;
+    const timeoutMs = 60000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
