@@ -5,6 +5,7 @@ import {
   parseStatementDate,
   normalizeStatementRows,
   findStatementDuplicates,
+  compareTransactionForDuplicate,
   statementImportSummary,
 } from '../statement-import-core.js';
 
@@ -58,4 +59,23 @@ test('flags duplicates repeated inside the same statement file', () => {
 test('preserves the calendar date of Date objects in local time', () => {
   const value = new Date(2026, 9, 30, 0, 15);
   assert.equal(parseStatementDate(value), '2026-10-30');
+});
+
+test('matches Wallet merchant against bank Apple Pay descriptor', () => {
+  const wallet = { type: 'expense', amount: 18.4, occurred_on: '2026-10-30', description: 'Esselunga' };
+  const bank = { type: 'expense', amount: 18.4, occurred_on: '2026-11-01', description: 'APPLE PAY *ESSELUNGA MILANO' };
+  assert.equal(compareTransactionForDuplicate(bank, wallet), 'strong');
+  const [imported] = findStatementDuplicates([bank], [wallet]);
+  assert.equal(imported.duplicate, true);
+  assert.equal(imported.duplicateConfidence, 'strong');
+});
+
+test('flags same amount and nearby date with unrelated descriptor for manual review', () => {
+  const wallet = { type: 'expense', amount: 18.4, occurred_on: '2026-10-30', description: 'Bar Centrale' };
+  const bank = { type: 'expense', amount: 18.4, occurred_on: '2026-10-31', description: 'PAGAMENTO POS 004812' };
+  assert.equal(compareTransactionForDuplicate(bank, wallet), 'possible');
+  const [imported] = findStatementDuplicates([bank], [wallet]);
+  assert.equal(imported.duplicate, false);
+  assert.equal(imported.possibleDuplicate, true);
+  assert.equal(statementImportSummary([imported]).possibleDuplicates, 1);
 });
