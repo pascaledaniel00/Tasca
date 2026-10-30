@@ -3384,6 +3384,11 @@ import {
     $('budgetMonth').addEventListener('change', renderBudgets);
     $('refreshBtn').addEventListener('click', loadData);
     $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
+    $('aiChatInput')?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+      event.preventDefault();
+      if (!$('aiChatSend')?.disabled) $('aiChatForm')?.requestSubmit();
+    });
     $('modalClose').addEventListener('click', closeModal);
     $('modalBody').addEventListener('click', (e) => {
       if (e.target.closest('#shortcutCloseInfo')) closeModal();
