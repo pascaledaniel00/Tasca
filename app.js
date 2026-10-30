@@ -243,7 +243,6 @@ import {
   function showPage(name) {
     page = name;
     $('appScreen')?.classList.toggle('tasca-chat-active', name === 'tasca-ai');
-    document.documentElement.classList.toggle('tasca-chat-active', name === 'tasca-ai');
     document
       .querySelectorAll('.section')
       .forEach((x) => x.classList.toggle('active', x.id === 'page-' + name));
