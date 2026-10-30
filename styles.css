@@ -4099,12 +4099,15 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   .tasca-chat-prompts button:hover, .tasca-chat-send:hover { transform: none; }
 }
 /* Keep the Tasca AI workspace within the viewport so only its chat scrolls. */
-html.tasca-chat-active { scrollbar-gutter: stable; }
 #appScreen.tasca-chat-active {
+  position: fixed;
+  inset: 0;
   display: flex;
-  width: 100%;
+  width: auto;
+  max-width: 1180px;
   height: 100dvh;
   min-height: 0;
+  margin: 0 auto;
   flex-direction: column;
   overflow: hidden;
   padding-bottom: 12px;
@@ -4136,7 +4139,9 @@ html.tasca-chat-active { scrollbar-gutter: stable; }
 }
 @media (max-width: 720px) {
   #appScreen.tasca-chat-active {
+    max-width: none;
     padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    margin: 0;
   }
   #appScreen.tasca-chat-active > .space-switcher {
     margin-bottom: 8px;
