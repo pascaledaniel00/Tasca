@@ -258,10 +258,7 @@ import {
       if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (name === 'tasca-ai') requestAnimationFrame(() => {
-      const chat = $('aiChatMessages');
-      if (chat) chat.scrollTop = chat.scrollHeight;
-    });
+    if (name === 'tasca-ai') scrollAIChatToBottom();
     if (name === 'quiz') {
       if (quizQuestions.length && quizIndex < quizQuestions.length) renderQuizQuestion();
       else if (restoreQuizSession()) renderQuizQuestion();
@@ -1955,30 +1952,44 @@ import {
   function renderAIChat() {
     const host = $('aiChatMessages');
     if (!host) return;
-    const selector = $('aiChatConversation');
+    const conversationList = $('aiChatConversationList');
     const newChatButton = $('newAIChatBtn');
     if (newChatButton) newChatButton.disabled = aiChatPending;
-    if (selector) {
-      selector.replaceChildren();
+    const spaceName = $('aiChatSpaceName');
+    if (spaceName) spaceName.textContent = isAllSpaces() ? 'Tutti gli spazi' : activeSpace()?.name || 'Spazio non selezionato';
+    if (conversationList) {
+      conversationList.replaceChildren();
       const conversations = aiChatConversations.slice();
       if (aiChatConversationId && !conversations.some(item => item.id === aiChatConversationId)) conversations.unshift({ id: aiChatConversationId, messages: aiChatMessages, updatedAt: '' });
       conversations.forEach((conversation) => {
-        const option = document.createElement('option');
-        option.value = conversation.id;
-        const firstMessage = conversation.messages.find(message => message.role === 'user')?.content || 'Nuova conversazione';
-        option.textContent = String(firstMessage).slice(0, 42) + (firstMessage.length > 42 ? '…' : '');
-        option.selected = conversation.id === aiChatConversationId;
-        selector.appendChild(option);
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'tasca-conversation-item';
+        item.dataset.conversationId = conversation.id;
+        item.setAttribute('aria-current', conversation.id === aiChatConversationId ? 'page' : 'false');
+        item.disabled = aiChatPending;
+        const title = document.createElement('span');
+        title.className = 'tasca-conversation-item-title';
+        const firstMessage = conversation.messages.find(message => message.role === 'user')?.content || 'Nuova chat';
+        title.textContent = String(firstMessage).slice(0, 38) + (firstMessage.length > 38 ? '…' : '');
+        const preview = document.createElement('span');
+        preview.className = 'tasca-conversation-item-preview';
+        const lastMessage = conversation.messages[conversation.messages.length - 1];
+        preview.textContent = lastMessage ? String(lastMessage.content).slice(0, 54) : 'Inizia una conversazione';
+        item.append(title, preview);
+        conversationList.appendChild(item);
       });
-      selector.hidden = conversations.length < 2;
-      selector.disabled = aiChatPending;
     }
-    const rows = aiChatMessages.length ? aiChatMessages : [{
-      role: 'assistant',
-      content: 'Ciao! Sono qui per aiutarti a leggere meglio le tue finanze. Possiamo analizzare le spese, valutare una rata o costruire un piano di risparmio. Ogni modifica al registro richiederà sempre la tua conferma.'
-    }];
     host.replaceChildren();
-    rows.forEach((m) => {
+    if (!aiChatMessages.length) {
+      const welcome = document.createElement('div');
+      welcome.className = 'tasca-chat-welcome';
+      welcome.innerHTML = '<span class="tasca-welcome-mark" aria-hidden="true">T</span><h4>Da dove vuoi iniziare?</h4><p>Chiedimi di aiutarti a leggere meglio le tue finanze. Puoi partire da una di queste idee.</p><div class="tasca-chat-prompts"><button type="button" data-chat-prompt="Aiutami a capire le mie spese di questo mese.">Analizza le mie spese</button><button type="button" data-chat-prompt="Come posso migliorare il mio budget e risparmiare?">Rivedi il mio budget</button><button type="button" data-chat-prompt="Aiutami a valutare una rata e il suo impatto sul budget.">Valuta una rata</button></div>';
+      host.appendChild(welcome);
+      scrollAIChatToBottom();
+      return;
+    }
+    aiChatMessages.forEach((m) => {
       const role = m.role === 'user' ? 'user' : 'assistant';
       const row = document.createElement('div');
       row.className = 'ai-chat-row ' + role;
@@ -1996,7 +2007,19 @@ import {
       row.appendChild(bubble);
       host.appendChild(row);
     });
-    host.scrollTop = host.scrollHeight;
+    scrollAIChatToBottom();
+  }
+  function scrollAIChatToBottom() {
+    const host = $('aiChatMessages');
+    if (!host) return;
+    const scroll = () => {
+      if (host.isConnected) host.scrollTo({ top: host.scrollHeight, behavior: 'auto' });
+    };
+    requestAnimationFrame(() => {
+      scroll();
+      requestAnimationFrame(scroll);
+    });
+    window.setTimeout(scroll, 120);
   }
   function startNewAIChat() {
     if (aiChatPending) return;
@@ -2007,9 +2030,9 @@ import {
     renderAIChat();
     $('aiChatInput')?.focus();
   }
-  function selectAIChatConversation(event) {
+  function selectAIChatConversation(conversationId) {
     if (aiChatPending) return;
-    aiChatConversationId = event.target.value;
+    aiChatConversationId = conversationId;
     aiChatMessages = aiChatConversations.find(item => item.id === aiChatConversationId)?.messages || [];
     rememberAIChatConversation();
     renderAIChat();
@@ -3447,7 +3470,16 @@ import {
     $('refreshBtn').addEventListener('click', loadData);
     $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
     $('newAIChatBtn')?.addEventListener('click', startNewAIChat);
-    $('aiChatConversation')?.addEventListener('change', selectAIChatConversation);
+    $('aiChatConversationList')?.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-conversation-id]');
+      if (item) selectAIChatConversation(item.dataset.conversationId);
+    });
+    $('aiChatMessages')?.addEventListener('click', (event) => {
+      const prompt = event.target.closest('[data-chat-prompt]');
+      if (!prompt) return;
+      const input = $('aiChatInput');
+      if (input) { input.value = prompt.dataset.chatPrompt; input.focus(); }
+    });
     $('aiChatInput')?.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
       event.preventDefault();
