@@ -2954,6 +2954,7 @@ import {
     $('filterMonth').addEventListener('change', renderTransactions);
     $('budgetMonth').addEventListener('change', renderBudgets);
     $('refreshBtn').addEventListener('click', loadData);
+    $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
     $('modalClose').addEventListener('click', closeModal);
     $('modalBody').addEventListener('click', (e) => {
       if (e.target.closest('#shortcutCloseInfo')) closeModal();
