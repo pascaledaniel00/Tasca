@@ -418,10 +418,14 @@ import {
   function emptyHtml(title, body) {
     return `<div class="empty"><b>${esc(title)}</b>${esc(body)}</div>`;
   }
+  function isConfirmedMovement(t) {
+    return !t?.status || t.status === 'confirmed';
+  }
   function monthBudgetSpend(b) {
     return transactions
       .filter(
         (t) =>
+          isConfirmedMovement(t) &&
           t.space_id === b.space_id &&
           t.type === 'expense' &&
           txDate(t).slice(0, 7) === budgetMonth(b) &&
@@ -545,7 +549,8 @@ import {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const fromMonth = start.toLocaleDateString('sv-SE').slice(0, 7);
-    const rows = scopedTransactions().filter((t) => txDate(t).slice(0, 7) >= fromMonth);
+    const allRows = scopedTransactions().filter((t) => txDate(t).slice(0, 7) >= fromMonth);
+    const rows = allRows.filter(isConfirmedMovement);
     const months = {};
     rows.forEach((t) => {
       const month = txDate(t).slice(0, 7);
@@ -626,7 +631,7 @@ import {
         }))
         .slice(0, 20),
       dataQualityFlags: {
-        transactionsToVerify: rows.filter((t) => t.status === 'verify').length,
+        transactionsToVerify: allRows.filter((t) => t.status === 'verify').length,\n        transactionsPlanned: allRows.filter((t) => t.status === 'planned').length,
         monthsOfHistoryAvailable: Object.keys(months).length,
       },
     };
@@ -1784,8 +1789,8 @@ import {
     ]);
     cards.push([
       'Qualità dei dati',
-      scopedTransactions().some((t) => t.status === 'verify')
-        ? 'Ci sono movimenti da verificare: controlla importi e categorie.'
+      scopedTransactions().some((t) => t.status === 'verify' || t.status === 'planned')
+        ? `Movimenti esclusi dai totali confermati: ${scopedTransactions().filter((t) => t.status === 'verify').length} da verificare e ${scopedTransactions().filter((t) => t.status === 'planned').length} previsti. Controllali per aggiornare i totali.`
         : 'Controlla periodicamente il registro rispetto all’estratto conto.',
       'warn',
     ]);
