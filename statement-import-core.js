@@ -90,41 +90,52 @@ export function normalizeStatementRows(rows) {
     };
   });
 }
-const normalizeDescription = (value) => normalizeKey(value).replace(/\b(card|carta|pos|pagamento|acquisto)\b/g, '').trim();
-export function findStatementDuplicates(importRows, existingRows, options = {}) {
+const normalizeDescription = (value) => normalizeKey(value)
+  .replace(/\\b(card|carta|pos|pagamento|acquisto|apple pay|applepay|contactless|visa|mastercard|debit|credit)\\b/g, ' ')
+  .replace(/\\b\\d{4,}\\b/g, ' ')
+  .replace(/\\s+/g, ' ')
+  .trim();
+const merchantTokens = (value) => normalizeDescription(value)
+  .split(' ')
+  .filter((token) => token.length >= 3 && !['the', 'del', 'della', 'delle', 'dei', 'per', 'store', 'shop'].includes(token));
+const dayDistance = (a, b) => {
+  const left = String(a || '').slice(0, 10);
+  const right = String(b || '').slice(0, 10);
+  if (!left || !right) return Infinity;
+  return Math.abs(Date.parse(left + 'T00:00:00Z') - Date.parse(right + 'T00:00:00Z')) / 86400000;
+};
+export function compareTransactionForDuplicate(candidate, existing, options = {}) {
   const toleranceDays = Number.isInteger(options.toleranceDays) ? options.toleranceDays : 2;
+  if (!candidate || !existing || String(candidate.type) !== String(existing.type)) return 'none';
+  if (Math.abs(Number(candidate.amount) - Number(existing.amount)) > 0.005) return 'none';
+  if (dayDistance(candidate.occurred_on, existing.occurred_on) > toleranceDays) return 'none';
+  const a = merchantTokens(candidate.description);
+  const b = merchantTokens(existing.description);
+  if (!a.length || !b.length) return 'possible';
+  const overlap = a.filter((token) => b.includes(token)).length;
+  const ratio = overlap / Math.min(a.length, b.length);
+  return overlap > 0 && ratio >= 0.5 ? 'strong' : 'possible';
+}
+export function findStatementDuplicates(importRows, existingRows, options = {}) {
   const existing = Array.isArray(existingRows) ? existingRows : [];
   const seenInFile = [];
   return (Array.isArray(importRows) ? importRows : []).map((row) => {
-    const description = normalizeDescription(row.description);
-    const matchesExisting = existing.filter((tx) => {
-      if (String(tx.type) !== String(row.type)) return false;
-      if (Math.abs(Number(tx.amount) - Number(row.amount)) > 0.005) return false;
-      const txDate = String(tx.occurred_on || '').slice(0, 10);
-      const rowDate = String(row.occurred_on || '').slice(0, 10);
-      if (!txDate || !rowDate) return false;
-      const delta = Math.abs(Date.parse(txDate + 'T00:00:00Z') - Date.parse(rowDate + 'T00:00:00Z')) / 86400000;
-      if (delta > toleranceDays) return false;
-      const txDescription = normalizeDescription(tx.description);
-      return description && txDescription && (description === txDescription || description.includes(txDescription) || txDescription.includes(description));
-    });
-    const matchesFile = seenInFile.find((prior) => {
-      if (String(prior.type) !== String(row.type)) return false;
-      if (Math.abs(Number(prior.amount) - Number(row.amount)) > 0.005) return false;
-      const priorDate = String(prior.occurred_on || '').slice(0, 10);
-      const rowDate = String(row.occurred_on || '').slice(0, 10);
-      if (!priorDate || !rowDate) return false;
-      const delta = Math.abs(Date.parse(priorDate + 'T00:00:00Z') - Date.parse(rowDate + 'T00:00:00Z')) / 86400000;
-      if (delta > toleranceDays) return false;
-      const priorDescription = normalizeDescription(prior.description);
-      return description && priorDescription && (description === priorDescription || description.includes(priorDescription) || priorDescription.includes(description));
-    });
+    const existingMatches = existing
+      .map((tx) => ({ tx, confidence: compareTransactionForDuplicate(row, tx, options) }))
+      .filter((match) => match.confidence !== 'none')
+      .sort((a, b) => (a.confidence === 'strong' ? 0 : 1) - (b.confidence === 'strong' ? 0 : 1));
+    const fileMatch = seenInFile
+      .map((prior) => ({ prior, confidence: compareTransactionForDuplicate(row, prior, options) }))
+      .find((match) => match.confidence !== 'none');
+    const match = existingMatches[0] || fileMatch;
     seenInFile.push(row);
     return {
       ...row,
-      duplicate: matchesExisting.length > 0 || Boolean(matchesFile),
-      duplicateOf: matchesExisting[0]?.id || matchesFile?.sourceRow || null,
-      duplicateSource: matchesExisting.length ? 'existing' : matchesFile ? 'file' : null,
+      duplicate: match?.confidence === 'strong',
+      possibleDuplicate: match?.confidence === 'possible',
+      duplicateConfidence: match?.confidence || null,
+      duplicateOf: match?.tx?.id || match?.prior?.sourceRow || null,
+      duplicateSource: existingMatches.length ? 'existing' : fileMatch ? 'file' : null,
     };
   });
 }
