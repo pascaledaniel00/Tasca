@@ -79,3 +79,10 @@ test('flags same amount and nearby date with unrelated descriptor for manual rev
   assert.equal(imported.possibleDuplicate, true);
   assert.equal(statementImportSummary([imported]).possibleDuplicates, 1);
 });
+
+
+test('does not match transactions with invalid dates', () => {
+  const invalid = { type: 'expense', amount: 10, occurred_on: 'not-a-date', description: 'Negozio' };
+  const valid = { type: 'expense', amount: 10, occurred_on: '2026-10-30', description: 'Negozio' };
+  assert.equal(compareTransactionForDuplicate(invalid, valid), 'none');
+});
