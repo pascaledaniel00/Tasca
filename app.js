@@ -1808,18 +1808,66 @@ import {
     }
   }
 
-  function loadAIChat() {
+  function aiChatStorageKey() {
+    return user?.id ? 'tasca_ai_chat:' + user.id : null;
+  }
+  function cacheAIChatLocally() {
+    const key = aiChatStorageKey();
+    if (!key) return;
+    try { localStorage.setItem(key, JSON.stringify(aiChatMessages.slice(-100))); } catch {}
+  }
+  async function persistAIChatMessage(message) {
+    if (!user?.id || !db || !message?.content) return;
+    if (!message.id) message.id = crypto.randomUUID();
+    const { error } = await db.from('ai_chat_messages').upsert({
+      user_id: user.id,
+      client_message_id: message.id,
+      role: message.role === 'user' ? 'user' : 'assistant',
+      content: String(message.content).slice(0, 6000),
+      created_at: message.created_at || new Date().toISOString(),
+    }, { onConflict: 'user_id,client_message_id' });
+    if (error) throw error;
+    cacheAIChatLocally();
+  }
+  async function loadAIChat() {
     aiChatMessages = [];
+    if (!user?.id || !db) { renderAIChat(); return; }
+    const key = aiChatStorageKey();
+    let local = [];
     try {
-      const key = user?.id ? 'tasca_ai_chat:' + user.id : null;
       const saved = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
-      if (Array.isArray(saved)) aiChatMessages = saved.slice(-20);
+      if (Array.isArray(saved)) local = saved.slice(-100);
     } catch {}
+    try {
+      const { data, error } = await db.from('ai_chat_messages')
+        .select('client_message_id, role, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const cloud = (data || []).reverse().map(row => ({
+        id: row.client_message_id, role: row.role, content: row.content, created_at: row.created_at
+      }));
+      if (!cloud.length && local.length) {
+        for (const message of local) {
+          if (!message.id) message.id = crypto.randomUUID();
+          if (!message.created_at) message.created_at = new Date().toISOString();
+          await persistAIChatMessage(message);
+        }
+        aiChatMessages = local.slice(-100);
+      } else {
+        aiChatMessages = cloud;
+      }
+      cacheAIChatLocally();
+    } catch (error) {
+      console.error('Tasca: sincronizzazione chat IA non riuscita.', error);
+      aiChatMessages = local;
+      notify('Non riesco a sincronizzare la chat IA. Controlla la connessione e riprova.', 'error');
+    }
     renderAIChat();
   }
   function saveAIChat() {
-    if (!user?.id) return;
-    try { localStorage.setItem('tasca_ai_chat:' + user.id, JSON.stringify(aiChatMessages.slice(-20))); } catch {}
+    cacheAIChatLocally();
   }
   function renderAIChat() {
     const host = $('aiChatMessages');
@@ -1840,12 +1888,22 @@ import {
     const message = String(input?.value || '').trim();
     if (!message || aiChatPending) return;
     if (!isAIConfigured() || !user) { notify('Accedi e verifica la configurazione del servizio IA.', 'error'); return; }
-    aiChatMessages.push({ role: 'user', content: message });
+    const userMessage = { id: crypto.randomUUID(), role: 'user', content: message, created_at: new Date().toISOString() };
+    aiChatMessages.push(userMessage);
     input.value = '';
+    try {
+      await persistAIChatMessage(userMessage);
+    } catch (error) {
+      aiChatMessages.pop();
+      renderAIChat();
+      notify('Messaggio non salvato: impossibile sincronizzare la chat. Riprova.', 'error');
+      return;
+    }
     aiChatPending = true;
     const send = $('aiChatSend');
     if (send) send.disabled = true;
-    aiChatMessages.push({ role: 'assistant', content: 'Sto analizzando i dati di Tasca…' });
+    const assistantMessage = { id: crypto.randomUUID(), role: 'assistant', content: 'Sto analizzando i dati di Tasca…', created_at: new Date().toISOString() };
+    aiChatMessages.push(assistantMessage);
     renderAIChat();
     try {
       const snapshot = buildAdviceSnapshot();
@@ -1866,10 +1924,16 @@ import {
       const plans = scopedRecurring().filter(planActive).slice(0, 30).map((p) => ({ name: p.name, amount: Number(p.amount) || 0, category: p.category, cadence: p.cadence, next_due_on: p.next_due_on, remaining_installments: p.remaining_installments }));
       const context = { currentSpace: activeSpace()?.name || 'Spazio non selezionato', financialSnapshot: snapshot, recentTransactions: recent, activeRecurring: plans, conversation: aiChatMessages.slice(-11).map((m) => ({ role: m.role, content: String(m.content).slice(0, 1500) })) };
       const answer = await callTascaAI('chat', context);
-      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: answer || 'Non ho ricevuto una risposta utilizzabile.' };
+      assistantMessage.content = answer || 'Non ho ricevuto una risposta utilizzabile.';
+      assistantMessage.created_at = new Date().toISOString();
+      await persistAIChatMessage(assistantMessage);
       saveAIChat();
     } catch (error) {
-      aiChatMessages[aiChatMessages.length - 1] = { role: 'assistant', content: 'Servizio non disponibile: ' + (error.message || 'errore imprevisto') };
+      assistantMessage.content = 'Servizio non disponibile: ' + (error.message || 'errore imprevisto');
+      assistantMessage.created_at = new Date().toISOString();
+      try { await persistAIChatMessage(assistantMessage); } catch (saveError) {
+        console.error('Tasca: impossibile salvare la risposta di errore della chat.', saveError);
+      }
     } finally {
       aiChatPending = false;
       if (send) send.disabled = false;
