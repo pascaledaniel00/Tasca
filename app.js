@@ -842,6 +842,72 @@ import {
         .join('') ||
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
+  let statementImportRows = [];
+  function renderStatementPreview() {
+    const target = $('statementImportPreview');
+    if (!target) return;
+    const summary = statementImportSummary(statementImportRows);
+    const rows = statementImportRows.slice(0, 100);
+    target.innerHTML = statementImportRows.length ? `
+      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Possibili duplicati: ${summary.duplicates} · Da verificare: ${summary.invalid + summary.review}</div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
+      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : formatMoney(row.amount)}</td><td>${row.duplicate ? 'Possibile duplicato' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${summary.total > 100 ? '<p class="muted tiny">Anteprima delle prime 100 righe; il controllo considera l’intero file.</p>' : ''}
+      <button id="confirmStatementImport" class="btn primary" type="button" ${summary.ready ? '' : 'disabled'}>Conferma importazione di ${summary.ready} movimenti</button>
+    ` : '';
+    const button = $('confirmStatementImport');
+    if (button) button.addEventListener('click', importStatementRows);
+  }
+  async function previewStatementFile() {
+    const file = $('statementFile')?.files?.[0];
+    const status = $('statementImportStatus');
+    statementImportRows = [];
+    renderStatementPreview();
+    if (!file) { if (status) status.textContent = 'Seleziona prima un file.'; return; }
+    if (!window.XLSX) { if (status) status.textContent = 'Lettore Excel non disponibile. Riprova più tardi.'; return; }
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows), scopedTransactions());
+      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette dal primo foglio. Nessun dato è stato ancora salvato.`;
+      renderStatementPreview();
+    } catch (error) {
+      if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
+    }
+  }
+  async function importStatementRows() {
+    if (!db || !user || !statementImportRows.length) return;
+    if (!requireSpecificSpace('importare un estratto conto')) return;
+    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && row.amount > 0 && row.occurred_on && row.description);
+    if (!rows.length) { notify('Non ci sono righe importabili.', 'error'); return; }
+    const approved = confirm(`Stai per registrare ${rows.length} movimenti nello spazio attivo. Le righe incomplete e i possibili duplicati saranno esclusi. Tutti i movimenti importati saranno marcati “Da verificare”. Vuoi continuare?`);
+    if (!approved) return;
+    const payload = rows.map((row) => ({
+      space_id: activeSpaceId,
+      type: row.type,
+      amount: row.amount,
+      currency: 'EUR',
+      description: row.description.slice(0, 160),
+      category: row.category,
+      occurred_on: row.occurred_on,
+      paid_by: user.id,
+      created_by: user.id,
+      payment_method: null,
+      status: 'verify',
+      notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow].filter(Boolean).join(' · ').slice(0, 1000),
+    }));
+    const { error } = await db.from('transactions').insert(payload);
+    if (error) { notify(error.message || 'Errore durante l’importazione', 'error'); return; }
+    statementImportRows = [];
+    $('statementImportPreview').innerHTML = '';
+    $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”.';
+    $('statementFile').value = '';
+    notify(rows.length + ' movimenti importati');
+    await loadData();
+  }
   function renderTransactions() {
     const query = $('searchMovements').value.trim().toLowerCase(),
       type = $('filterType').value,
@@ -2960,6 +3026,12 @@ import {
     $('searchMovements').addEventListener('input', renderTransactions);
     $('filterType').addEventListener('change', renderTransactions);
     $('filterMonth').addEventListener('change', renderTransactions);
+    $('previewStatementBtn')?.addEventListener('click', previewStatementFile);
+    $('statementFile')?.addEventListener('change', () => {
+      statementImportRows = [];
+      $('statementImportPreview').innerHTML = '';
+      $('statementImportStatus').textContent = 'File selezionato. Premi “Analizza file” per visualizzare le righe.';
+    });
     $('budgetMonth').addEventListener('change', renderBudgets);
     $('refreshBtn').addEventListener('click', loadData);
     $('aiChatForm')?.addEventListener('submit', sendAIChatMessage);
