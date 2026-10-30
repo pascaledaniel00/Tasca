@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Tasca" />
     <title>Tasca — Finanze personali</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=20261030-4" />
+    <link rel="stylesheet" href="styles.css?v=20261030-5" />
     <link rel="stylesheet" href="mobile-nav-fix.css?v=20261030-13" />
   </head>
   <body>
@@ -168,6 +168,7 @@
       <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 10.5 9-7.5 9 7.5M5 9.5v11h14v-11M9.5 20.5v-6h5v6" /></symbol>
       <symbol id="icon-transactions" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16" /></symbol>
       <symbol id="icon-budgets" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3 10h18M15.5 14.5h2.5M7 5V4a2 2 0 0 1 2-2h7" /></symbol>
+      <symbol id="icon-debts" viewBox="0 0 24 24"><path d="M4 8.5h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3v-11a3 3 0 0 1 3-3h13v5"/><path d="M16 13h5v4h-5a2 2 0 0 1 0-4Z"/><path d="M7 7h7M8 3.5v7"/><path d="m8 5 2-1.5L12 5"/></symbol>
       <symbol id="icon-recurring" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M8 3v4M16 3v4M3 9.5h18M9 15a3.2 3.2 0 1 0 1-2.2m0 0v2.2m0-2.2H7.8" /></symbol>
       <symbol id="icon-advice" viewBox="0 0 24 24"><path d="m12 3 1.8 5.8L20 11l-6.2 2.2L12 19l-1.8-5.8L4 11l6.2-2.2L12 3Z" /><path d="m19 15 .6 1.8 1.9.7-1.9.6-.6 1.9-.7-1.9-1.8-.6 1.8-.7.7-1.8Z" /></symbol>
       <symbol id="icon-quiz" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.4 1.9c-1.1.9-1.9 1.2-1.9 2.6M12 17.2v.1" /></symbol>
@@ -183,7 +184,7 @@
         <button data-page="transactions"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-transactions"></use></svg><span class="sidebar-nav-label">Movimenti</span></button>
         <button data-page="budgets"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-budgets"></use></svg><span class="sidebar-nav-label">Budget</span></button>
         <button data-page="recurring"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-recurring"></use></svg><span class="sidebar-nav-label">Ricorrenze</span></button>
-        <button data-page="debts"><span class="sidebar-nav-label">Debiti e risparmi</span></button>
+        <button data-page="debts"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-debts"></use></svg><span class="sidebar-nav-label">Debiti e risparmi</span></button>
         <button data-page="advice"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-advice"></use></svg><span class="sidebar-nav-label">Consigli</span></button>
         <button data-page="tasca-ai"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-tasca-ai"></use></svg><span class="sidebar-nav-label">Tasca IA</span></button>
         <button data-page="quiz"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-quiz"></use></svg><span class="sidebar-nav-label">Quiz</span></button>
@@ -403,7 +404,7 @@
             </div>
           </div>
         </section>
-        <section id="page-debts" class="section"><div class="page-title"><h2>Debiti e risparmi</h2></div><div id="debtSavingsNotice" class="notice warn">Esegui la migrazione SQL su Supabase.</div><div class="layout"><div class="panel"><div class="panelhead"><h3>Debiti e finanziamenti</h3><button id="newDebtBtn" class="btn primary small" type="button">＋ Nuovo debito</button></div><div id="debtsList"></div></div><div class="panel"><div class="panelhead"><h3>Obiettivi di risparmio</h3><button id="newSavingsGoalBtn" class="btn primary small" type="button">＋ Nuovo obiettivo</button></div><div id="savingsGoalsList"></div></div></div></section><section id="page-advice" class="section">
+        <section id="page-debts" class="section"><div class="page-title debts-page-title"><div class="debts-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-debts"></use></svg></div><div><h2>Debiti e risparmi</h2><p class="muted tiny">Tieni sotto controllo finanziamenti, rate e obiettivi.</p></div></div><div id="debtSavingsNotice" class="notice warn">Esegui la migrazione SQL su Supabase.</div><div class="layout"><div class="panel"><div class="panelhead"><h3>Debiti e finanziamenti</h3><button id="newDebtBtn" class="btn primary small" type="button">＋ Nuovo debito</button></div><div id="debtsList"></div></div><div class="panel"><div class="panelhead"><h3>Obiettivi di risparmio</h3><button id="newSavingsGoalBtn" class="btn primary small" type="button">＋ Nuovo obiettivo</button></div><div id="savingsGoalsList"></div></div></div></section><section id="page-advice" class="section">
           <div class="page-title">
             <div>
               <h2>Consigli</h2>
@@ -445,6 +446,7 @@
               </div>
               <span class="tasca-chat-status"><span></span> Pronta ad aiutarti</span>
             </div>
+            <div class="tasca-mascot-stage" aria-label="Mascotte Tasca IA"><div class="tasca-mascot-copy"><span class="tasca-mascot-eyebrow">IL TUO ALLEATO NELLE FINANZE</span><h4>Un passo alla volta, verso i tuoi obiettivi.</h4><p>Chiedimi pure di budget, spese, rate e risparmi.</p><div class="tasca-mascot-pills"><span>Budget</span><span>Risparmio</span><span>Obiettivi</span></div></div><svg class="tasca-mascot-art" viewBox="0 0 360 330" role="img" aria-label="Un piccolo robot sorridente con un portafoglio verde"><defs><linearGradient id="botShell" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#dce9e2"/></linearGradient><linearGradient id="botFace" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#263d43"/><stop offset="1" stop-color="#071b20"/></linearGradient><linearGradient id="botGreen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4eaa7c"/><stop offset="1" stop-color="#145b43"/></linearGradient><filter id="botShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="9" stdDeviation="8" flood-color="#173d32" flood-opacity=".16"/></filter></defs><ellipse cx="180" cy="304" rx="105" ry="13" fill="#173d32" opacity=".08"/><path d="M175 48c-8-23 9-38 31-37-1 20-9 34-31 37Z" fill="#56ad78" stroke="#287a56" stroke-width="3"/><path d="M178 47c7-13 15-21 27-29" fill="none" stroke="#d6f0d9" stroke-width="3" stroke-linecap="round"/><g filter="url(#botShadow)"><path d="M95 170c-22 17-30 50-23 84 6 29 23 42 47 40l33-9-9-105-48-10Z" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><path d="M265 170c22 17 30 50 23 84-6 29-23 42-47 40l-33-9 9-105 48-10Z" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><rect x="111" y="183" width="138" height="119" rx="48" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><rect x="62" y="51" width="236" height="173" rx="66" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><rect x="83" y="72" width="194" height="130" rx="49" fill="url(#botFace)" stroke="#f9fff9" stroke-width="6"/><path d="M132 130c8-13 23-13 31 0M199 130c8-13 23-13 31 0" fill="none" stroke="#80e4b2" stroke-width="9" stroke-linecap="round"/><path d="M159 153c12 12 30 12 42 0" fill="none" stroke="#a8f2d0" stroke-width="6" stroke-linecap="round"/><rect x="52" y="118" width="20" height="55" rx="10" fill="url(#botGreen)"/><rect x="288" y="118" width="20" height="55" rx="10" fill="url(#botGreen)"/><path d="M137 218c-4 22-3 37 13 48h63c15-12 17-27 12-48" fill="#e9f0eb" stroke="#cbdad1" stroke-width="3"/><path d="M118 242c-27 9-38 28-28 46 10 17 33 17 56 2l28-19-20-35-36 6Z" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><path d="M241 242c27 9 38 28 28 46-10 17-33 17-56 2l-28-19 20-35 36 6Z" fill="url(#botShell)" stroke="#cbdad1" stroke-width="3"/><g transform="rotate(-9 184 257)"><rect x="139" y="211" width="102" height="91" rx="17" fill="url(#botGreen)" stroke="#0f503b" stroke-width="4"/><path d="M151 228h79" stroke="#9ed5b4" stroke-width="3" stroke-linecap="round" opacity=".65"/><path d="M170 250c0-8 6-13 14-13h28v27h-28c-8 0-14-5-14-14Z" fill="#d6edda" opacity=".95"/><path d="M178 251h24" stroke="#287653" stroke-width="3" stroke-linecap="round"/><circle cx="226" cy="268" r="5" fill="#e9c78a"/></g></g><g><circle cx="306" cy="74" r="24" fill="#e7f4ea"/><path d="M294 85V69h9v16m5 0V59h9v26" fill="none" stroke="#348b62" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="239" r="20" fill="#eff7e9"/><path d="M47 225v28m-9-9c0-6 4-10 9-10s9 4 9 10" fill="none" stroke="#4c9b70" stroke-width="4" stroke-linecap="round"/></g></svg></div>
             <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite" aria-label="Conversazione con Tasca IA">
               <div class="ai-chat-bubble assistant">Ciao! Sono qui per aiutarti a leggere meglio le tue finanze. Possiamo analizzare le spese, valutare una rata o costruire un piano di risparmio. Ogni modifica al registro richiederà sempre la tua conferma.</div>
             </div>
@@ -765,6 +767,6 @@
     </div>
     <div id="toast" class="toast hidden" role="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script type="module" src="app.js?v=20261030-12"></script>
+    <script type="module" src="app.js?v=20261030-13"></script>
   </body>
 </html>
