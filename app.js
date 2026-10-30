@@ -12,6 +12,7 @@ import {
 import {
   normalizeStatementRows,
   findStatementDuplicates,
+  compareTransactionForDuplicate,
   statementImportSummary,
 } from './statement-import-core.js?v=20261030-1';
 import {
@@ -849,9 +850,9 @@ import {
     const summary = statementImportSummary(statementImportRows);
     const rows = statementImportRows;
     target.innerHTML = statementImportRows.length ? `
-      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Possibili duplicati: ${summary.duplicates} · Da verificare: ${summary.invalid + summary.review}</div>
+      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${summary.ready} · Duplicati probabili: ${summary.duplicates} · Corrispondenze da verificare: ${summary.possibleDuplicates} · Righe incomplete: ${summary.invalid + summary.review}</div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Possibile duplicato' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
+      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Duplicato probabile · escluso' : row.possibleDuplicate ? 'Possibile corrispondenza · verificare' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
       </tbody></table></div>
       ${summary.total > 100 ? '<p class="muted tiny">Sono visualizzate tutte le righe del file.</p>' : ''}
       <button id="confirmStatementImport" class="btn primary" type="button" ${summary.ready ? '' : 'disabled'}>Conferma importazione di ${summary.ready} movimenti</button>
@@ -881,9 +882,9 @@ import {
   async function importStatementRows() {
     if (!db || !user || !statementImportRows.length) return;
     if (!requireSpecificSpace('importare un estratto conto')) return;
-    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && row.amount > 0 && row.occurred_on && row.description);
+    const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !row.possibleDuplicate && row.amount > 0 && row.occurred_on && row.description);
     if (!rows.length) { notify('Non ci sono righe importabili.', 'error'); return; }
-    const approved = confirm(`Stai per registrare ${rows.length} movimenti nello spazio attivo. Le righe incomplete e i possibili duplicati saranno esclusi. Tutti i movimenti importati saranno marcati “Da verificare”. Vuoi continuare?`);
+    const approved = confirm(`Stai per registrare ${rows.length} movimenti nello spazio attivo. Le righe incomplete, i duplicati probabili e le possibili corrispondenze saranno esclusi per evitare doppioni. Tutti i movimenti importati saranno marcati “Da verificare”. Vuoi continuare?`);
     if (!approved) return;
     const payload = rows.map((row) => ({
       space_id: activeSpaceId,
@@ -3318,25 +3319,34 @@ import {
       }
       targetSpace = eligibleSpaces[selectedIndex];
     }
-    const normalized = (s) =>
-      String(s || '')
-        .trim()
-        .toLocaleLowerCase('it-IT')
-        .replace(/\s+/g, ' ');
-    const duplicate = transactions.some(
-      (t) =>
-        t.space_id === targetSpace.id &&
-        txDate(t) === date &&
-        Math.round(Number(t.amount) * 100) === Math.round(amount * 100) &&
-        normalized(t.description) === normalized(description)
-    );
-    if (duplicate) {
+    const matchingTransactions = transactions.filter((t) => t.space_id === targetSpace.id);
+    const duplicateCandidate = { type, amount, occurred_on: date, description };
+    const duplicateMatches = matchingTransactions
+      .map((t) => ({ transaction: t, confidence: compareTransactionForDuplicate(duplicateCandidate, t) }))
+      .filter((match) => match.confidence !== 'none')
+      .sort((a, b) => (a.confidence === 'strong' ? 0 : 1) - (b.confidence === 'strong' ? 0 : 1));
+    const duplicateMatch = duplicateMatches[0];
+    if (duplicateMatch?.confidence === 'strong') {
       notify(
-        'Possibile duplicato: questo importo e questo esercente risultano già registrati nella stessa data.',
+        'Pagamento non importato: una registrazione corrispondente è già presente in Tasca.',
         'error'
       );
       clearShortcutParams();
       return;
+    }
+    if (duplicateMatch?.confidence === 'possible') {
+      const proceed = confirm(
+        'Attenzione: esiste già un movimento con stesso importo e data vicina, ma la descrizione è diversa. Potrebbe essere lo stesso pagamento già registrato tramite banca o Wallet.\\n\\nMovimento esistente: ' +
+          duplicateMatch.transaction.description + ' · ' + eur(duplicateMatch.transaction.amount) +
+          ' · ' + txDate(duplicateMatch.transaction) +
+          '\\nNuovo movimento: ' + description + ' · ' + eur(amount) + ' · ' + date +
+          '\\n\\nVuoi registrarlo comunque? Scegli Annulla se potrebbe essere un duplicato.'
+      );
+      if (!proceed) {
+        clearShortcutParams();
+        notify('Registrazione annullata per evitare un possibile duplicato.');
+        return;
+      }
     }
     shortcutImportRunning = true;
     try {
