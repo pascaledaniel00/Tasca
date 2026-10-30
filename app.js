@@ -250,7 +250,7 @@ import {
       const dockTrack = $('mobileNavTrack');
       const targetPage = dockTrack?.querySelector(
         '.mobile-nav-page[data-nav-page="' +
-          (['spaces', 'recurring', 'debts', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
+          (['spaces', 'recurring', 'debts', 'advice', 'tasca-ai', 'settings'].includes(name) ? 'secondary' : 'primary') +
           '"]'
       );
       if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
