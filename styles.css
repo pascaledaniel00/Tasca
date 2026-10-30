@@ -4098,3 +4098,49 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   .tasca-new-chat, .tasca-chat-prompts button, .tasca-chat-send { transition: none; }
   .tasca-chat-prompts button:hover, .tasca-chat-send:hover { transform: none; }
 }
+/* Keep the Tasca AI workspace within the viewport so only its chat scrolls. */
+#appScreen.tasca-chat-active {
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+#appScreen.tasca-chat-active > .top,
+#appScreen.tasca-chat-active > .space-switcher,
+#appScreen.tasca-chat-active > #globalNotice {
+  flex: 0 0 auto;
+}
+#appScreen.tasca-chat-active > .top { margin-bottom: 8px; }
+#appScreen.tasca-chat-active > main {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+#appScreen.tasca-chat-active #page-tasca-ai.active {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+#appScreen.tasca-chat-active .tasca-chat-shell {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+}
+@media (max-width: 720px) {
+  #appScreen.tasca-chat-active {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  #appScreen.tasca-chat-active > .space-switcher {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  #appScreen.tasca-chat-active .tasca-chat-shell { grid-template-rows: auto minmax(0, 1fr); }
+}
