@@ -65,7 +65,7 @@ export function validateFundMovement(payload = {}) {
   if (!payload.space_id || !payload.goal_id) return 'Obiettivo o spazio mancante.';
   if (!['contribution','withdrawal'].includes(payload.movement_type)) return 'Tipo di movimento non valido.';
   if (!Number.isFinite(Number(payload.amount)) || Number(payload.amount) <= 0) return 'Inserisci un importo maggiore di zero.';
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(payload.occurred_on || ''))) return 'Inserisci una data valida.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.occurred_on || ''))) return 'Inserisci una data valida.';
   return null;
 }
 
