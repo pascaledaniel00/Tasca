@@ -1132,7 +1132,7 @@ import {
       '<form id="fundMovementForm"><div class="field"><label>Importo (€)</label><input name="amount" type="number" min=".01" step=".01" required></div>' +
       '<div class="field"><label>Data</label><input name="occurred_on" type="date" value="' + today() + '" required></div><div class="field"><label>Collega a un trasferimento già registrato (facoltativo)</label><select name="transaction_id"><option value="">Nessun collegamento</option>' +
       candidates.map((x) => '<option value="' + esc(x.id) + '">' + esc(fmtDate(txDate(x))) + ' · ' + esc(x.description) + ' · ' + eur(x.amount) + '</option>').join('') +
-      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Il fondo si aggiorna senza creare un'altra spesa o entrata.</p><button class="btn primary full" type="submit">Conferma</button></form>');
+      '</select></div><div class="field"><label>Note</label><textarea name="notes"></textarea></div><p class="muted tiny">Il fondo si aggiorna senza creare una seconda spesa o entrata.</p><button class="btn primary full" type="submit">Conferma</button></form>');
     $('fundMovementForm').addEventListener('submit', async (e) => {
       e.preventDefault(); const f = new FormData(e.target); const payload = {goal_id:id,space_id:goal.space_id,movement_type:type,
         amount:Number(f.get('amount')),occurred_on:f.get('occurred_on'),transaction_id:f.get('transaction_id')||null,notes:f.get('notes')||null};
