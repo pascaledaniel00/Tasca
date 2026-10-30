@@ -1,5 +1,10 @@
 import {
   budgetComparison,
+  calculateDebtSummary,
+  calculateSavingsSummary,
+  validateDebtInput,
+  validateSavingsGoalInput,
+  validateFundMovement,
   calculateParticipantBalances,
   categoryBreakdown,
   monthlyTrend,
@@ -93,6 +98,7 @@ import {
     transactions = [],
     budgets = [],
     recurring = [],
+    debts = [], debtPayments = [], savingsGoals = [], savingsMovements = [], financeTablesReady = false,
     spaces = [],
     editingTransaction = null,
     editingBudget = null,
@@ -244,7 +250,7 @@ import {
       const dockTrack = $('mobileNavTrack');
       const targetPage = dockTrack?.querySelector(
         '.mobile-nav-page[data-nav-page="' +
-          (['spaces', 'recurring', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
+          (['spaces', 'recurring', 'debts', 'advice', 'settings'].includes(name) ? 'secondary' : 'primary') +
           '"]'
       );
       if (targetPage) dockTrack.scrollLeft = targetPage.offsetLeft;
@@ -1836,6 +1842,7 @@ import {
     renderTransactions();
     renderBudgets();
     renderRecurring();
+    renderDebtSavings();
     renderAdvice();
     renderSpaces();
   }
@@ -2098,6 +2105,18 @@ import {
       budgets = bg;
       recurring = rc;
       spaces = sp;
+      try {
+        const [d, dp, g, gm] = await Promise.all([
+          fetchAllRows(() => db.from('debts').select('*').order('created_at', {ascending:false})),
+          fetchAllRows(() => db.from('debt_payments').select('*').order('paid_on', {ascending:false})),
+          fetchAllRows(() => db.from('savings_goals').select('*').order('created_at', {ascending:false})),
+          fetchAllRows(() => db.from('savings_movements').select('*').order('occurred_on', {ascending:false})),
+        ]);
+        debts=d; debtPayments=dp; savingsGoals=g; savingsMovements=gm; financeTablesReady=true;
+      } catch (financeError) {
+        debts=[]; debtPayments=[]; savingsGoals=[]; savingsMovements=[]; financeTablesReady=false;
+        console.warn('Archivio debiti/risparmi non disponibile:', financeError.message);
+      }
       aiNudgeKey = '';
       aiNudgeText = '';
       aiAdviceKey = '';
