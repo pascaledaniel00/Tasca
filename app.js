@@ -3368,7 +3368,8 @@ import {
     initSidebarReordering();
     $('startQuizBtn')?.addEventListener('click', startQuiz);
     $('themeModeToggle').addEventListener('click', toggleTheme);
-    $('settingsGoalBtn').addEventListener('click', openGoalForm);\n    $('savePaydaySettingsBtn')?.addEventListener('click', savePaydayCycleSettings);
+    $('settingsGoalBtn').addEventListener('click', openGoalForm);
+    $('savePaydaySettingsBtn')?.addEventListener('click', savePaydayCycleSettings);
     $('settingsExportBtn').addEventListener('click', exportPersonalData);
     $('settingsAccountBtn').addEventListener('click', () => {
       closeAccountPopover();
