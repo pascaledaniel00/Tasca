@@ -683,16 +683,23 @@ import {
   function paydayCycleSettings() {
     return String(user?.user_metadata?.payday_cycle_next_date || paydayCycleNextDate || '');
   }
-  function getPaydayCycleSummary() {
-    if (isAllSpaces()) return null;
+  function getPaydayCycleData() {
+    if (isAllSpaces()) return [];
     const rows = scopedTransactions();
-    const cycles = buildPaydayCycles(rows, {
+    return buildPaydayCycles(rows, {
       nextPayday: paydayCycleSettings(),
       asOf: today(),
-      incomeMatcher: (row) => /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')),
+      // Only a manually categorized/named salary income starts a new cycle.
+      // Refunds, gifts and every other income leave the current cycle untouched.
+      incomeMatcher: (row) => row.type === 'income' &&
+        [row.category, row.description].some((value) =>
+          String(value || '').trim().toLocaleLowerCase('it-IT') === 'stipendio'),
     });
+  }
+  function getPaydayCycleSummary() {
+    const cycles = getPaydayCycleData();
     const cycle = cycles[cycles.length - 1];
-    return cycle ? summarizePaydayCycle(cycle, rows, { asOf: today() }) : null;
+    return cycle ? summarizePaydayCycle(cycle, scopedTransactions(), { asOf: today() }) : null;
   }
   function renderPaydayCycle() {
     const panel = $('paydayCyclePanel');
@@ -703,11 +710,20 @@ import {
     }
     const summary = getPaydayCycleSummary();
     if (!summary) {
-      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>In attesa del primo stipendio registrato</strong><p class="muted tiny">Registra l’accredito come entrata con categoria “Stipendio”. Da quel giorno Tasca potrà calcolare il ciclo.</p>';
+      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>In attesa del primo stipendio registrato</strong><p class="muted tiny">Registra manualmente l’accredito come entrata con descrizione o categoria esattamente “Stipendio”. Le altre entrate non riavviano il ciclo.</p>';
       return;
     }
-    const endLabel = summary.end ? fmtDate(summary.end) : 'in corso';
-    panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><div class="payday-cycle-dates"><strong>' + esc(fmtDate(summary.start)) + ' – ' + esc(endLabel) + '</strong><span class="badge">' + (summary.isOpen ? 'Aperto' : 'Programmato') + '</span></div><div class="payday-cycle-stats"><div><small>Entrate</small><strong>' + eur(summary.income) + '</strong></div><div><small>Uscite</small><strong>' + eur(summary.expenses) + '</strong></div><div><small>Residuo del ciclo</small><strong>' + eur(summary.residual) + '</strong></div></div><p class="muted tiny">Il mese solare resta consultabile separatamente. I trasferimenti non sono conteggiati come entrate o uscite.</p>';
+    const forecast = summary.expectedNextPayday
+      ? '<p class="muted tiny">Prossimo stipendio previsto: ' + esc(fmtDate(summary.expectedNextPayday)) + '. La data è indicativa: il ciclo si chiuderà solo quando registrerai il nuovo stipendio.</p>'
+      : '<p class="muted tiny">Il ciclo si chiuderà quando registrerai il prossimo stipendio. Le altre entrate non lo riavviano.</p>';
+    panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><div class="payday-cycle-dates"><strong>' +
+      esc(fmtDate(summary.start)) + ' – ' + esc(fmtDate(summary.end || today())) +
+      '</strong><span class="badge">' + (summary.isOpen ? 'In corso' : 'Completato') +
+      '</span></div><div class="payday-cycle-stats"><div><small>Entrate</small><strong>' +
+      eur(summary.income) + '</strong></div><div><small>Uscite</small><strong>' +
+      eur(summary.expenses) + '</strong></div><div><small>Residuo del ciclo</small><strong>' +
+      eur(summary.residual) + '</strong></div></div>' + forecast +
+      '<p class="muted tiny">Il mese solare resta separato. I trasferimenti interni non sono entrate o uscite.</p>';
   }
   async function saveDashboardPreferences() {
     const dashboardValue = $('dashboardPrimaryView')?.value === 'cycle' ? 'cycle' : 'month';
@@ -734,25 +750,35 @@ import {
     const input = $('paydayNextDate');
     const status = $('paydaySettingsStatus');
     const value = String(input?.value || '');
-    if (value && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || Number.isNaN(new Date(value + 'T00:00:00').getTime()) || new Date(value + 'T00:00:00').toISOString().slice(0, 10) !== value)) {
-      if (status) status.textContent = 'Inserisci una data valida.';
-      return;
+    if (value) {
+      const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
+      const valid = match && (() => {
+        const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+        return date.getUTCFullYear() === Number(match[1]) &&
+          date.getUTCMonth() === Number(match[2]) - 1 &&
+          date.getUTCDate() === Number(match[3]);
+      })();
+      if (!valid) {
+        if (status) status.textContent = 'Inserisci una data di calendario valida.';
+        return;
+      }
     }
     if (!db || !user) {
       if (status) status.textContent = 'Accedi per salvare questa impostazione.';
       return;
     }
-    const { data, error } = await db.auth.updateUser({
-      data: { ...(user.user_metadata || {}), payday_cycle_next_date: value || null },
-    });
-    if (error) {
-      if (status) status.textContent = 'Non è stato possibile salvare: ' + error.message;
-      return;
+    try {
+      const { data, error } = await db.auth.updateUser({
+        data: { ...(user.user_metadata || {}), payday_cycle_next_date: value || null },
+      });
+      if (error) throw error;
+      user = data.user || user;
+      paydayCycleNextDate = value;
+      renderAll();
+      if (status) status.textContent = value ? 'Prossima data di stipendio salvata.' : 'Data prevista rimossa.';
+    } catch (error) {
+      if (status) status.textContent = 'Non è stato possibile salvare: ' + (error?.message || 'errore imprevisto');
     }
-    user = data.user || user;
-    paydayCycleNextDate = value;
-    renderAll();
-    if (status) status.textContent = value ? 'Prossima data di stipendio salvata.' : 'Data prevista rimossa.';
   }
   function renderHome() {
     renderPaydayCycle();
@@ -1219,6 +1245,19 @@ import {
     const ps = debtPayments.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
     const gs = savingsGoals.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
     const ms = savingsMovements.filter((x) => isAllSpaces() || x.space_id === activeSpaceId);
+    const cycles = getPaydayCycleData();
+    const closedCycles = cycles.filter((cycle) => !cycle.isOpen);
+    const lastClosed = closedCycles[closedCycles.length - 1];
+    const completed = lastClosed
+      ? summarizePaydayCycle(lastClosed, scopedTransactions())
+      : null;
+    const transferPanel = $('savingsTransferSuggestion');
+    if (transferPanel) {
+      const suggested = completed ? Math.max(0, completed.residual) : 0;
+      transferPanel.innerHTML = completed && suggested > 0
+        ? '<div class="savings-transfer-head"><div><div class="eyebrow">Risparmio da accantonare</div><strong>' + eur(suggested) + '</strong></div><span class="badge">Da trasferire</span></div><p class="muted tiny">Residuo del ciclo stipendiale ' + esc(fmtDate(completed.start)) + ' – ' + esc(fmtDate(completed.end)) + '. È una somma suggerita, non un risparmio già effettuato né un saldo bancario verificato.</p><p class="muted tiny">Quando sposti davvero questi soldi sul conto risparmi, registra il movimento come trasferimento tra conti: non verrà conteggiato come spesa.</p>'
+        : '<div class="eyebrow">Risparmio da accantonare</div><strong>Nessun importo da trasferire al momento</strong><p class="muted tiny">Quando registrerai il prossimo stipendio, Tasca chiuderà il ciclo precedente e calcolerà l’eventuale residuo positivo da spostare sul conto risparmi.</p>';
+    }
     $('debtsList').innerHTML = calculateDebtSummary(ds, ps).map((d) =>
       '<div class="movement"><div class="movinfo"><strong>' + esc(d.name) + '</strong><small>' +
       esc(d.creditor || 'Creditore non indicato') + ' · ' +
