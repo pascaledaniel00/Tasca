@@ -120,14 +120,15 @@ export function paydayCycleBudgetComparison(budgets = [], transactions = [], cyc
     .map((budget) => {
       const amount = Number(budget.amount);
       const limit = Number.isFinite(amount) && amount > 0 ? roundMoney(amount) : 0;
-      const spent = roundMoney(rows.reduce((sum, row) => {
+      const spentCents = rows.reduce((sum, row) => {
         const date = String(row?.occurred_on || row?.date || '');
         if (row?.space_id !== budget.space_id || row?.type !== 'expense' ||
             (row.status != null && row.status !== 'confirmed') ||
             row?.category !== budget.category || !parseDate(date) ||
             date < cycle.start || (cycle.end && date > cycle.end)) return sum;
-        return sum + Math.abs(Number(row.amount) || 0);
-      }, 0));
+        return sum + Math.round(Math.abs(Number(row.amount) || 0) * 100);
+      }, 0);
+      const spent = spentCents / 100;
       return { id: budget.id, space_id: budget.space_id, category: String(budget.category || 'Da verificare'),
         amount: limit, spent, remaining: roundMoney(limit - spent),
         percent: limit > 0 ? (spent / limit) * 100 : 0 };
