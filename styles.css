@@ -4168,3 +4168,32 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
 .payday-cycle-stats small { color: var(--muted, #777); font-size: .78rem; }
 .payday-cycle-stats strong { font-size: 1.05rem; }
 @media (max-width: 560px) { .payday-cycle-stats { gap: 8px; } .payday-cycle-stats strong { font-size: .92rem; } }
+
+
+/* Mobile transaction editor: stable sheet, vertical scrolling and reachable save action. */
+@media (max-width: 720px) {
+  .modal {
+    align-items: flex-start;
+    justify-content: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  .modalcard {
+    width: 100%;
+    max-width: 600px;
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 16px;
+    margin: auto 0;
+    touch-action: pan-y;
+  }
+  #modalBody, #txForm, #txForm .formgrid, #txForm .field { min-width: 0; max-width: 100%; }
+  #txForm input, #txForm select, #txForm textarea { max-width: 100%; min-width: 0; }
+}

@@ -133,6 +133,7 @@ import {
     aiChatPending = false;
   let goal = 40;
   let paydayCycleNextDate = '';
+  let dashboardPrimaryView = 'month';
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
   } catch {}
@@ -708,6 +709,27 @@ import {
     const endLabel = summary.end ? fmtDate(summary.end) : 'in corso';
     panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><div class="payday-cycle-dates"><strong>' + esc(fmtDate(summary.start)) + ' – ' + esc(endLabel) + '</strong><span class="badge">' + (summary.isOpen ? 'Aperto' : 'Programmato') + '</span></div><div class="payday-cycle-stats"><div><small>Entrate</small><strong>' + eur(summary.income) + '</strong></div><div><small>Uscite</small><strong>' + eur(summary.expenses) + '</strong></div><div><small>Residuo del ciclo</small><strong>' + eur(summary.residual) + '</strong></div></div><p class="muted tiny">Il mese solare resta consultabile separatamente. I trasferimenti non sono conteggiati come entrate o uscite.</p>';
   }
+  async function saveDashboardPreferences() {
+    const dashboardValue = $('dashboardPrimaryView')?.value === 'cycle' ? 'cycle' : 'month';
+    const budgetValue = $('defaultBudgetPeriod')?.value === 'cycle' ? 'cycle' : 'month';
+    const status = $('dashboardPreferencesStatus');
+    if (!db || !user) { if (status) status.textContent = 'Accedi per salvare le preferenze.'; return; }
+    try {
+      const { data, error } = await db.auth.updateUser({ data: {
+        ...(user.user_metadata || {}),
+        tasca_dashboard_primary_view: dashboardValue,
+        tasca_budget_period_mode: budgetValue,
+      }});
+      if (error) throw error;
+      user = data.user || user;
+      dashboardPrimaryView = dashboardValue;
+      budgetPeriodMode = budgetValue;
+      renderAll();
+      if (status) status.textContent = 'Preferenze salvate.';
+    } catch (error) {
+      if (status) status.textContent = 'Salvataggio non riuscito: ' + (error.message || 'errore');
+    }
+  }
   async function savePaydayCycleSettings() {
     const input = $('paydayNextDate');
     const status = $('paydaySettingsStatus');
@@ -735,20 +757,26 @@ import {
   function renderHome() {
     renderPaydayCycle();
     const s = monthSummary();
-    $('heroBalance').textContent = eur(s.residual);
+    const cycleSummary = dashboardPrimaryView === 'cycle' ? getPaydayCycleSummary() : null;
+    const primarySummary = cycleSummary || s;
+    const heroEyebrow = $('heroEyebrow');
+    if (heroEyebrow) heroEyebrow.textContent = cycleSummary ? 'Disponibilità teorica del ciclo stipendiale' : 'Disponibilità teorica del mese';
+    $('heroBalance').textContent = eur(primarySummary.residual);
     $('heroSubtitle').textContent =
-      `${eur(s.income)} di entrate · ${eur(s.expense)} di uscite registrate a ${new Date().toLocaleDateString('it-IT', { month: 'long' })}.`;
+      (cycleSummary
+        ? `${eur(cycleSummary.income)} di entrate · ${eur(cycleSummary.expenses)} di uscite dal ${fmtDate(cycleSummary.start)}${cycleSummary.end ? ' al ' + fmtDate(cycleSummary.end) : ''}.`
+        : `${eur(s.income)} di entrate · ${eur(s.expense)} di uscite registrate a ${new Date().toLocaleDateString('it-IT', { month: 'long' })}.`);
     $('goalValue').textContent = eur(goal);
     $('goalCaption').textContent =
-      s.residual >= goal
-        ? `Obiettivo raggiunto: ${eur(s.residual - goal)} oltre il target`
-        : `Mancano ${eur(goal - s.residual)} per raggiungere il target`;
+      primarySummary.residual >= goal
+        ? `Obiettivo raggiunto: ${eur(primarySummary.residual - goal)} oltre il target`
+        : `Mancano ${eur(goal - primarySummary.residual)} per raggiungere il target`;
     const p =
       goal === 0
-        ? s.residual >= 0
+        ? primarySummary.residual >= 0
           ? 100
           : 0
-        : Math.max(0, Math.min(100, (s.residual / goal) * 100));
+        : Math.max(0, Math.min(100, (primarySummary.residual / goal) * 100));
     $('goalProgress').style.width = p + '%';
     $('incomeTotal').textContent = eur(s.income);
     $('expenseTotal').textContent = eur(s.expense);
@@ -2335,6 +2363,13 @@ import {
   }
   function renderAll() {
     renderSpaceSelector();
+    const meta = user?.user_metadata || {};
+    budgetPeriodMode = meta.tasca_budget_period_mode === 'cycle' ? 'cycle' : 'month';
+    dashboardPrimaryView = meta.tasca_dashboard_primary_view === 'cycle' ? 'cycle' : 'month';
+    const dashboardSelect = $('dashboardPrimaryView');
+    const budgetSelect = $('defaultBudgetPeriod');
+    if (dashboardSelect) dashboardSelect.value = dashboardPrimaryView;
+    if (budgetSelect) budgetSelect.value = budgetPeriodMode;
     const paydayInput = $('paydayNextDate');
     if (paydayInput) paydayInput.value = paydayCycleSettings();
     renderHome();
@@ -2693,10 +2728,11 @@ import {
     if (submitButton) submitButton.disabled = true;
     try {
       const q = isEditing
-        ? db.from('transactions').update(payload).eq('id', editingId)
+        ? db.from('transactions').update(payload).eq('id', editingId).eq('space_id', savedSpaceId)
         : db.from('transactions').insert(payload);
-      const { error } = await q;
+      const { data, error } = await q.select('id').maybeSingle();
       if (error) throw error;
+      if (!data?.id) throw new Error('Nessun movimento aggiornato. Verifica di avere i permessi sullo spazio e riprova.');
       transactionSpaceId = null;
       editingTransaction = null;
       closeModal(true);
@@ -3466,6 +3502,7 @@ import {
     $('themeModeToggle').addEventListener('click', toggleTheme);
     $('settingsGoalBtn').addEventListener('click', openGoalForm);
     $('savePaydaySettingsBtn')?.addEventListener('click', savePaydayCycleSettings);
+    $('saveDashboardPreferencesBtn')?.addEventListener('click', saveDashboardPreferences);
     $('settingsExportBtn').addEventListener('click', exportPersonalData);
     $('settingsAccountBtn').addEventListener('click', () => {
       closeAccountPopover();
