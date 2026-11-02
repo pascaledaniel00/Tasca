@@ -54,3 +54,11 @@ test('rifiuta date non valide e non inventa un ciclo prima del primo stipendio',
   assert.equal(findPaydayCycle('2026-02-30', []), null);
   assert.equal(findPaydayCycle('2026-10-01', buildPaydayCycles(movements)), null);
 });
+
+test('riconosce stipendio anche quando la categoria è valorizzata ma la descrizione è generica', () => {
+  const cycles = buildPaydayCycles([
+    { type: 'income', status: 'confirmed', description: 'Accredito aziendale', category: 'Stipendio', amount: 760, occurred_on: '2026-10-30' },
+  ]);
+  assert.equal(cycles.length, 1);
+  assert.equal(cycles[0].start, '2026-10-30');
+});
