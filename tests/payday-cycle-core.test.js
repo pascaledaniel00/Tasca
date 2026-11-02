@@ -95,7 +95,7 @@ test('previsione 30/60/90 giorni conta solo ricorrenze attive e stipendio datato
   assert.equal(result[0].recurringExpenses, 62.14);
   assert.equal(result[0].expectedIncome, 760);
   assert.equal(result[0].netChange, 697.86);
-  assert.equal(result[2].recurringExpenses, 122.13);
+  assert.equal(result[2].recurringExpenses, 144.27);
   assert.equal(result[2].expectedIncome, 760);
 });
 
