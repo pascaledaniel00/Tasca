@@ -51,6 +51,6 @@ test('mese solare e ciclo stipendiale sono riferimenti distinti allo stesso movi
 });
 
 test('rifiuta date non valide e non inventa un ciclo prima del primo stipendio', () => {
-  assert.throws(() => findPaydayCycle('2026-02-30', []), /never/);
+  assert.equal(findPaydayCycle('2026-02-30', []), null);
   assert.equal(findPaydayCycle('2026-10-01', buildPaydayCycles(movements)), null);
 });
