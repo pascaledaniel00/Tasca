@@ -100,7 +100,8 @@ const classify = (row, signedAmount, description) => {
 };
 export function normalizeStatementRows(rows, columnMapping = null) {
   return (Array.isArray(rows) ? rows : []).map((row, index) => {
-    const get = (field, keys) => columnMapping?.[field] ? row?.[columnMapping[field]] : findValue(row, keys);\n    const occurredOn = parseStatementDate(get('date', DATE_KEYS));
+    const get = (field, keys) => columnMapping?.[field] ? row?.[columnMapping[field]] : findValue(row, keys);
+    const occurredOn = parseStatementDate(get('date', DATE_KEYS));
     const postedOn = parseStatementDate(get('posted', ['data contabilizzazione', 'data registrazione', 'posting date', 'book date']));
     const description = String(get('description', DESCRIPTION_KEYS) ?? '').trim();
     const debit = parseStatementAmount(get('debit', DEBIT_KEYS));
