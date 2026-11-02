@@ -79,6 +79,7 @@ test('cycle budgets include confirmed expenses across calendar months only once'
   );
   assert.equal(result.length, 1);
   assert.equal(result[0].spent, 55);
+  assert.equal(result[0].spent, Math.round(result[0].spent * 100) / 100);
   assert.equal(result[0].remaining, 45);
   assert.equal(result[0].percent, 55);
 });
