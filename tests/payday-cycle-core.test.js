@@ -70,3 +70,23 @@ test('riconosce stipendio anche quando la categoria è valorizzata ma la descriz
   assert.equal(cycles.length, 1);
   assert.equal(cycles[0].start, '2026-10-30');
 });
+
+test('cycle budgets include confirmed expenses across calendar months only once', async () => {
+  const { paydayCycleBudgetComparison } = await import('../payday-cycle-core.js');
+  const result = paydayCycleBudgetComparison(
+    [{ id: 'b1', space_id: 'personal', category: 'Alimentari', month_start: '2026-10-01', amount: 100 }],
+    [
+      { space_id: 'personal', type: 'expense', status: 'confirmed', category: 'Alimentari', amount: 30, occurred_on: '2026-10-30' },
+      { space_id: 'personal', type: 'expense', status: 'confirmed', category: 'Alimentari', amount: 25, occurred_on: '2026-11-12' },
+      { space_id: 'personal', type: 'expense', status: 'planned', category: 'Alimentari', amount: 90, occurred_on: '2026-11-15' },
+      { space_id: 'shared', type: 'expense', status: 'confirmed', category: 'Alimentari', amount: 80, occurred_on: '2026-11-15' },
+      { space_id: 'personal', type: 'transfer', status: 'confirmed', category: 'Alimentari', amount: 50, occurred_on: '2026-11-15' },
+      { space_id: 'personal', type: 'expense', status: 'confirmed', category: 'Alimentari', amount: 20, occurred_on: '2026-12-01' },
+    ],
+    { start: '2026-10-30', end: '2026-11-29' }
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0].spent, 55);
+  assert.equal(result[0].remaining, 45);
+  assert.equal(result[0].percent, 55);
+});
