@@ -15,6 +15,12 @@ test('parses Italian and international currency formats', () => {
   assert.equal(parseStatementAmount('(9.99)'), -9.99);
 });
 
+test('rejects impossible calendar dates instead of normalizing them', () => {
+  assert.equal(parseStatementDate('30/02/2026'), null);
+  assert.equal(parseStatementDate('2026-02-30'), null);
+  assert.equal(parseStatementDate('31/10/2026'), '2026-10-31');
+});
+
 test('parses Italian dates and Excel serial dates', () => {
   assert.equal(parseStatementDate('30/10/2026'), '2026-10-30');
   assert.equal(parseStatementDate('2026-10-30'), '2026-10-30');
