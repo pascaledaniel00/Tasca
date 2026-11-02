@@ -131,7 +131,7 @@ import {
     aiChatConversations = [],
     aiChatConversationId = null,
     aiChatPending = false;
-  let goal = 40;
+  let goal = 40;\n  let forecastDays = 90;
   let paydayCycleNextDate = '';
   let dashboardPrimaryView = 'month';
   try {
@@ -700,6 +700,42 @@ import {
     const cycles = getPaydayCycleData();
     const cycle = cycles[cycles.length - 1];
     return cycle ? summarizePaydayCycle(cycle, scopedTransactions(), { asOf: today() }) : null;
+  }
+  function renderCashflowForecast() {
+    const panel = $('cashflowForecastPanel');
+    if (!panel) return;
+    if (isAllSpaces()) {
+      panel.innerHTML = '<div class="eyebrow">Previsione finanziaria</div><strong>Seleziona uno spazio personale</strong><p class="muted tiny">La previsione usa soltanto i dati dello spazio personale.</p>';
+      return;
+    }
+    const { forecastCashflow } = window.TascaFinanceCore || {};
+    if (typeof forecastCashflow !== 'function') {
+      panel.innerHTML = '<div class="eyebrow">Previsione finanziaria</div><p class="muted tiny">Calcolo non disponibile.</p>';
+      return;
+    }
+    const salaryRows = scopedTransactions().filter((row) =>
+      row.type === 'income' && (row.status == null || row.status === 'confirmed') &&
+      [row.category, row.description].some((value) => String(value || '').trim().toLocaleLowerCase('it-IT') === 'stipendio')
+    ).sort((a,b) => txDate(b).localeCompare(txDate(a)));
+    const expectedSalary = Number(salaryRows[0]?.amount) || 0;
+    const results = forecastCashflow(scopedRecurring(), scopedTransactions(), {
+      asOf: today(), nextPayday: paydayCycleSettings(), expectedSalary,
+      horizons: [30, 60, 90],
+    });
+    const result = results.find((item) => item.days === forecastDays) || results[2];
+    const salaryNote = paydayCycleSettings() && expectedSalary > 0
+      ? 'Include uno stipendio previsto alla data impostata, stimato sull’ultimo accredito confermato.'
+      : 'Non include stipendi futuri: manca una data prevista o uno stipendio confermato da usare come riferimento.';
+    panel.innerHTML = '<div class="panelhead"><div><div class="eyebrow">Previsione finanziaria</div><h3>Prossimi 90 giorni</h3><p class="muted tiny">Proiezione delle sole entrate e uscite future conosciute.</p></div><div class="forecast-range" role="group" aria-label="Orizzonte previsione">' +
+      [30,60,90].map((days) => '<button type="button" class="btn small ' + (forecastDays === days ? 'primary' : '') + '" data-forecast-days="' + days + '">' + days + ' gg</button>').join('') +
+      '</div></div><div class="payday-cycle-stats"><div><small>Uscite ricorrenti</small><strong>' + eur(result.recurringExpenses) + '</strong></div><div><small>Entrate previste</small><strong>' + eur(result.expectedIncome) + '</strong></div><div><small>Variazione netta</small><strong class="' + (result.netChange < 0 ? 'forecast-negative' : 'forecast-positive') + '">' + eur(result.netChange) + '</strong></div></div>' +
+      '<p class="muted tiny">' + esc(salaryNote) + '</p>' +
+      (result.occurrences.length ? '<div class="forecast-list">' + result.occurrences.map((item) => '<div><span>' + esc(fmtDate(item.date)) + ' · ' + esc(item.name) + '</span><strong class="' + (item.type === 'income' ? 'forecast-positive' : '') + '">' + (item.type === 'income' ? '+' : '−') + eur(item.amount) + '</strong></div>').join('') + '</div>' : '<p class="muted tiny">Nessuna scadenza ricorrente nota in questo periodo.</p>') +
+      '<p class="muted tiny">Non è un saldo bancario né una previsione completa delle spese quotidiane. Le spese variabili non ancora registrate non sono incluse; i promemoria non generano movimenti reali.</p>';
+    panel.querySelectorAll('[data-forecast-days]').forEach((button) => button.addEventListener('click', () => {
+      forecastDays = Number(button.dataset.forecastDays) || 90;
+      renderCashflowForecast();
+    }));
   }
   function renderPaydayCycle() {
     const panel = $('paydayCyclePanel');
