@@ -92,3 +92,34 @@ test('does not match transactions with invalid dates', () => {
   const valid = { type: 'expense', amount: 10, occurred_on: '2026-10-30', description: 'Negozio' };
   assert.equal(compareTransactionForDuplicate(invalid, valid), 'none');
 });
+
+test('detects common Italian and international bank column names', async () => {
+  const { detectStatementColumns } = await import('../statement-import-core.js');
+  const detected = detectStatementColumns(['Data contabile', 'Data valuta', 'Descrizione causale', 'Importi dare', 'Importi avere', 'Saldo']);
+  assert.equal(detected.ready, true);
+  assert.equal(detected.mapping.date, 'Data contabile');
+  assert.equal(detected.mapping.description, 'Descrizione causale');
+  assert.equal(detected.mapping.debit, 'Importi dare');
+  assert.equal(detected.mapping.credit, 'Importi avere');
+});
+
+test('parses OFX/QFX and QIF bank interchange formats', async () => {
+  const { parseStatementText } = await import('../statement-import-core.js');
+  const ofx = parseStatementText('OFXHEADER:100\n<OFX><BANKTRANLIST><STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261030120000<TRNAMT>-12.50<NAME>SUPERMARKET</STMTTRN></BANKTRANLIST></OFX>', 'export.ofx');
+  assert.equal(ofx.format, 'OFX/QFX');
+  assert.equal(ofx.rows.length, 1);
+  assert.equal(ofx.rows[0].Importo, '-12.50');
+  const qif = parseStatementText('!Type:Bank\nD30/10/2026\nT-9,50\nPSUPERMARKET\n^', 'export.qif');
+  assert.equal(qif.format, 'QIF');
+  assert.equal(qif.rows[0].Importo, '-9,50');
+});
+
+test('parses MT940 and CAMT.053 XML exports', async () => {
+  const { parseStatementText } = await import('../statement-import-core.js');
+  const mt = parseStatementText(':20:STATEMENT\n:61:261030D12,50NTRF\n:86:SHOP PAYMENT', 'export.mt940');
+  assert.equal(mt.format, 'MT940');
+  assert.equal(mt.rows[0].Importo, '-12.50');
+  const xml = parseStatementText('<Document><Ntry><Amt Ccy="EUR">15.20</Amt><CdtDbtInd>CRDT</CdtDbtInd><BookgDt><Dt>2026-10-30</Dt></BookgDt><AddtlNtryInf>Salary</AddtlNtryInf></Ntry></Document>', 'export.xml');
+  assert.equal(xml.format, 'CAMT.053 XML');
+  assert.equal(xml.rows[0].Importo, '15.20');
+});
