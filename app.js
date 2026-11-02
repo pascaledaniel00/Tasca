@@ -356,7 +356,7 @@ import {
     return String(b.month_start || b.month || '').slice(0, 7);
   }
   function planDue(r) {
-    return r.next_due_on || r.next_due || '';
+    return r?.next_due_on || r?.next_due || '';
   }
   function planActive(r) {
     return (r.status || (r.active ? 'active' : 'paused')) === 'active';
