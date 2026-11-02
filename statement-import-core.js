@@ -190,3 +190,68 @@ export function statementImportSummary(rows) {
     income: list.filter((row) => row.type === 'income').reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
   };
 }
+
+const xmlValue = (block, tag) => {
+  const match = block.match(new RegExp('<(?:[\\w.-]+:)?' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w.-]+:)?' + tag + '>', 'i'));
+  return match ? match[1].replace(/<!\\[CDATA\\[|\\]\\]>/g, '').replace(/<[^>]+>/g, '').trim() : '';
+};
+const decodeOfxDate = (value) => {
+  const match = String(value || '').match(/^(\\d{4})(\\d{2})(\\d{2})/);
+  return match ? match[1] + '-' + match[2] + '-' + match[3] : null;
+};
+/** Parses common bank interchange formats (OFX/QFX, QIF, MT940 and CAMT.053 XML). */
+export function parseStatementText(text, filename = '') {
+  const source = String(text || '').replace(/^\\uFEFF/, '').trim();
+  const ext = String(filename).split('.').pop().toLowerCase();
+  const rows = [];
+  if (/^OFXHEADER:|<OFX[\\s>]/i.test(source) || ['ofx', 'qfx'].includes(ext)) {
+    const blocks = source.match(/<STMTTRN>[\\s\\S]*?<\\/STMTTRN>/gi) || [];
+    for (const block of blocks) rows.push({
+      'Data operazione': decodeOfxDate(block.match(/<DTPOSTED>([^<]+)/i)?.[1]),
+      'Data valuta': decodeOfxDate(block.match(/<DTUSER>([^<]+)/i)?.[1]),
+      Descrizione: block.match(/<NAME>([^<]+)/i)?.[1] || block.match(/<MEMO>([^<]+)/i)?.[1] || 'Movimento OFX',
+      Importo: block.match(/<TRNAMT>([^<]+)/i)?.[1] || '',
+      Tipo: block.match(/<TRNTYPE>([^<]+)/i)?.[1] || '',
+      Riferimento: block.match(/<FITID>([^<]+)/i)?.[1] || '',
+    });
+    return { format: 'OFX/QFX', rows };
+  }
+  if (ext === 'qif' || /^!Type:/im.test(source)) {
+    const records = source.split('^');
+    for (const record of records) {
+      if (!record.trim()) continue;
+      const value = (code) => record.match(new RegExp('^' + code + '(.+)$', 'm'))?.[1]?.trim() || '';
+      rows.push({ Data: value('D'), Descrizione: value('P') || value('M') || value('L'), Importo: value('T'), Tipo: 'QIF' });
+    }
+    return { format: 'QIF', rows };
+  }
+  if (ext === 'sta' || ext === 'mt940' || /:20:|:61:/m.test(source)) {
+    const blocks = source.split(/(?=:61:)/);
+    for (const block of blocks) {
+      const line = block.match(/^:61:(.+)$/m)?.[1];
+      if (!line) continue;
+      const match = line.match(/^(\\d{6})(?:\\d{4})?([CD])(?:R?)([0-9,]+)(?:N[^A-Z])?(.*)$/);
+      if (!match) continue;
+      const description = (block.match(/^:86:([\\s\\S]*?)(?=^:\\d{2}:|$)/m)?.[1] || match[4] || 'Movimento MT940').replace(/\\r?\\n/g, ' ').trim();
+      const yy = Number(match[1].slice(0, 2));
+      rows.push({ Data: String(2000 + yy) + '-' + match[1].slice(2, 4) + '-' + match[1].slice(4, 6),
+        Descrizione: description, Importo: (match[2] === 'D' ? '-' : '') + match[3].replace(',', '.'), Tipo: 'MT940' });
+    }
+    return { format: 'MT940', rows };
+  }
+  if (ext === 'xml' || /<Document[\\s>]/i.test(source)) {
+    const entries = source.match(/<(?:[\\w.-]+:)?Ntry(?:\\s[^>]*)?>[\\s\\S]*?<\\/(?:[\\w.-]+:)?Ntry>/gi) || [];
+    for (const block of entries) {
+      const amount = xmlValue(block, 'Amt');
+      const direction = xmlValue(block, 'CdtDbtInd');
+      const date = xmlValue(block, 'BookgDt') || xmlValue(block, 'ValDt');
+      const dateValue = date.match(/<Dt>([^<]+)/i)?.[1] || date;
+      const name = xmlValue(block, 'Nm');
+      const remittance = xmlValue(block, 'Ustrd') || xmlValue(block, 'AddtlNtryInf');
+      rows.push({ 'Data contabile': dateValue, Descrizione: [name, remittance].filter(Boolean).join(' · ') || 'Movimento CAMT.053',
+        Importo: (direction === 'DBIT' ? '-' : '') + amount, Tipo: direction });
+    }
+    return { format: 'CAMT.053 XML', rows };
+  }
+  return { format: 'testo non riconosciuto', rows: [] };
+}
