@@ -4,6 +4,36 @@ const AMOUNT_KEYS = ['importo', 'amount', 'valore', 'totale'];
 const DEBIT_KEYS = ['addebito', 'importo addebito', 'importi dare', 'uscite', 'debit', 'withdrawal', 'dare'];
 const CREDIT_KEYS = ['accredito', 'importo accredito', 'importi avere', 'entrate', 'credit', 'deposit', 'avere'];
 const TYPE_KEYS = ['tipo', 'type', 'transaction type'];
+const FIELD_ALIASES = {
+  date: ['data operazione', 'data movimento', 'data transazione', 'transaction date', 'operation date', 'date', 'data', 'data contabile', 'booking date', 'book date'],
+  posted: ['data contabilizzazione', 'data registrazione', 'data contabile', 'booking date', 'posting date', 'book date', 'data valuta'],
+  description: ['descrizione', 'description', 'causale', 'causale abi', 'descrizione operazione', 'descrizione movimento', 'dettaglio', 'dettagli', 'operazione', 'merchant', 'beneficiario', 'esercente', 'payee', 'name', 'nome', 'transaction details', 'narrative', 'memo', 'note'],
+  amount: ['importo', 'amount', 'valore', 'totale', 'transaction amount', 'sum', 'betrag', 'importe'],
+  debit: ['addebito', 'importo addebito', 'importi dare', 'dare', 'uscite', 'debit', 'withdrawal', 'debit amount', 'money out', 'paid out', 'outgoing', 'spese', 'importo dare', 'uscita'],
+  credit: ['accredito', 'importo accredito', 'importi avere', 'avere', 'entrate', 'credit', 'deposit', 'credit amount', 'money in', 'paid in', 'incoming', 'importo avere', 'entrata'],
+  type: ['tipo', 'type', 'transaction type', 'tipologia', 'causale'],
+};
+const FIELD_PATTERNS = {
+  date: /^(data|date|booking|transaction|operation|value date|valuta|contabile)/,
+  description: /(descr|description|causal|causale|merchant|beneficiar|payee|narrative|memo|dettagl|esercente|name|note)/,
+  amount: /^(importo|amount|valore|total|totale|sum|betrag|importe)/,
+  debit: /(dare|debit|addeb|uscit|withdraw|money out|paid out|outgoing)/,
+  credit: /(avere|credit|accred|entr|deposit|money in|paid in|incoming)/,
+};
+export function detectStatementColumns(headers = []) {
+  const normalized = headers.map((header) => normalizeKey(header));
+  const find = (field) => {
+    const aliases = FIELD_ALIASES[field] || [];
+    let index = normalized.findIndex((header) => aliases.some((alias) => header === normalizeKey(alias)));
+    if (index < 0 && FIELD_PATTERNS[field]) index = normalized.findIndex((header) => FIELD_PATTERNS[field].test(header));
+    return index < 0 ? null : String(headers[index]);
+  };
+  const mapping = { date: find('date'), posted: find('posted'), description: find('description'),
+    amount: find('amount'), debit: find('debit'), credit: find('credit'), type: find('type') };
+  const hasAmount = Boolean(mapping.amount || mapping.debit || mapping.credit);
+  const score = Number(Boolean(mapping.date)) + Number(Boolean(mapping.description)) + Number(hasAmount);
+  return { mapping, score, ready: score === 3, missing: [!mapping.date && 'data', !mapping.description && 'descrizione', !hasAmount && 'importo'].filter(Boolean) };
+}
 const normalizeKey = (value) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const findValue = (row, keys) => {
   const entries = Object.entries(row || {});
@@ -68,16 +98,16 @@ const classify = (row, signedAmount, description) => {
   if (/^(refund|rimborso|storno)$/.test(explicit)) return 'refund';
   return signedAmount < 0 ? 'expense' : 'income';
 };
-export function normalizeStatementRows(rows) {
+export function normalizeStatementRows(rows, columnMapping = null) {
   return (Array.isArray(rows) ? rows : []).map((row, index) => {
-    const occurredOn = parseStatementDate(findValue(row, DATE_KEYS));
-    const postedOn = parseStatementDate(findValue(row, ['data contabilizzazione', 'data registrazione', 'posting date', 'book date']));
-    const description = String(findValue(row, DESCRIPTION_KEYS) ?? '').trim();
-    const debit = parseStatementAmount(findValue(row, DEBIT_KEYS));
-    const credit = parseStatementAmount(findValue(row, CREDIT_KEYS));
+    const get = (field, keys) => columnMapping?.[field] ? row?.[columnMapping[field]] : findValue(row, keys);\n    const occurredOn = parseStatementDate(get('date', DATE_KEYS));
+    const postedOn = parseStatementDate(get('posted', ['data contabilizzazione', 'data registrazione', 'posting date', 'book date']));
+    const description = String(get('description', DESCRIPTION_KEYS) ?? '').trim();
+    const debit = parseStatementAmount(get('debit', DEBIT_KEYS));
+    const credit = parseStatementAmount(get('credit', CREDIT_KEYS));
     const rawAmount = debit != null || credit != null
       ? (credit != null && credit !== 0 ? Math.abs(credit) : -Math.abs(debit || 0))
-      : parseStatementAmount(findValue(row, AMOUNT_KEYS));
+      : parseStatementAmount(get('amount', AMOUNT_KEYS));
     const amount = rawAmount == null ? null : Math.abs(rawAmount);
     const type = rawAmount == null ? 'review' : classify(row, rawAmount, description);
     const valid = Boolean(occurredOn && description && amount != null && amount > 0);
