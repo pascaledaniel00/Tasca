@@ -1,4 +1,4 @@
-const DATE_KEYS = ['data', 'date', 'data operazione', 'data valuta', 'transaction date', 'booking date'];
+const DATE_KEYS = ['data operazione', 'transaction date', 'date', 'data', 'data valuta', 'booking date'];
 const DESCRIPTION_KEYS = ['descrizione', 'description', 'causale', 'operazione', 'merchant', 'beneficiario', 'dettagli'];
 const AMOUNT_KEYS = ['importo', 'amount', 'valore', 'totale'];
 const DEBIT_KEYS = ['addebito', 'importo addebito', 'importi dare', 'uscite', 'debit', 'withdrawal', 'dare'];
@@ -43,12 +43,17 @@ export function parseStatementDate(value) {
   }
   const text = String(value ?? '').trim();
   let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (match) return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
+  if (match) {
+    const date = match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
+    const parsed = new Date(date + 'T00:00:00.000Z');
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : null;
+  }
   match = text.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{2,4})$/);
   if (match) {
     const year = match[3].length === 2 ? '20' + match[3] : match[3];
     const date = year + '-' + match[2].padStart(2, '0') + '-' + match[1].padStart(2, '0');
-    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+    const parsed = new Date(date + 'T00:00:00.000Z');
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : null;
   }
   return null;
 }
