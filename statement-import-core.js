@@ -193,19 +193,19 @@ export function statementImportSummary(rows) {
 
 const xmlValue = (block, tag) => {
   const match = block.match(new RegExp('<(?:[\\w.-]+:)?' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w.-]+:)?' + tag + '>', 'i'));
-  return match ? match[1].replace(/<!\\[CDATA\\[|\\]\\]>/g, '').replace(/<[^>]+>/g, '').trim() : '';
+  return match ? match[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').trim() : '';
 };
 const decodeOfxDate = (value) => {
-  const match = String(value || '').match(/^(\\d{4})(\\d{2})(\\d{2})/);
+  const match = String(value || '').match(/^(\d{4})(\d{2})(\d{2})/);
   return match ? match[1] + '-' + match[2] + '-' + match[3] : null;
 };
 /** Parses common bank interchange formats (OFX/QFX, QIF, MT940 and CAMT.053 XML). */
 export function parseStatementText(text, filename = '') {
-  const source = String(text || '').replace(/^\\uFEFF/, '').trim();
+  const source = String(text || '').replace(/^\uFEFF/, '').trim();
   const ext = String(filename).split('.').pop().toLowerCase();
   const rows = [];
-  if (/^OFXHEADER:|<OFX[\\s>]/i.test(source) || ['ofx', 'qfx'].includes(ext)) {
-    const blocks = source.match(/<STMTTRN>[\\s\\S]*?<\\/STMTTRN>/gi) || [];
+  if (/^OFXHEADER:|<OFX[\s>]/i.test(source) || ['ofx', 'qfx'].includes(ext)) {
+    const blocks = source.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>/gi) || [];
     for (const block of blocks) rows.push({
       'Data operazione': decodeOfxDate(block.match(/<DTPOSTED>([^<]+)/i)?.[1]),
       'Data valuta': decodeOfxDate(block.match(/<DTUSER>([^<]+)/i)?.[1]),
@@ -230,17 +230,17 @@ export function parseStatementText(text, filename = '') {
     for (const block of blocks) {
       const line = block.match(/^:61:(.+)$/m)?.[1];
       if (!line) continue;
-      const match = line.match(/^(\\d{6})(?:\\d{4})?([CD])(?:R?)([0-9,]+)(?:N[^A-Z])?(.*)$/);
+      const match = line.match(/^(\d{6})(?:\d{4})?([CD])(?:R?)([0-9,]+)(?:N[^A-Z])?(.*)$/);
       if (!match) continue;
-      const description = (block.match(/^:86:([\\s\\S]*?)(?=^:\\d{2}:|$)/m)?.[1] || match[4] || 'Movimento MT940').replace(/\\r?\\n/g, ' ').trim();
+      const description = (block.match(/^:86:([\s\S]*?)(?=^:\d{2}:|$)/m)?.[1] || match[4] || 'Movimento MT940').replace(/\r?\n/g, ' ').trim();
       const yy = Number(match[1].slice(0, 2));
       rows.push({ Data: String(2000 + yy) + '-' + match[1].slice(2, 4) + '-' + match[1].slice(4, 6),
         Descrizione: description, Importo: (match[2] === 'D' ? '-' : '') + match[3].replace(',', '.'), Tipo: 'MT940' });
     }
     return { format: 'MT940', rows };
   }
-  if (ext === 'xml' || /<Document[\\s>]/i.test(source)) {
-    const entries = source.match(/<(?:[\\w.-]+:)?Ntry(?:\\s[^>]*)?>[\\s\\S]*?<\\/(?:[\\w.-]+:)?Ntry>/gi) || [];
+  if (ext === 'xml' || /<Document[\s>]/i.test(source)) {
+    const entries = source.match(/<(?:[\w.-]+:)?Ntry(?:\s[^>]*)?>[\s\S]*?<\/(?:[\w.-]+:)?Ntry>/gi) || [];
     for (const block of entries) {
       const amount = xmlValue(block, 'Amt');
       const direction = xmlValue(block, 'CdtDbtInd');
