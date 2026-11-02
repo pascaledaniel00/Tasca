@@ -62,3 +62,11 @@ test('riconosce stipendio anche quando la categoria è valorizzata ma la descriz
   assert.equal(cycles.length, 1);
   assert.equal(cycles[0].start, '2026-10-30');
 });
+
+test('riconosce stipendio anche quando la categoria è valorizzata ma la descrizione è generica', () => {
+  const cycles = buildPaydayCycles([
+    { type: 'income', status: 'confirmed', description: 'Accredito aziendale', category: 'Stipendio', amount: 760, occurred_on: '2026-10-30' },
+  ]);
+  assert.equal(cycles.length, 1);
+  assert.equal(cycles[0].start, '2026-10-30');
+});
