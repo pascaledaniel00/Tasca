@@ -17,6 +17,8 @@ import {
 import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
+  detectStatementColumns,
+  parseStatementText,
   findStatementDuplicates,
   compareTransactionForDuplicate,
   statementImportSummary,
