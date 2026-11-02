@@ -1054,21 +1054,46 @@ import {
       rows.map((t) => movementHtml(t, true)).join('') ||
       emptyHtml('Nessun risultato', 'Modifica i filtri o aggiungi un movimento.');
   }
+  let budgetPeriodMode = 'month';
+  function currentPaydayCycle() {
+    if (isAllSpaces()) return null;
+    const rows = scopedTransactions();
+    const cycles = buildPaydayCycles(rows, {
+      nextPayday: paydayCycleSettings(),
+      asOf: today(),
+      incomeMatcher: (row) => /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')),
+    });
+    return cycles[cycles.length - 1] || null;
+  }
+  function cycleBudgetSpend(budget, cycle) {
+    if (!cycle) return 0;
+    return scopedTransactions().filter((tx) =>
+      isConfirmedMovement(tx) && tx.space_id === budget.space_id && tx.type === 'expense' &&
+      tx.category === budget.category && txDate(tx) >= cycle.start && (!cycle.end || txDate(tx) <= cycle.end)
+    ).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  }
   function renderBudgets() {
-    const month = $('budgetMonth').value || monthNow(),
-      rows = scopedBudgets()
-        .filter((b) => budgetMonth(b) === month)
-        .sort((a, b) => a.category.localeCompare(b.category));
-    $('budgetsList').innerHTML =
-      rows
-        .map((b) => {
-          const spent = monthBudgetSpend(b),
-            limit = Number(b.amount) || 0,
-            pct = limit ? (spent / limit) * 100 : 0;
-          return `<div class="budgetrow"><div class="btop"><strong>${esc(b.category)}</strong><span>${eur(spent)} / ${eur(limit)} · ${Math.round(pct)}%</span></div><div class="budgetbar"><span class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(100, pct)}%"></span></div><div class="btop muted u-mt-6"><span>${pct > 100 ? 'Superato' : 'Residuo'}</span><span>${eur(limit - spent)}</span></div><div class="row-actions"><button class="btn small" data-edit-budget="${esc(b.id)}">Modifica</button><button class="btn small danger" data-delete-budget="${esc(b.id)}">Elimina</button></div></div>`;
-        })
-        .join('') ||
-      emptyHtml('Nessun budget per questo mese', 'Aggiungi un budget mensile per categoria.');
+    const month = $('budgetMonth').value || monthNow();
+    const cycle = currentPaydayCycle();
+    const useCycle = budgetPeriodMode === 'cycle' && Boolean(cycle);
+    const periodLabel = useCycle ? 'Ciclo ' + fmtDate(cycle.start) + ' – ' + (cycle.end ? fmtDate(cycle.end) : 'in corso') : 'Mese ' + month;
+    const rows = scopedBudgets()
+      .filter((b) => budgetMonth(b) === (useCycle ? cycle.start.slice(0, 7) : month))
+      .sort((a, b) => a.category.localeCompare(b.category));
+    const list = $('budgetsList');
+    const mode = $('budgetPeriodMode');
+    if (mode) mode.innerHTML = '<button type="button" class="btn small ' + (!useCycle ? 'primary' : '') + '" data-budget-mode="month">Mese solare</button><button type="button" class="btn small ' + (useCycle ? 'primary' : '') + '" data-budget-mode="cycle" ' + (!cycle ? 'disabled' : '') + '>Ciclo stipendio</button>';
+    list.innerHTML = '<p class="muted tiny">' + esc(periodLabel) + (useCycle ? ' · I limiti del mese di accredito vengono applicati all’intero ciclo, senza ripartizioni automatiche.' : '') + '</p>' +
+      (rows.map((b) => {
+        const spent = useCycle ? cycleBudgetSpend(b, cycle) : monthBudgetSpend(b);
+        const limit = Number(b.amount) || 0;
+        const pct = limit ? (spent / limit) * 100 : 0;
+        return `<div class="budgetrow"><div class="btop"><strong>${esc(b.category)}</strong><span>${eur(spent)} / ${eur(limit)} · ${Math.round(pct)}%</span></div><div class="budgetbar"><span class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(100, pct)}%"></span></div><div class="btop muted u-mt-6"><span>${pct > 100 ? 'Superato' : 'Residuo'}</span><span>${eur(limit - spent)}</span></div><div class="row-actions"><button class="btn small" data-edit-budget="${esc(b.id)}">Modifica</button><button class="btn small danger" data-delete-budget="${esc(b.id)}">Elimina</button></div></div>`;
+      }).join('') || emptyHtml('Nessun budget per questo periodo', 'Aggiungi un budget mensile per categoria.'));
+    list.querySelectorAll('[data-budget-mode]').forEach((button) => button.addEventListener('click', () => {
+      budgetPeriodMode = button.dataset.budgetMode;
+      renderBudgets();
+    }));
   }
   function renderRecurring() {
     $('recurringList').innerHTML =
