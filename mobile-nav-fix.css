@@ -514,3 +514,27 @@ video {
   }
 
 }
+
+
+/* Transaction editor: keep the modal above the fixed mobile dock. */
+@media (max-width: 720px) {
+  .modal {
+    z-index: 60;
+  }
+
+  .modalcard {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  }
+
+  #txForm {
+    padding-bottom: 8px;
+  }
+
+  #txForm > button[type="submit"] {
+    position: sticky;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    z-index: 3;
+    margin-top: 14px;
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--g) 20%, transparent);
+  }
+}
