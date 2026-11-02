@@ -14,12 +14,15 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
+import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
+  detectStatementColumns,
+  parseStatementText,
   findStatementDuplicates,
   compareTransactionForDuplicate,
   statementImportSummary,
-} from './statement-import-core.js?v=20261030-2';
+} from './statement-import-core.js?v=20261102-1';
 import {
   calculateQuizXP,
   getQuizBadges,
@@ -129,6 +132,7 @@ import {
     aiChatConversationId = null,
     aiChatPending = false;
   let goal = 40;
+  let paydayCycleNextDate = '';
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
   } catch {}
@@ -675,7 +679,61 @@ import {
       aiAdvicePending = false;
     }
   }
+  function paydayCycleSettings() {
+    return String(user?.user_metadata?.payday_cycle_next_date || paydayCycleNextDate || '');
+  }
+  function getPaydayCycleSummary() {
+    if (isAllSpaces()) return null;
+    const rows = scopedTransactions();
+    const cycles = buildPaydayCycles(rows, {
+      nextPayday: paydayCycleSettings(),
+      asOf: today(),
+      incomeMatcher: (row) => /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')),
+    });
+    const cycle = cycles[cycles.length - 1];
+    return cycle ? summarizePaydayCycle(cycle, rows, { asOf: today() }) : null;
+  }
+  function renderPaydayCycle() {
+    const panel = $('paydayCyclePanel');
+    if (!panel) return;
+    if (isAllSpaces()) {
+      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>Seleziona uno spazio personale</strong><p class="muted tiny">Il ciclo viene calcolato sui movimenti personali, senza mescolare spese condivise o dei progetti.</p>';
+      return;
+    }
+    const summary = getPaydayCycleSummary();
+    if (!summary) {
+      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>In attesa del primo stipendio registrato</strong><p class="muted tiny">Registra l’accredito come entrata con categoria “Stipendio”. Da quel giorno Tasca potrà calcolare il ciclo.</p>';
+      return;
+    }
+    const endLabel = summary.end ? fmtDate(summary.end) : 'in corso';
+    panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><div class="payday-cycle-dates"><strong>' + esc(fmtDate(summary.start)) + ' – ' + esc(endLabel) + '</strong><span class="badge">' + (summary.isOpen ? 'Aperto' : 'Programmato') + '</span></div><div class="payday-cycle-stats"><div><small>Entrate</small><strong>' + eur(summary.income) + '</strong></div><div><small>Uscite</small><strong>' + eur(summary.expenses) + '</strong></div><div><small>Residuo del ciclo</small><strong>' + eur(summary.residual) + '</strong></div></div><p class="muted tiny">Il mese solare resta consultabile separatamente. I trasferimenti non sono conteggiati come entrate o uscite.</p>';
+  }
+  async function savePaydayCycleSettings() {
+    const input = $('paydayNextDate');
+    const status = $('paydaySettingsStatus');
+    const value = String(input?.value || '');
+    if (value && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || Number.isNaN(new Date(value + 'T00:00:00').getTime()) || new Date(value + 'T00:00:00').toISOString().slice(0, 10) !== value)) {
+      if (status) status.textContent = 'Inserisci una data valida.';
+      return;
+    }
+    if (!db || !user) {
+      if (status) status.textContent = 'Accedi per salvare questa impostazione.';
+      return;
+    }
+    const { data, error } = await db.auth.updateUser({
+      data: { ...(user.user_metadata || {}), payday_cycle_next_date: value || null },
+    });
+    if (error) {
+      if (status) status.textContent = 'Non è stato possibile salvare: ' + error.message;
+      return;
+    }
+    user = data.user || user;
+    paydayCycleNextDate = value;
+    renderAll();
+    if (status) status.textContent = value ? 'Prossima data di stipendio salvata.' : 'Data prevista rimossa.';
+  }
   function renderHome() {
+    renderPaydayCycle();
     const s = monthSummary();
     $('heroBalance').textContent = eur(s.residual);
     $('heroSubtitle').textContent =
@@ -896,12 +954,74 @@ import {
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
   let statementImportRows = [];
+  let statementImportRawRows = [];
+  let statementImportHeaders = [];
+  let statementColumnMapping = {};
+  let statementImportFormat = '';
   let statementImportDecisions = {};
+  function normalizeCurrentStatementRows() {
+    statementImportRows = findStatementDuplicates(normalizeStatementRows(statementImportRawRows, statementColumnMapping).map((row) => ({
+      ...row,
+      sourceSheet: String(row.raw?.__tasca_source_sheet || ''),
+      notes: [row.notes, row.raw?.__tasca_source_sheet ? 'Foglio: ' + row.raw.__tasca_source_sheet : null].filter(Boolean).join(' · ') || null,
+    })), scopedTransactions());
+    statementImportDecisions = {};
+    renderStatementPreview();
+  }
+  function renderStatementColumnMapping() {
+    const target = $('statementColumnMapping');
+    if (!target || !statementImportHeaders.length) return;
+    const fields = [
+      ['date', 'Data operazione', true], ['posted', 'Data contabilizzazione', false],
+      ['description', 'Descrizione', true], ['amount', 'Importo con segno', false],
+      ['debit', 'Addebito / Dare', false], ['credit', 'Accredito / Avere', false],
+    ];
+    const options = '<option value="">— Non presente —</option>' + statementImportHeaders.map((header) => '<option value="' + esc(header) + '">' + esc(header) + '</option>').join('');
+    target.innerHTML = '<details class="statement-mapping"><summary>Colonne rilevate · modifica se necessario</summary><div class="formgrid">' +
+      fields.map(([key, label, required]) => '<div class="field"><label>' + label + (required ? ' *' : '') + '</label><select data-statement-column="' + key + '">' + options + '</select></div>').join('') +
+      '</div><button id="applyStatementMapping" class="btn small secondary" type="button">Applica mappatura</button><p class="muted tiny">Compila Importo con segno oppure entrambe le colonne Dare e Avere. La mappatura vale solo per questo file.</p></details>';
+    target.querySelectorAll('[data-statement-column]').forEach((select) => { select.value = statementColumnMapping[select.dataset.statementColumn] || ''; });
+    $('applyStatementMapping')?.addEventListener('click', () => {
+      target.querySelectorAll('[data-statement-column]').forEach((select) => { statementColumnMapping[select.dataset.statementColumn] = select.value || null; });
+      normalizeCurrentStatementRows();
+    });
+  }
+  function rowsFromWorkbook(workbook) {
+    const allRows = [];
+    let firstHeaders = [];
+    let bestScore = 0;
+    for (const sheetName of workbook.SheetNames) {
+      const matrix = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+      let headerIndex = -1, detection = null;
+      for (let index = 0; index < Math.min(matrix.length, 30); index++) {
+        const candidate = detectStatementColumns(matrix[index].map((value) => String(value ?? '').trim()));
+        if (candidate.score > bestScore) { bestScore = candidate.score; headerIndex = index; detection = candidate; }
+        if (candidate.ready) { headerIndex = index; detection = candidate; break; }
+      }
+      if (headerIndex >= 0 && detection) {
+        const headers = matrix[headerIndex].map((value) => String(value ?? '').trim());
+        if (!firstHeaders.length) { firstHeaders = headers; statementColumnMapping = detection.mapping; }
+        for (const values of matrix.slice(headerIndex + 1)) {
+          if (!values.some((value) => value !== '' && value != null)) continue;
+          const row = Object.fromEntries(headers.map((header, index) => [header || 'Colonna ' + (index + 1), values[index] ?? '']));
+          row.__tasca_source_sheet = sheetName;
+          allRows.push(row);
+        }
+      } else {
+        const fallback = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
+        for (const row of fallback) { row.__tasca_source_sheet = sheetName; allRows.push(row); }
+        if (!firstHeaders.length && fallback[0]) firstHeaders = Object.keys(fallback[0]).filter((key) => key !== '__tasca_source_sheet');
+      }
+    }
+    statementImportHeaders = firstHeaders;
+    return allRows;
+  }
   function renderStatementPreview() {
     const target = $('statementImportPreview');
     if (!target) return;
     const summary = statementImportSummary(statementImportRows);
     const rows = statementImportRows;
+    renderStatementColumnMapping();
     const unresolved = rows.filter((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]).length;
     const ready = rows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || statementImportDecisions[row.sourceRow] === 'keep-both' || statementImportDecisions[row.sourceRow] === 'keep-candidate')).length;
     target.innerHTML = rows.length ? `
@@ -927,19 +1047,30 @@ import {
   async function previewStatementFile() {
     const file = $('statementFile')?.files?.[0];
     const status = $('statementImportStatus');
-    statementImportRows = [];
+    statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {}; statementImportFormat = '';
     renderStatementPreview();
     if (!file) { if (status) status.textContent = 'Seleziona prima un file.'; return; }
-    if (!window.XLSX) { if (status) status.textContent = 'Lettore Excel non disponibile. Riprova più tardi.'; return; }
     try {
-      const bytes = await file.arrayBuffer();
-      const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
-      statementImportDecisions = {};
-      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows), scopedTransactions());
-      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette dal primo foglio. Nessun dato è stato ancora salvato.`;
-      renderStatementPreview();
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (['ofx', 'qfx', 'qif', 'sta', 'mt940', 'xml', 'txt'].includes(extension)) {
+        const parsed = parseStatementText(await file.text(), file.name);
+        statementImportFormat = parsed.format;
+        statementImportRawRows = parsed.rows;
+        statementImportHeaders = Object.keys(parsed.rows[0] || {});
+        const detected = detectStatementColumns(statementImportHeaders);
+        statementColumnMapping = detected.mapping;
+        if (!parsed.rows.length) throw new Error('Nessun movimento riconosciuto in questo formato.');
+      } else {
+        if (!window.XLSX) throw new Error('Lettore Excel non disponibile. Riprova più tardi.');
+        const bytes = await file.arrayBuffer();
+        const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true, raw: true });
+        statementImportRawRows = rowsFromWorkbook(workbook);
+        statementImportFormat = extension.toUpperCase() + ' · ' + workbook.SheetNames.length + ' fogli';
+        if (!statementImportRawRows.length) throw new Error('Non ho trovato righe di movimento nel file.');
+      }
+      normalizeCurrentStatementRows();
+      const invalid = statementImportRows.filter((row) => row.status === 'invalid').length;
+      if (status) status.textContent = file.name + ': ' + statementImportRows.length + ' righe lette (' + statementImportFormat + '). ' + invalid + ' righe richiedono verifica. Nessun dato è stato ancora salvato.';
     } catch (error) {
       if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
     }
@@ -973,7 +1104,7 @@ import {
         const { error } = await db.from('transactions').insert(payload);
         if (error) throw error;
       }
-      statementImportRows = []; statementImportDecisions = {};
+      statementImportRows = []; statementImportRawRows = []; statementImportDecisions = {}; statementColumnMapping = {}; statementImportHeaders = [];
       $('statementImportPreview').innerHTML = '';
       $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”; le riconciliazioni sono annotate.';
       $('statementFile').value = '';
@@ -998,21 +1129,42 @@ import {
       rows.map((t) => movementHtml(t, true)).join('') ||
       emptyHtml('Nessun risultato', 'Modifica i filtri o aggiungi un movimento.');
   }
+  let budgetPeriodMode = 'month';
+  function currentPaydayCycle() {
+    if (isAllSpaces()) return null;
+    const rows = scopedTransactions();
+    const cycles = buildPaydayCycles(rows, {
+      nextPayday: paydayCycleSettings(),
+      asOf: today(),
+      incomeMatcher: (row) => /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')),
+    });
+    return cycles[cycles.length - 1] || null;
+  }
+  function cycleBudgetSpend(budget, cycle) {
+    return paydayCycleBudgetComparison([budget], scopedTransactions(), cycle)[0]?.spent || 0;
+  }
   function renderBudgets() {
-    const month = $('budgetMonth').value || monthNow(),
-      rows = scopedBudgets()
-        .filter((b) => budgetMonth(b) === month)
-        .sort((a, b) => a.category.localeCompare(b.category));
-    $('budgetsList').innerHTML =
-      rows
-        .map((b) => {
-          const spent = monthBudgetSpend(b),
-            limit = Number(b.amount) || 0,
-            pct = limit ? (spent / limit) * 100 : 0;
-          return `<div class="budgetrow"><div class="btop"><strong>${esc(b.category)}</strong><span>${eur(spent)} / ${eur(limit)} · ${Math.round(pct)}%</span></div><div class="budgetbar"><span class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(100, pct)}%"></span></div><div class="btop muted u-mt-6"><span>${pct > 100 ? 'Superato' : 'Residuo'}</span><span>${eur(limit - spent)}</span></div><div class="row-actions"><button class="btn small" data-edit-budget="${esc(b.id)}">Modifica</button><button class="btn small danger" data-delete-budget="${esc(b.id)}">Elimina</button></div></div>`;
-        })
-        .join('') ||
-      emptyHtml('Nessun budget per questo mese', 'Aggiungi un budget mensile per categoria.');
+    const month = $('budgetMonth').value || monthNow();
+    const cycle = currentPaydayCycle();
+    const useCycle = budgetPeriodMode === 'cycle' && Boolean(cycle);
+    const periodLabel = useCycle ? 'Ciclo ' + fmtDate(cycle.start) + ' – ' + (cycle.end ? fmtDate(cycle.end) : 'in corso') : 'Mese ' + month;
+    const rows = scopedBudgets()
+      .filter((b) => budgetMonth(b) === (useCycle ? cycle.start.slice(0, 7) : month))
+      .sort((a, b) => a.category.localeCompare(b.category));
+    const list = $('budgetsList');
+    const mode = $('budgetPeriodMode');
+    if (mode) mode.innerHTML = '<button type="button" class="btn small ' + (!useCycle ? 'primary' : '') + '" data-budget-mode="month">Mese solare</button><button type="button" class="btn small ' + (useCycle ? 'primary' : '') + '" data-budget-mode="cycle" ' + (!cycle ? 'disabled' : '') + '>Ciclo stipendio</button>';
+    list.innerHTML = '<p class="muted tiny">' + esc(periodLabel) + (useCycle ? ' · I limiti del mese di accredito vengono applicati all’intero ciclo, senza ripartizioni automatiche.' : '') + '</p>' +
+      (rows.map((b) => {
+        const spent = useCycle ? cycleBudgetSpend(b, cycle) : monthBudgetSpend(b);
+        const limit = Number(b.amount) || 0;
+        const pct = limit ? (spent / limit) * 100 : 0;
+        return `<div class="budgetrow"><div class="btop"><strong>${esc(b.category)}</strong><span>${eur(spent)} / ${eur(limit)} · ${Math.round(pct)}%</span></div><div class="budgetbar"><span class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(100, pct)}%"></span></div><div class="btop muted u-mt-6"><span>${pct > 100 ? 'Superato' : 'Residuo'}</span><span>${eur(limit - spent)}</span></div><div class="row-actions"><button class="btn small" data-edit-budget="${esc(b.id)}">Modifica</button><button class="btn small danger" data-delete-budget="${esc(b.id)}">Elimina</button></div></div>`;
+      }).join('') || emptyHtml('Nessun budget per questo periodo', 'Aggiungi un budget mensile per categoria.'));
+    list.querySelectorAll('[data-budget-mode]').forEach((button) => button.addEventListener('click', () => {
+      budgetPeriodMode = button.dataset.budgetMode;
+      renderBudgets();
+    }));
   }
   function renderRecurring() {
     $('recurringList').innerHTML =
@@ -2183,6 +2335,8 @@ import {
   }
   function renderAll() {
     renderSpaceSelector();
+    const paydayInput = $('paydayNextDate');
+    if (paydayInput) paydayInput.value = paydayCycleSettings();
     renderHome();
     renderTransactions();
     renderBudgets();
@@ -3311,6 +3465,7 @@ import {
     $('startQuizBtn')?.addEventListener('click', startQuiz);
     $('themeModeToggle').addEventListener('click', toggleTheme);
     $('settingsGoalBtn').addEventListener('click', openGoalForm);
+    $('savePaydaySettingsBtn')?.addEventListener('click', savePaydayCycleSettings);
     $('settingsExportBtn').addEventListener('click', exportPersonalData);
     $('settingsAccountBtn').addEventListener('click', () => {
       closeAccountPopover();
@@ -3470,7 +3625,7 @@ import {
     $('filterMonth').addEventListener('change', renderTransactions);
     $('previewStatementBtn')?.addEventListener('click', previewStatementFile);
     $('statementFile')?.addEventListener('change', () => {
-      statementImportRows = [];
+      statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {};
       $('statementImportPreview').innerHTML = '';
       $('statementImportStatus').textContent = 'File selezionato. Premi “Analizza file” per visualizzare le righe.';
     });

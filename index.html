@@ -222,6 +222,7 @@
               <button id="editGoalBtn" class="btn small">Imposta obiettivo</button>
             </div>
           </div>
+          <section class="panel payday-cycle-panel" id="paydayCyclePanel" aria-live="polite"><div class="eyebrow">Ciclo stipendiale</div><strong>Calcolo in corso…</strong></section>
           <section class="budget-nudge-card" aria-labelledby="budgetNudgeTitle">
             <div class="budget-nudge-heading">
               <span class="budget-nudge-icon" aria-hidden="true">✦</span
@@ -348,12 +349,12 @@
           </div>
           <div class="panel statement-import-panel">
             <h3>Importa estratto conto</h3>
-            <p class="muted tiny">Seleziona un file Excel o CSV. Prima di registrare qualsiasi movimento potrai controllare tutte le righe e confermare l'importazione.</p>
+            <p class="muted tiny">Supporta Excel, CSV, OFX/QFX, QIF, MT940 e CAMT.053 XML. Per PDF o formati particolari usa prima un’esportazione CSV/Excel dalla banca.</p>
             <div class="toolbar">
-              <input id="statementFile" type="file" accept=".xlsx,.xls,.csv" />
+              <input id="statementFile" type="file" accept=".xlsx,.xls,.csv,.ofx,.qfx,.qif,.sta,.mt940,.xml,.txt" />
               <button id="previewStatementBtn" class="btn secondary" type="button">Analizza file</button>
             </div>
-            <p id="statementImportStatus" class="muted tiny" aria-live="polite">Nessun file selezionato.</p>
+            <div id="statementColumnMapping"></div><p id="statementImportStatus" class="muted tiny" aria-live="polite">Nessun file selezionato.</p>
             <div id="statementImportPreview"></div>
           </div>
           <div class="panel">
@@ -382,6 +383,7 @@
           <div class="panel">
             <div class="toolbar">
               <input id="budgetMonth" type="month" aria-label="Mese del budget" />
+              <div id="budgetPeriodMode" class="row" aria-label="Periodo del budget"></div>
             </div>
             <div id="budgetsList"></div>
           </div>
@@ -650,6 +652,9 @@
               <button id="settingsGoalBtn" class="btn" type="button">
                 Modifica obiettivo mensile
               </button>
+            </div>
+            <div class="panel">
+              <div class="eyebrow">Ciclo finanziario</div><h3>Prossimo stipendio</h3><p class="muted tiny">Indica la prossima data prevista di accredito. Il ciclo parte dagli stipendi effettivamente registrati e termina il giorno precedente al prossimo accredito. Se arriva in ritardo, aggiorna questa data.</p><div class="field"><label for="paydayNextDate">Data prevista</label><input id="paydayNextDate" type="date" /></div><div class="row settings-actions-row"><button id="savePaydaySettingsBtn" class="btn primary" type="button">Salva data stipendio</button><span id="paydaySettingsStatus" class="muted tiny" aria-live="polite"></span></div>
             </div>
             <div class="panel">
               <div class="eyebrow">Dati e account</div>

@@ -4158,3 +4158,13 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   }
   #appScreen.tasca-chat-active .tasca-chat-shell { grid-template-rows: auto minmax(0, 1fr); }
 }
+
+
+/* Ciclo stipendiale */
+.payday-cycle-panel { display: grid; gap: 12px; }
+.payday-cycle-dates { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.payday-cycle-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.payday-cycle-stats > div { display: grid; gap: 4px; }
+.payday-cycle-stats small { color: var(--muted, #777); font-size: .78rem; }
+.payday-cycle-stats strong { font-size: 1.05rem; }
+@media (max-width: 560px) { .payday-cycle-stats { gap: 8px; } .payday-cycle-stats strong { font-size: .92rem; } }
