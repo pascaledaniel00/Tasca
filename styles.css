@@ -4197,3 +4197,18 @@ html[data-theme='dark'] .debts-page-mark{background:var(--gs);border-color:var(-
   #modalBody, #txForm, #txForm .formgrid, #txForm .field { min-width: 0; max-width: 100%; }
   #txForm input, #txForm select, #txForm textarea { max-width: 100%; min-width: 0; }
 }
+
+
+/* Proiezione dei flussi futuri conosciuti */
+.cashflow-forecast-panel { display: grid; gap: 14px; min-width: 0; }
+.forecast-range { display: flex; flex-wrap: wrap; gap: 6px; }
+.forecast-list { display: grid; gap: 8px; }
+.forecast-list > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line, #e7eae7); min-width: 0; }
+.forecast-list > div span { min-width: 0; overflow-wrap: anywhere; }
+.forecast-list strong { white-space: nowrap; }
+.forecast-positive { color: var(--green, #26734d); }
+.forecast-negative { color: var(--danger, #b84c43); }
+@media (max-width: 560px) {
+  .cashflow-forecast-panel .panelhead { align-items: flex-start; flex-direction: column; }
+  .forecast-list > div { align-items: flex-start; }
+}

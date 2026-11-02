@@ -83,3 +83,28 @@ test('cycle budgets include confirmed expenses across calendar months only once'
   assert.equal(result[0].remaining, 45);
   assert.equal(result[0].percent, 55);
 });
+
+
+test('previsione 30/60/90 giorni conta solo ricorrenze attive e stipendio datato', async () => {
+  const { forecastCashflow } = await import('../payday-cycle-core.js');
+  const result = forecastCashflow([
+    { name: 'Rata telefono', amount: 42.15, cadence: 'monthly', next_due_on: '2026-11-10', remaining_installments: 2, status: 'active' },
+    { name: 'NOW', amount: 19.99, cadence: 'monthly', next_due_on: '2026-11-15', status: 'active' },
+    { name: 'Sospesa', amount: 100, cadence: 'monthly', next_due_on: '2026-11-12', status: 'paused' },
+  ], [], { asOf: '2026-11-02', nextPayday: '2026-11-30', expectedSalary: 760, horizons: [30, 60, 90] });
+  assert.equal(result[0].recurringExpenses, 62.14);
+  assert.equal(result[0].expectedIncome, 760);
+  assert.equal(result[0].netChange, 697.86);
+  assert.equal(result[2].recurringExpenses, 144.27);
+  assert.equal(result[2].expectedIncome, 760);
+});
+
+test('la previsione non include scadenze passate, rate oltre il residuo o stipendi senza data', async () => {
+  const { forecastCashflow } = await import('../payday-cycle-core.js');
+  const result = forecastCashflow([
+    { name: 'Rata', amount: 10, cadence: 'monthly', next_due_on: '2026-10-01', remaining_installments: 1, status: 'active' },
+  ], [], { asOf: '2026-11-02', expectedSalary: 760, horizons: [30] });
+  assert.equal(result[0].recurringExpenses, 0);
+  assert.equal(result[0].expectedIncome, 0);
+  assert.equal(result[0].occurrences.length, 0);
+});
