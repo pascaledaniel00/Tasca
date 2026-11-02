@@ -726,7 +726,7 @@ import {
     const salaryNote = paydayCycleSettings() && expectedSalary > 0
       ? 'Include uno stipendio previsto alla data impostata, stimato sull’ultimo accredito confermato.'
       : 'Non include stipendi futuri: manca una data prevista o uno stipendio confermato da usare come riferimento.';
-    panel.innerHTML = '<div class="panelhead"><div><div class="eyebrow">Previsione finanziaria</div><h3>Prossimi 90 giorni</h3><p class="muted tiny">Proiezione delle sole entrate e uscite future conosciute.</p></div><div class="forecast-range" role="group" aria-label="Orizzonte previsione">' +
+    panel.innerHTML = '<div class="panelhead"><div><div class="eyebrow">Previsione finanziaria</div><h3>Prossimi ' + forecastDays + ' giorni</h3><p class="muted tiny">Proiezione delle sole entrate e uscite future conosciute.</p></div><div class="forecast-range" role="group" aria-label="Orizzonte previsione">' +
       [30,60,90].map((days) => '<button type="button" class="btn small ' + (forecastDays === days ? 'primary' : '') + '" data-forecast-days="' + days + '">' + days + ' gg</button>').join('') +
       '</div></div><div class="payday-cycle-stats"><div><small>Uscite ricorrenti</small><strong>' + eur(result.recurringExpenses) + '</strong></div><div><small>Entrate previste</small><strong>' + eur(result.expectedIncome) + '</strong></div><div><small>Variazione netta</small><strong class="' + (result.netChange < 0 ? 'forecast-negative' : 'forecast-positive') + '">' + eur(result.netChange) + '</strong></div></div>' +
       '<p class="muted tiny">' + esc(salaryNote) + '</p>' +
