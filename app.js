@@ -990,11 +990,17 @@ import {
     try {
       const bytes = await file.arrayBuffer();
       const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+      const rawRows = workbook.SheetNames.flatMap((sheetName) => {
+        const sheetRows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
+        return sheetRows.map((row) => ({ ...row, __tasca_source_sheet: sheetName }));
+      });
       statementImportDecisions = {};
-      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows), scopedTransactions());
-      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette dal primo foglio. Nessun dato è stato ancora salvato.`;
+      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows).map((row) => ({
+        ...row,
+        sourceSheet: String(row.raw?.__tasca_source_sheet || ''),
+        notes: [row.notes, row.raw?.__tasca_source_sheet ? 'Foglio: ' + row.raw.__tasca_source_sheet : null].filter(Boolean).join(' · ') || null,
+      })), scopedTransactions());
+      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette da ${workbook.SheetNames.length} fogli. Nessun dato è stato ancora salvato.`;
       renderStatementPreview();
     } catch (error) {
       if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
