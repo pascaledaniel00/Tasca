@@ -206,7 +206,7 @@
         <section id="page-home" class="section active home-dashboard">
           <div class="hero">
             <div>
-              <div class="eyebrow">Disponibilità teorica del mese</div>
+              <div class="eyebrow" id="heroEyebrow">Disponibilità teorica del mese</div>
               <h2 id="heroBalance">€ 0,00</h2>
               <p id="heroSubtitle">
                 Registriamo i movimenti per costruire il tuo quadro finanziario.
@@ -652,6 +652,16 @@
               <button id="settingsGoalBtn" class="btn" type="button">
                 Modifica obiettivo mensile
               </button>
+            </div>
+            <div class="panel">
+              <div class="eyebrow">Personalizzazione</div>
+              <h3>Periodo di riferimento</h3>
+              <p class="muted tiny">Scegli cosa mettere in primo piano nella Home e se i budget devono ripartire dal giorno in cui ricevi lo stipendio. I movimenti mantengono sempre la loro data reale.</p>
+              <div class="formgrid">
+                <div class="field"><label for="dashboardPrimaryView">In primo piano nella Home</label><select id="dashboardPrimaryView"><option value="month">Saldo del mese solare</option><option value="cycle">Residuo del ciclo stipendiale</option></select></div>
+                <div class="field"><label for="defaultBudgetPeriod">Il mio mese di budget inizia</label><select id="defaultBudgetPeriod"><option value="month">Il primo giorno del mese</option><option value="cycle">Quando arriva lo stipendio</option></select></div>
+              </div>
+              <div class="row settings-actions-row"><button id="saveDashboardPreferencesBtn" class="btn primary" type="button">Salva preferenze</button><span id="dashboardPreferencesStatus" class="muted tiny" aria-live="polite"></span></div>
             </div>
             <div class="panel">
               <div class="eyebrow">Ciclo finanziario</div><h3>Prossimo stipendio</h3><p class="muted tiny">Indica la prossima data prevista di accredito. Il ciclo parte dagli stipendi effettivamente registrati e termina il giorno precedente al prossimo accredito. Se arriva in ritardo, aggiorna questa data.</p><div class="field"><label for="paydayNextDate">Data prevista</label><input id="paydayNextDate" type="date" /></div><div class="row settings-actions-row"><button id="savePaydaySettingsBtn" class="btn primary" type="button">Salva data stipendio</button><span id="paydaySettingsStatus" class="muted tiny" aria-live="polite"></span></div>
