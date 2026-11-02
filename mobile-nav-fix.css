@@ -758,3 +758,65 @@ video {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Adaptive dashboard and savings layouts across phones, tablets and desktops. */
+#page-home .hero,
+#page-home .payday-cycle-panel,
+#page-debts .savings-transfer-panel {
+  min-width: 0;
+}
+#page-home .hero {
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
+}
+.payday-cycle-stats > div,
+.savings-transfer-head > div { min-width: 0; }
+.savings-transfer-panel { display: grid; gap: 9px; margin-bottom: 14px; }
+.savings-transfer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.savings-transfer-head strong { display: block; margin-top: 5px; font-size: clamp(24px, 4vw, 32px); overflow-wrap: anywhere; }
+#page-debts .layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#page-home .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#page-home .dashboard-charts { min-width: 0; }
+#page-home .dashboard-charts > * { min-width: 0; }
+
+@media (max-width: 900px) {
+  .app { padding-left: clamp(12px, 2.5vw, 20px); padding-right: clamp(12px, 2.5vw, 20px); }
+  #page-home .hero { grid-template-columns: minmax(0, 1fr) minmax(190px, .72fr); }
+  #page-home .stats { gap: 9px; }
+  #page-debts .layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 680px) {
+  #page-home .hero { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: clamp(16px, 4vw, 22px); }
+  #page-home .hero h2 { font-size: clamp(28px, 8vw, 38px); overflow-wrap: anywhere; }
+  #page-home .hero-right { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px 12px; }
+  #page-home .hero-right .progress, #page-home .hero-right #goalCaption { grid-column: 1 / -1; }
+  #page-home .hero-right #editGoalBtn { grid-column: 2; grid-row: 1 / span 2; }
+  #page-home .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #page-home .stats .stat:last-child { grid-column: 1 / -1; }
+  .payday-cycle-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .payday-cycle-stats strong { font-size: clamp(13px, 3.5vw, 17px); overflow-wrap: anywhere; }
+  .payday-cycle-dates { align-items: flex-start; }
+  #page-home .dashboard-charts { grid-template-columns: minmax(0, 1fr); }
+  #page-home .category-chart-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  #page-debts .layout { grid-template-columns: minmax(0, 1fr); }
+  #page-debts .movement { align-items: flex-start; flex-wrap: wrap; }
+  #page-debts .movement .row-actions { width: 100%; display: flex; flex-wrap: wrap; }
+}
+@media (max-width: 390px) {
+  .app { padding-right: 10px; padding-left: 10px; }
+  #page-home .hero { border-radius: 17px; }
+  #page-home .stats { grid-template-columns: minmax(0, 1fr); }
+  #page-home .stats .stat:last-child { grid-column: auto; }
+  .payday-cycle-stats { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .payday-cycle-stats > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .payday-cycle-stats strong { font-size: 16px; text-align: right; }
+  .panelhead { align-items: flex-start; }
+  .panelhead .btn { flex: 0 1 auto; }
+}
+@media (min-width: 681px) and (max-width: 1024px) {
+  #page-home .dashboard-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #page-home .chart-budget-card { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #page-home *, #page-debts * { scroll-behavior: auto; }
+}

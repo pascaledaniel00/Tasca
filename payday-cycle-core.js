@@ -48,14 +48,12 @@ export function buildPaydayCycles(transactions = [], options = {}) {
     };
   });
 
-  if (options.nextPayday && parseDate(options.nextPayday)) {
-    const latest = cycles[cycles.length - 1];
-    if (latest && !latest.nextPayday && options.nextPayday > latest.start) {
-      latest.end = addDays(options.nextPayday, -1);
-      latest.nextPayday = options.nextPayday;
-      latest.isOpen = false;
-      latest.days = Math.round((parseDate(latest.end) - parseDate(latest.start)) / DAY_MS) + 1;
-    }
+  // A date entered in settings is only a forecast: it must never close a cycle.
+  // The next cycle starts exclusively when the next confirmed salary is registered.
+  const latest = cycles[cycles.length - 1];
+  if (latest && !latest.nextPayday && options.nextPayday && parseDate(options.nextPayday) &&
+      options.nextPayday > latest.start) {
+    latest.expectedNextPayday = options.nextPayday;
   }
   return cycles;
 }
