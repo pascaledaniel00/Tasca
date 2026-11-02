@@ -14,6 +14,7 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
+import { buildPaydayCycles, summarizePaydayCycle } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
   findStatementDuplicates,
@@ -129,6 +130,7 @@ import {
     aiChatConversationId = null,
     aiChatPending = false;
   let goal = 40;
+  let paydayCycleNextDate = '';
   try {
     goal = Math.max(0, Number(localStorage.getItem('tasca_monthly_goal') ?? 40));
   } catch {}
@@ -674,6 +676,59 @@ import {
     } finally {
       aiAdvicePending = false;
     }
+  }
+  function paydayCycleSettings() {
+    return String(user?.user_metadata?.payday_cycle_next_date || paydayCycleNextDate || '');
+  }
+  function getPaydayCycleSummary() {
+    if (isAllSpaces()) return null;
+    const rows = scopedTransactions();
+    const cycles = buildPaydayCycles(rows, {
+      nextPayday: paydayCycleSettings(),
+      asOf: today(),
+      incomeMatcher: (row) => /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')),
+    });
+    const cycle = cycles[cycles.length - 1];
+    return cycle ? summarizePaydayCycle(cycle, rows, { asOf: today() }) : null;
+  }
+  function renderPaydayCycle() {
+    const panel = $('paydayCyclePanel');
+    if (!panel) return;
+    if (isAllSpaces()) {
+      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>Seleziona uno spazio personale</strong><p class="muted tiny">Il ciclo viene calcolato sui movimenti personali, senza mescolare spese condivise o dei progetti.</p>';
+      return;
+    }
+    const summary = getPaydayCycleSummary();
+    if (!summary) {
+      panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><strong>In attesa del primo stipendio registrato</strong><p class="muted tiny">Registra l’accredito come entrata con categoria “Stipendio”. Da quel giorno Tasca potrà calcolare il ciclo.</p>';
+      return;
+    }
+    const endLabel = summary.end ? fmtDate(summary.end) : 'in corso';
+    panel.innerHTML = '<div class="eyebrow">Ciclo stipendiale</div><div class="payday-cycle-dates"><strong>' + esc(fmtDate(summary.start)) + ' – ' + esc(endLabel) + '</strong><span class="badge">' + (summary.isOpen ? 'Aperto' : 'Programmato') + '</span></div><div class="payday-cycle-stats"><div><small>Entrate</small><strong>' + eur(summary.income) + '</strong></div><div><small>Uscite</small><strong>' + eur(summary.expenses) + '</strong></div><div><small>Residuo del ciclo</small><strong>' + eur(summary.residual) + '</strong></div></div><p class="muted tiny">Il mese solare resta consultabile separatamente. I trasferimenti non sono conteggiati come entrate o uscite.</p>';
+  }
+  async function savePaydayCycleSettings() {
+    const input = $('paydayNextDate');
+    const status = $('paydaySettingsStatus');
+    const value = String(input?.value || '');
+    if (value && !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+      if (status) status.textContent = 'Inserisci una data valida.';
+      return;
+    }
+    if (!db || !user) {
+      if (status) status.textContent = 'Accedi per salvare questa impostazione.';
+      return;
+    }
+    const { data, error } = await db.auth.updateUser({
+      data: { ...(user.user_metadata || {}), payday_cycle_next_date: value || null },
+    });
+    if (error) {
+      if (status) status.textContent = 'Non è stato possibile salvare: ' + error.message;
+      return;
+    }
+    user = data.user || user;
+    paydayCycleNextDate = value;
+    renderAll();
+    if (status) status.textContent = value ? 'Prossima data di stipendio salvata.' : 'Data prevista rimossa.';
   }
   function renderHome() {
     const s = monthSummary();
@@ -3310,7 +3365,7 @@ import {
     initSidebarReordering();
     $('startQuizBtn')?.addEventListener('click', startQuiz);
     $('themeModeToggle').addEventListener('click', toggleTheme);
-    $('settingsGoalBtn').addEventListener('click', openGoalForm);
+    $('settingsGoalBtn').addEventListener('click', openGoalForm);\n    $('savePaydaySettingsBtn')?.addEventListener('click', savePaydayCycleSettings);
     $('settingsExportBtn').addEventListener('click', exportPersonalData);
     $('settingsAccountBtn').addEventListener('click', () => {
       closeAccountPopover();
