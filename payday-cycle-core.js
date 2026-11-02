@@ -31,7 +31,7 @@ export function buildPaydayCycles(transactions = [], options = {}) {
   const paydays = [...new Set(
     (Array.isArray(transactions) ? transactions : [])
       .filter((row) => row?.type === 'income' && (row.status == null || row.status === 'confirmed'))
-      .filter((row) => options.incomeMatcher ? options.incomeMatcher(row) : /stipendio|salary|payroll/i.test(String(row.description || row.category || '')))
+      .filter((row) => options.incomeMatcher ? options.incomeMatcher(row) : /stipendio|salary|payroll/i.test([row.description, row.category].filter(Boolean).join(' ')))
       .map((row) => String(row.occurred_on || row.date || ''))
       .filter((date) => parseDate(date))
   )].sort();
