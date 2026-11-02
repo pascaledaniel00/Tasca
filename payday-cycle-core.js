@@ -1,0 +1,112 @@
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_MS = 86400000;
+
+function parseDate(value) {
+  const text = String(value || '');
+  if (!DATE_RE.test(text)) return null;
+  const date = new Date(text + 'T00:00:00.000Z');
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text ? null : date;
+}
+
+function iso(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(value, days) {
+  const date = parseDate(value);
+  if (!date) throw new TypeError('La data deve avere formato YYYY-MM-DD.');
+  return iso(new Date(date.getTime() + days * DAY_MS));
+}
+
+function roundMoney(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Builds variable-length financial cycles from actual salary credits.
+ * A cycle starts on the effective payday and ends the day before the next
+ * effective payday. Planned paydays are never treated as received income.
+ */
+export function buildPaydayCycles(transactions = [], options = {}) {
+  const paydays = [...new Set(
+    (Array.isArray(transactions) ? transactions : [])
+      .filter((row) => row?.type === 'income' && (row.status == null || row.status === 'confirmed'))
+      .filter((row) => options.incomeMatcher ? options.incomeMatcher(row) : /stipendio|salary|payroll/i.test(String(row.description || row.category || '')))
+      .map((row) => String(row.occurred_on || row.date || ''))
+      .filter((date) => parseDate(date))
+  )].sort();
+
+  const cycles = paydays.map((start, index) => {
+    const nextStart = paydays[index + 1] || null;
+    const end = nextStart ? addDays(nextStart, -1) : options.asOf && parseDate(options.asOf) ? String(options.asOf) : null;
+    return {
+      start,
+      end,
+      nextPayday: nextStart,
+      isOpen: !nextStart,
+      days: end ? Math.round((parseDate(end) - parseDate(start)) / DAY_MS) + 1 : null,
+    };
+  });
+
+  if (options.nextPayday && parseDate(options.nextPayday)) {
+    const latest = cycles[cycles.length - 1];
+    if (latest && !latest.nextPayday && options.nextPayday > latest.start) {
+      latest.end = addDays(options.nextPayday, -1);
+      latest.nextPayday = options.nextPayday;
+      latest.isOpen = false;
+      latest.days = Math.round((parseDate(latest.end) - parseDate(latest.start)) / DAY_MS) + 1;
+    }
+  }
+  return cycles;
+}
+
+/** Returns the cycle containing a date, or null when no received payday anchors it. */
+export function findPaydayCycle(date, cycles = []) {
+  if (!parseDate(date)) return null;
+  return cycles.find((cycle) => cycle.start <= date && (!cycle.end || date <= cycle.end)) || null;
+}
+
+/**
+ * Summarizes a single cycle from the canonical transaction register.
+ * Only confirmed entries count; transfers are excluded from income/expenses.
+ */
+export function summarizePaydayCycle(cycle, transactions = [], options = {}) {
+  if (!cycle?.start || !parseDate(cycle.start)) throw new TypeError('Ciclo finanziario non valido.');
+  const end = cycle.end && parseDate(cycle.end) ? cycle.end : options.asOf;
+  const rows = (Array.isArray(transactions) ? transactions : []).filter((row) => {
+    const date = String(row?.occurred_on || row?.date || '');
+    return parseDate(date) && date >= cycle.start && (!end || date <= end) &&
+      (row.status == null || row.status === 'confirmed');
+  });
+  const income = rows.filter((row) => row.type === 'income' || row.type === 'refund')
+    .reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+  const expenses = rows.filter((row) => row.type === 'expense')
+    .reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+  const transfers = rows.filter((row) => row.type === 'transfer')
+    .reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+  const openingBalance = Number(options.openingBalance || 0);
+  return {
+    ...cycle,
+    end: end || null,
+    openingBalance: roundMoney(openingBalance),
+    income: roundMoney(income),
+    expenses: roundMoney(expenses),
+    transfers: roundMoney(transfers),
+    residual: roundMoney(income - expenses),
+    projectedClosingBalance: roundMoney(openingBalance + income - expenses),
+    transactionCount: rows.length,
+  };
+}
+
+/** Calendar-month and payday-cycle views reference the same rows, never copies. */
+export function groupTransactionsByPeriod(transactions = [], cycles = []) {
+  return (Array.isArray(transactions) ? transactions : []).map((row) => {
+    const date = String(row?.occurred_on || row?.date || '');
+    const cycle = findPaydayCycle(date, cycles);
+    return {
+      transaction: row,
+      calendarMonth: parseDate(date) ? date.slice(0, 7) : null,
+      paydayCycleStart: cycle?.start || null,
+    };
+  });
+}
