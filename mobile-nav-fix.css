@@ -976,3 +976,54 @@ main { min-width: 0; }
   #page-recurring .row-actions .btn,
   #page-debts .row-actions .btn { flex: 1 1 auto; }
 }
+
+
+/* Fine alignment for compact settings controls (notably the next payday date). */
+#page-settings .panel > .field {
+  width: min(100%, 320px);
+  max-width: 320px;
+  align-self: flex-start;
+}
+#page-settings #paydayNextDate {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 260px;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 12px;
+  text-align: left;
+}
+#page-settings .settings-actions-row {
+  align-items: flex-start;
+}
+#page-settings .settings-actions-row > .btn {
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: normal;
+}
+#page-settings .settings-actions-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#page-settings .formgrid .field {
+  min-width: 0;
+  width: 100%;
+}
+#page-settings .formgrid select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  #page-settings .panel > .field {
+    width: 100%;
+    max-width: 320px;
+  }
+  #page-settings #paydayNextDate {
+    max-width: 260px;
+  }
+  #page-settings .settings-actions-row {
+    align-items: flex-start;
+  }
+}
