@@ -131,7 +131,8 @@ import {
     aiChatConversations = [],
     aiChatConversationId = null,
     aiChatPending = false;
-  let goal = 40;\n  let forecastDays = 90;
+  let goal = 40;
+  let forecastDays = 90;
   let paydayCycleNextDate = '';
   let dashboardPrimaryView = 'month';
   try {
