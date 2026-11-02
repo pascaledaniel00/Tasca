@@ -22,7 +22,7 @@ import {
   findStatementDuplicates,
   compareTransactionForDuplicate,
   statementImportSummary,
-} from './statement-import-core.js?v=20261030-2';
+} from './statement-import-core.js?v=20261102-1';
 import {
   calculateQuizXP,
   getQuizBadges,
@@ -954,12 +954,74 @@ import {
       emptyHtml('Nessun budget attivo', 'Crea un budget per confrontare limite e spesa.');
   }
   let statementImportRows = [];
+  let statementImportRawRows = [];
+  let statementImportHeaders = [];
+  let statementColumnMapping = {};
+  let statementImportFormat = '';
   let statementImportDecisions = {};
+  function normalizeCurrentStatementRows() {
+    statementImportRows = findStatementDuplicates(normalizeStatementRows(statementImportRawRows, statementColumnMapping).map((row) => ({
+      ...row,
+      sourceSheet: String(row.raw?.__tasca_source_sheet || ''),
+      notes: [row.notes, row.raw?.__tasca_source_sheet ? 'Foglio: ' + row.raw.__tasca_source_sheet : null].filter(Boolean).join(' · ') || null,
+    })), scopedTransactions());
+    statementImportDecisions = {};
+    renderStatementPreview();
+  }
+  function renderStatementColumnMapping() {
+    const target = $('statementColumnMapping');
+    if (!target || !statementImportHeaders.length) return;
+    const fields = [
+      ['date', 'Data operazione', true], ['posted', 'Data contabilizzazione', false],
+      ['description', 'Descrizione', true], ['amount', 'Importo con segno', false],
+      ['debit', 'Addebito / Dare', false], ['credit', 'Accredito / Avere', false],
+    ];
+    const options = '<option value="">— Non presente —</option>' + statementImportHeaders.map((header) => '<option value="' + esc(header) + '">' + esc(header) + '</option>').join('');
+    target.innerHTML = '<details class="statement-mapping"><summary>Colonne rilevate · modifica se necessario</summary><div class="formgrid">' +
+      fields.map(([key, label, required]) => '<div class="field"><label>' + label + (required ? ' *' : '') + '</label><select data-statement-column="' + key + '">' + options + '</select></div>').join('') +
+      '</div><button id="applyStatementMapping" class="btn small secondary" type="button">Applica mappatura</button><p class="muted tiny">Compila Importo con segno oppure entrambe le colonne Dare e Avere. La mappatura vale solo per questo file.</p></details>';
+    target.querySelectorAll('[data-statement-column]').forEach((select) => { select.value = statementColumnMapping[select.dataset.statementColumn] || ''; });
+    $('applyStatementMapping')?.addEventListener('click', () => {
+      target.querySelectorAll('[data-statement-column]').forEach((select) => { statementColumnMapping[select.dataset.statementColumn] = select.value || null; });
+      normalizeCurrentStatementRows();
+    });
+  }
+  function rowsFromWorkbook(workbook) {
+    const allRows = [];
+    let firstHeaders = [];
+    let bestScore = 0;
+    for (const sheetName of workbook.SheetNames) {
+      const matrix = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+      let headerIndex = -1, detection = null;
+      for (let index = 0; index < Math.min(matrix.length, 30); index++) {
+        const candidate = detectStatementColumns(matrix[index].map((value) => String(value ?? '').trim()));
+        if (candidate.score > bestScore) { bestScore = candidate.score; headerIndex = index; detection = candidate; }
+        if (candidate.ready) { headerIndex = index; detection = candidate; break; }
+      }
+      if (headerIndex >= 0 && detection) {
+        const headers = matrix[headerIndex].map((value) => String(value ?? '').trim());
+        if (!firstHeaders.length) { firstHeaders = headers; statementColumnMapping = detection.mapping; }
+        for (const values of matrix.slice(headerIndex + 1)) {
+          if (!values.some((value) => value !== '' && value != null)) continue;
+          const row = Object.fromEntries(headers.map((header, index) => [header || 'Colonna ' + (index + 1), values[index] ?? '']));
+          row.__tasca_source_sheet = sheetName;
+          allRows.push(row);
+        }
+      } else {
+        const fallback = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
+        for (const row of fallback) { row.__tasca_source_sheet = sheetName; allRows.push(row); }
+        if (!firstHeaders.length && fallback[0]) firstHeaders = Object.keys(fallback[0]).filter((key) => key !== '__tasca_source_sheet');
+      }
+    }
+    statementImportHeaders = firstHeaders;
+    return allRows;
+  }
   function renderStatementPreview() {
     const target = $('statementImportPreview');
     if (!target) return;
     const summary = statementImportSummary(statementImportRows);
     const rows = statementImportRows;
+    renderStatementColumnMapping();
     const unresolved = rows.filter((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]).length;
     const ready = rows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || statementImportDecisions[row.sourceRow] === 'keep-both' || statementImportDecisions[row.sourceRow] === 'keep-candidate')).length;
     target.innerHTML = rows.length ? `
@@ -985,25 +1047,30 @@ import {
   async function previewStatementFile() {
     const file = $('statementFile')?.files?.[0];
     const status = $('statementImportStatus');
-    statementImportRows = [];
+    statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {}; statementImportFormat = '';
     renderStatementPreview();
     if (!file) { if (status) status.textContent = 'Seleziona prima un file.'; return; }
-    if (!window.XLSX) { if (status) status.textContent = 'Lettore Excel non disponibile. Riprova più tardi.'; return; }
     try {
-      const bytes = await file.arrayBuffer();
-      const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true });
-      const rawRows = workbook.SheetNames.flatMap((sheetName) => {
-        const sheetRows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
-        return sheetRows.map((row) => ({ ...row, __tasca_source_sheet: sheetName }));
-      });
-      statementImportDecisions = {};
-      statementImportRows = findStatementDuplicates(normalizeStatementRows(rawRows).map((row) => ({
-        ...row,
-        sourceSheet: String(row.raw?.__tasca_source_sheet || ''),
-        notes: [row.notes, row.raw?.__tasca_source_sheet ? 'Foglio: ' + row.raw.__tasca_source_sheet : null].filter(Boolean).join(' · ') || null,
-      })), scopedTransactions());
-      if (status) status.textContent = `${file.name}: ${rawRows.length} righe lette da ${workbook.SheetNames.length} fogli. Nessun dato è stato ancora salvato.`;
-      renderStatementPreview();
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (['ofx', 'qfx', 'qif', 'sta', 'mt940', 'xml', 'txt'].includes(extension)) {
+        const parsed = parseStatementText(await file.text(), file.name);
+        statementImportFormat = parsed.format;
+        statementImportRawRows = parsed.rows;
+        statementImportHeaders = Object.keys(parsed.rows[0] || {});
+        const detected = detectStatementColumns(statementImportHeaders);
+        statementColumnMapping = detected.mapping;
+        if (!parsed.rows.length) throw new Error('Nessun movimento riconosciuto in questo formato.');
+      } else {
+        if (!window.XLSX) throw new Error('Lettore Excel non disponibile. Riprova più tardi.');
+        const bytes = await file.arrayBuffer();
+        const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true, raw: true });
+        statementImportRawRows = rowsFromWorkbook(workbook);
+        statementImportFormat = extension.toUpperCase() + ' · ' + workbook.SheetNames.length + ' fogli';
+        if (!statementImportRawRows.length) throw new Error('Non ho trovato righe di movimento nel file.');
+      }
+      normalizeCurrentStatementRows();
+      const invalid = statementImportRows.filter((row) => row.status === 'invalid').length;
+      if (status) status.textContent = file.name + ': ' + statementImportRows.length + ' righe lette (' + statementImportFormat + '). ' + invalid + ' righe richiedono verifica. Nessun dato è stato ancora salvato.';
     } catch (error) {
       if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
     }
@@ -1037,7 +1104,7 @@ import {
         const { error } = await db.from('transactions').insert(payload);
         if (error) throw error;
       }
-      statementImportRows = []; statementImportDecisions = {};
+      statementImportRows = []; statementImportRawRows = []; statementImportDecisions = {}; statementColumnMapping = {}; statementImportHeaders = [];
       $('statementImportPreview').innerHTML = '';
       $('statementImportStatus').textContent = 'Importazione completata. I movimenti sono stati registrati come “Da verificare”; le riconciliazioni sono annotate.';
       $('statementFile').value = '';
@@ -3558,7 +3625,7 @@ import {
     $('filterMonth').addEventListener('change', renderTransactions);
     $('previewStatementBtn')?.addEventListener('click', previewStatementFile);
     $('statementFile')?.addEventListener('change', () => {
-      statementImportRows = [];
+      statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {};
       $('statementImportPreview').innerHTML = '';
       $('statementImportStatus').textContent = 'File selezionato. Premi “Analizza file” per visualizzare le righe.';
     });
