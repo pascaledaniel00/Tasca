@@ -820,3 +820,159 @@ video {
 @media (prefers-reduced-motion: reduce) {
   #page-home *, #page-debts * { scroll-behavior: auto; }
 }
+
+
+/* App-wide layout consistency pass: shared page rhythm and resilient content sizing. */
+main { min-width: 0; }
+.section { min-width: 0; }
+.section > .page-title {
+  align-items: center;
+  margin: 8px 0 18px;
+  min-width: 0;
+}
+.section > .page-title > div { min-width: 0; }
+.section > .page-title p { max-width: 68ch; margin: 5px 0 0; line-height: 1.5; }
+.section .panel { min-width: 0; }
+.section .panel > :last-child { min-width: 0; }
+.section .layout { align-items: start; }
+.section .layout > .panel { min-width: 0; }
+.section .panelhead { min-width: 0; }
+.section .panelhead > div { min-width: 0; }
+.section .panelhead h3 { overflow-wrap: anywhere; }
+.section .row { min-width: 0; }
+.section .row > * { min-width: 0; }
+.section .field { min-width: 0; }
+.section .field input,
+.section .field select,
+.section .field textarea { max-width: 100%; }
+.section .notice { max-width: 100%; overflow-wrap: anywhere; }
+.section .movement { min-width: 0; }
+.section .movement .amount { flex: 0 0 auto; }
+.section .movement .row-actions { min-width: 0; }
+.section .tablewrap,
+.section .table-wrap,
+.section .table-responsive { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; }
+.section table { min-width: 520px; }
+.section .toolbar { align-items: center; }
+.section .toolbar > input,
+.section .toolbar > select { flex: 1 1 180px; }
+.section .toolbar > button { flex: 0 0 auto; }
+.section .formgrid { align-items: start; }
+.section .empty { overflow-wrap: anywhere; }
+
+/* Settings: equal card rhythm, aligned controls and no compressed action labels. */
+#page-settings .layout { align-items: stretch; }
+#page-settings .layout > .panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  height: 100%;
+}
+#page-settings .layout > .panel > p { margin: 0; line-height: 1.55; }
+#page-settings .settings-inline-row,
+#page-settings .settings-actions-row {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#page-settings .settings-theme-label { flex: 1 1 150px; }
+#page-settings .settings-actions-row > .btn { flex: 0 1 auto; }
+#page-settings .settings-actions-row > span { flex: 1 1 140px; }
+#page-settings .formgrid { width: 100%; }
+#page-settings .field { width: 100%; }
+#page-settings .field label { line-height: 1.4; }
+#page-settings .layout > .panel > .field { width: 100%; }
+
+/* Movements and imports: keep long descriptions and action controls inside their cards. */
+#page-transactions .statement-import-panel .toolbar { align-items: stretch; }
+#page-transactions .statement-import-panel input[type="file"] { flex: 1 1 260px; }
+#page-transactions #transactionsList .movement { flex-wrap: wrap; }
+#page-transactions #transactionsList .movinfo { flex: 1 1 180px; }
+#page-transactions #transactionsList .row-actions { flex: 1 1 100%; justify-content: flex-end; }
+#page-transactions #statementImportPreview { min-width: 0; max-width: 100%; }
+#page-transactions #statementImportPreview > * { min-width: 0; max-width: 100%; }
+
+/* Budgets, recurring plans and debts: stable rows even with long category names. */
+#page-budgets #budgetsList,
+#page-recurring #recurringList,
+#page-debts #debtsList,
+#page-debts #savingsGoalsList { min-width: 0; }
+#page-budgets .budgetrow,
+#page-recurring .movement,
+#page-debts .movement { min-width: 0; }
+#page-budgets .btop > *,
+#page-recurring .movinfo,
+#page-debts .movinfo { min-width: 0; overflow-wrap: anywhere; }
+#page-recurring .movement,
+#page-debts .movement { flex-wrap: wrap; }
+#page-recurring .movement .row-actions,
+#page-debts .movement .row-actions { flex: 0 1 auto; }
+
+/* Advice, quiz and spaces: prevent content from forcing the page wider. */
+#adviceList { min-width: 0; align-items: stretch; }
+#adviceList > * { min-width: 0; max-width: 100%; }
+#page-quiz .quiz-home,
+#page-quiz .quiz-play,
+#page-quiz .quiz-result { min-width: 0; max-width: 100%; }
+#page-quiz .quiz-controls { min-width: 0; }
+#page-quiz .quiz-option,
+#page-quiz .quiz-feedback,
+#page-quiz .quiz-review-row { min-width: 0; overflow-wrap: anywhere; }
+#page-spaces #spacesList,
+#page-spaces #spaceDetail { min-width: 0; max-width: 100%; }
+#page-spaces .space-card > * { min-width: 0; }
+
+/* Chat and shortcut: constrain wide content without shrinking readable controls. */
+#page-tasca-ai,
+#page-tasca-ai .tasca-chat-shell,
+#page-tasca-ai .tasca-chat-main,
+#page-tasca-ai .ai-chat-messages { min-width: 0; }
+#page-shortcut .shortcut-hero { min-width: 0; }
+#page-shortcut .shortcut-install-link { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Tablet and compact desktop: avoid overly narrow two-column panels. */
+@media (min-width: 761px) and (max-width: 1050px) {
+  #page-settings .layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #page-home .layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #page-transactions .toolbar > input,
+  #page-transactions .toolbar > select { flex-basis: 160px; }
+}
+
+/* Phones: controls stack deliberately, not through accidental flex compression. */
+@media (max-width: 760px) {
+  .section > .page-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .section > .page-title > .btn,
+  .section > .page-title > button { width: 100%; }
+  #page-settings .layout { grid-template-columns: minmax(0, 1fr); }
+  #page-settings .settings-inline-row,
+  #page-settings .settings-actions-row { align-items: stretch; }
+  #page-settings .settings-actions-row > .btn { flex: 1 1 100%; width: 100%; }
+  #page-settings .settings-actions-row > span { flex-basis: 100%; }
+  #page-settings .formgrid { grid-template-columns: minmax(0, 1fr); }
+  #page-transactions .statement-import-panel .toolbar > * { flex: 1 1 100%; width: 100%; }
+  #page-transactions #transactionsList .movement { align-items: flex-start; }
+  #page-transactions #transactionsList .amount { margin-left: auto; }
+  #page-transactions #transactionsList .row-actions { justify-content: flex-start; }
+  #page-recurring .movement .row-actions,
+  #page-debts .movement .row-actions { flex: 1 1 100%; justify-content: flex-start; }
+  #page-spaces .space-card { align-items: flex-start; }
+  #page-spaces .space-card .space-buttons { justify-content: flex-start; }
+  #page-shortcut .shortcut-install-link { width: 100%; }
+  #page-home .layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 390px) {
+  .section > .page-title h2 { font-size: 22px; }
+  #page-settings .panel { padding: 14px; }
+  #page-settings .settings-inline-row > .btn { width: 100%; }
+  #page-settings .settings-inline-row { align-items: stretch; }
+  #page-transactions #transactionsList .movement .amount { width: 100%; margin-left: 51px; }
+  #page-transactions #transactionsList .row-actions .btn,
+  #page-recurring .row-actions .btn,
+  #page-debts .row-actions .btn { flex: 1 1 auto; }
+}
