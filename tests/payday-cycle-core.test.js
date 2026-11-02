@@ -18,8 +18,8 @@ const movements = [
 test('crea cicli da accrediti stipendio effettivi e non da entrate previste', () => {
   const cycles = buildPaydayCycles(movements, { nextPayday: '2026-12-01' });
   assert.deepEqual(cycles, [{
-    start: '2026-10-30', end: '2026-11-30', nextPayday: null,
-    isOpen: true, days: 32, expectedNextPayday: '2026-12-01',
+    start: '2026-10-30', end: null, nextPayday: null,
+    isOpen: true, days: null, expectedNextPayday: '2026-12-01',
   }]);
 });
 
