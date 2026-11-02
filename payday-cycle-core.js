@@ -132,3 +132,50 @@ export function paydayCycleBudgetComparison(budgets = [], transactions = [], cyc
         percent: limit > 0 ? roundMoney((spent / limit) * 100) : 0 };
     }).sort((a, b) => b.percent - a.percent || b.spent - a.spent);
 }
+
+
+/** Forecasts known recurring outflows and an explicitly dated next salary.
+ * It returns net future movement, never a bank balance. Planned transactions are
+ * not read from the register, so no confirmed movement can be counted twice.
+ */
+export function forecastCashflow(recurring = [], transactions = [], options = {}) {
+  const start = parseDate(options.asOf);
+  if (!start) throw new TypeError('asOf deve avere formato YYYY-MM-DD.');
+  const horizons = [...new Set((options.horizons || [30, 60, 90]).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+  const salaryDate = parseDate(options.nextPayday);
+  const salary = Math.max(0, Number(options.expectedSalary) || 0);
+  const results = horizons.map((days) => {
+    const end = new Date(start.getTime() + days * DAY_MS);
+    let expenses = 0;
+    let income = 0;
+    const items = [];
+    for (const plan of Array.isArray(recurring) ? recurring : []) {
+      if (!plan || (plan.status || (plan.active ? 'active' : 'paused')) !== 'active') continue;
+      let due = parseDate(plan.next_due_on || plan.next_due);
+      const amount = Math.max(0, Number(plan.amount) || 0);
+      if (!due || !amount) continue;
+      let remaining = plan.remaining_installments == null ? Infinity : Math.max(0, Number(plan.remaining_installments) || 0);
+      let occurrences = 0;
+      while (due > start && due <= end && occurrences < 120 && remaining > 0) {
+        expenses += amount;
+        occurrences += 1;
+        remaining -= 1;
+        items.push({ type: 'expense', date: iso(due), name: String(plan.name || 'Ricorrenza'), amount });
+        if (plan.cadence === 'once') break;
+        const next = new Date(due);
+        if (plan.cadence === 'weekly') next.setUTCDate(next.getUTCDate() + 7);
+        else if (plan.cadence === 'yearly') next.setUTCFullYear(next.getUTCFullYear() + 1);
+        else next.setUTCMonth(next.getUTCMonth() + 1);
+        if (next <= due) break;
+        due = next;
+      }
+    }
+    if (salaryDate && salaryDate > start && salaryDate <= end && salary > 0) {
+      income += salary;
+      items.push({ type: 'income', date: iso(salaryDate), name: 'Stipendio previsto', amount: salary });
+    }
+    return { days, end: iso(end), recurringExpenses: roundMoney(expenses), expectedIncome: roundMoney(income),
+      netChange: roundMoney(income - expenses), occurrences: items.sort((a,b) => a.date.localeCompare(b.date)) };
+  });
+  return results;
+}
