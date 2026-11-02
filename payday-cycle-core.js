@@ -131,6 +131,6 @@ export function paydayCycleBudgetComparison(budgets = [], transactions = [], cyc
       const spent = spentCents / 100;
       return { id: budget.id, space_id: budget.space_id, category: String(budget.category || 'Da verificare'),
         amount: limit, spent, remaining: roundMoney(limit - spent),
-        percent: limit > 0 ? (spent / limit) * 100 : 0 };
+        percent: limit > 0 ? roundMoney((spent / limit) * 100) : 0 };
     }).sort((a, b) => b.percent - a.percent || b.spent - a.spent);
 }
