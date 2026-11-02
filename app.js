@@ -3920,8 +3920,15 @@ import {
     const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
       (item) => normalizeCategory(item) === normalizedRawCategory
     );
+    // Il valore scelto nel Comando Rapido è già una classificazione esplicita:
+    // se l'etichetta non coincide ancora con il catalogo Tasca, conserviamola
+    // invece di declassificare automaticamente il movimento a "Da verificare".
     const category =
-      shortcutCategoryAliases[normalizedRawCategory] || canonicalCategory || 'Da verificare';
+      shortcutCategoryAliases[normalizedRawCategory] ||
+      canonicalCategory ||
+      (rawCategory && normalizeCategory(rawCategory) !== 'da verificare'
+        ? rawCategory
+        : 'Da verificare');
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
