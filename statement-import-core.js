@@ -1,8 +1,8 @@
-const DATE_KEYS = ['data operazione', 'transaction date', 'date', 'data', 'data valuta', 'booking date'];
-const DESCRIPTION_KEYS = ['descrizione', 'description', 'causale', 'operazione', 'merchant', 'beneficiario', 'dettagli'];
-const AMOUNT_KEYS = ['importo', 'amount', 'valore', 'totale'];
-const DEBIT_KEYS = ['addebito', 'importo addebito', 'importi dare', 'uscite', 'debit', 'withdrawal', 'dare'];
-const CREDIT_KEYS = ['accredito', 'importo accredito', 'importi avere', 'entrate', 'credit', 'deposit', 'avere'];
+const DATE_KEYS = ['data operazione', 'data movimento', 'data transazione', 'transaction date', 'operation date', 'date', 'data', 'data contabile', 'booking date', 'book date'];
+const DESCRIPTION_KEYS = ['descrizione', 'description', 'causale', 'causale abi', 'descrizione operazione', 'descrizione movimento', 'dettaglio', 'dettagli', 'operazione', 'merchant', 'beneficiario', 'esercente', 'payee', 'name', 'nome', 'transaction details', 'narrative', 'memo', 'note'];
+const AMOUNT_KEYS = ['importo', 'amount', 'valore', 'totale', 'transaction amount', 'sum', 'betrag', 'importe'];
+const DEBIT_KEYS = ['addebito', 'importo addebito', 'importi dare', 'uscite', 'debit', 'withdrawal', 'dare', 'debit amount', 'money out', 'paid out', 'outgoing', 'spese', 'importo dare', 'uscita'];
+const CREDIT_KEYS = ['accredito', 'importo accredito', 'importi avere', 'entrate', 'credit', 'deposit', 'avere', 'credit amount', 'money in', 'paid in', 'incoming', 'importo avere', 'entrata'];
 const TYPE_KEYS = ['tipo', 'type', 'transaction type'];
 const FIELD_ALIASES = {
   date: ['data operazione', 'data movimento', 'data transazione', 'transaction date', 'operation date', 'date', 'data', 'data contabile', 'booking date', 'book date'],
