@@ -14,7 +14,7 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from './finance-core.js';
-import { buildPaydayCycles, summarizePaydayCycle } from './payday-cycle-core.js?v=20261102-1';
+import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
   findStatementDuplicates,
@@ -710,7 +710,7 @@ import {
     const input = $('paydayNextDate');
     const status = $('paydaySettingsStatus');
     const value = String(input?.value || '');
-    if (value && !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+    if (value && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || Number.isNaN(new Date(value + 'T00:00:00').getTime()) || new Date(value + 'T00:00:00').toISOString().slice(0, 10) !== value)) {
       if (status) status.textContent = 'Inserisci una data valida.';
       return;
     }
@@ -1072,11 +1072,7 @@ import {
     return cycles[cycles.length - 1] || null;
   }
   function cycleBudgetSpend(budget, cycle) {
-    if (!cycle) return 0;
-    return scopedTransactions().filter((tx) =>
-      isConfirmedMovement(tx) && tx.space_id === budget.space_id && tx.type === 'expense' &&
-      tx.category === budget.category && txDate(tx) >= cycle.start && (!cycle.end || txDate(tx) <= cycle.end)
-    ).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    return paydayCycleBudgetComparison([budget], scopedTransactions(), cycle)[0]?.spent || 0;
   }
   function renderBudgets() {
     const month = $('budgetMonth').value || monthNow();
