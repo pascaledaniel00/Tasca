@@ -731,6 +731,7 @@ import {
     if (status) status.textContent = value ? 'Prossima data di stipendio salvata.' : 'Data prevista rimossa.';
   }
   function renderHome() {
+    renderPaydayCycle();
     const s = monthSummary();
     $('heroBalance').textContent = eur(s.residual);
     $('heroSubtitle').textContent =
@@ -2238,6 +2239,8 @@ import {
   }
   function renderAll() {
     renderSpaceSelector();
+    const paydayInput = $('paydayNextDate');
+    if (paydayInput) paydayInput.value = paydayCycleSettings();
     renderHome();
     renderTransactions();
     renderBudgets();
