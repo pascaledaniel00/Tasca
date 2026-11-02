@@ -110,3 +110,26 @@ export function groupTransactionsByPeriod(transactions = [], cycles = []) {
     };
   });
 }
+
+/** Applies monthly category limits to the full salary cycle containing the budget month. */
+export function paydayCycleBudgetComparison(budgets = [], transactions = [], cycle) {
+  if (!cycle?.start || !parseDate(cycle.start)) return [];
+  const rows = Array.isArray(transactions) ? transactions : [];
+  return (Array.isArray(budgets) ? budgets : [])
+    .filter((budget) => String(budget.month_start || budget.month || '').slice(0, 7) === cycle.start.slice(0, 7))
+    .map((budget) => {
+      const amount = Number(budget.amount);
+      const limit = Number.isFinite(amount) && amount > 0 ? roundMoney(amount) : 0;
+      const spent = roundMoney(rows.reduce((sum, row) => {
+        const date = String(row?.occurred_on || row?.date || '');
+        if (row?.space_id !== budget.space_id || row?.type !== 'expense' ||
+            (row.status != null && row.status !== 'confirmed') ||
+            row?.category !== budget.category || !parseDate(date) ||
+            date < cycle.start || (cycle.end && date > cycle.end)) return sum;
+        return sum + Math.abs(Number(row.amount) || 0);
+      }, 0));
+      return { id: budget.id, space_id: budget.space_id, category: String(budget.category || 'Da verificare'),
+        amount: limit, spent, remaining: roundMoney(limit - spent),
+        percent: limit > 0 ? (spent / limit) * 100 : 0 };
+    }).sort((a, b) => b.percent - a.percent || b.spent - a.spent);
+}
