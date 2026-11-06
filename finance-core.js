@@ -95,6 +95,9 @@ export function normalizeShortcutCategory(value, type = 'expense', categories = 
     const mapped = normalizeExpenseCategory(raw);
     if (available.includes(mapped)) return mapped;
   }
+  if (type === 'transfer' && ['trasferimento', 'trasferimenti', 'transfer'].includes(normalized)) {
+    return available.find((item) => normalizeCategoryLabel(item) === 'trasferimento tra conti') || raw;
+  }
 
   // Mantiene categorie non standard esplicite invece di scartarle.
   return raw;
