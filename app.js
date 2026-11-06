@@ -7,6 +7,7 @@ import {
   validateFundMovement,
   calculateParticipantBalances,
   categoryBreakdown,
+  normalizeShortcutCategory,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
@@ -3940,32 +3941,9 @@ import {
     const type = ['expense', 'income', 'transfer', 'refund'].includes(params.get('type'))
       ? params.get('type')
       : 'expense';
-    // Compatibilità con le etichette del menu nel Comando Rapido iOS.
-    // URLSearchParams decodifica già gli spazi e i caratteri percent-encoded.
-    const normalizeCategory = (value) =>
-      String(value || '')
-        .trim()
-        .toLocaleLowerCase('it-IT')
-        .replace(/\s+/g, ' ');
-    const shortcutCategoryAliases = {
-      spesa: 'Alimentari e supermercato',
-      altro: 'Altre spese personali',
-      'parcheggi e manutenzione': 'Parcheggi e manutenzione',
-      'altre spese personali': 'Altre spese personali',
-    };
-    const normalizedRawCategory = normalizeCategory(rawCategory);
-    const canonicalCategory = (CATEGORIES[type] || CATEGORIES.expense).find(
-      (item) => normalizeCategory(item) === normalizedRawCategory
-    );
-    // Il valore scelto nel Comando Rapido è già una classificazione esplicita:
-    // se l'etichetta non coincide ancora con il catalogo Tasca, conserviamola
-    // invece di declassificare automaticamente il movimento a "Da verificare".
-    const category =
-      shortcutCategoryAliases[normalizedRawCategory] ||
-      canonicalCategory ||
-      (rawCategory && normalizeCategory(rawCategory) !== 'da verificare'
-        ? rawCategory
-        : 'Da verificare');
+    // Converte anche le vecchie etichette abbreviate del Comando Rapido
+    // nelle categorie canoniche usate da Tasca e dai relativi budget.
+    const category = normalizeShortcutCategory(rawCategory, type, CATEGORIES);
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
