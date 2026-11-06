@@ -58,9 +58,9 @@ const EXPENSE_CATEGORY_ALIASES = {
   'rate e pagamenti dilazionati': 'Personali e ricorrenti',
   rate: 'Personali e ricorrenti',
   'pagamenti dilazionati': 'Personali e ricorrenti',
-  'altre spese personali': 'Personali e ricorrenti',
-  'altre spese': 'Personali e ricorrenti',
-  altro: 'Personali e ricorrenti',
+  'altre spese personali': 'Altro',
+  'altre spese': 'Altro',
+  altro: 'Altro',
   'da classificare': 'Da verificare',
   'da verificare': 'Da verificare',
 };
@@ -68,12 +68,12 @@ const EXPENSE_CATEGORY_ALIASES = {
 const normalizeCategoryLabel = (value) =>
   String(value || '')
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLocaleLowerCase('it-IT')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
-    .replace(/\\s+/g, ' ');
+    .replace(/\s+/g, ' ');
 
 export function normalizeExpenseCategory(value) {
   const raw = String(value || '').trim();
