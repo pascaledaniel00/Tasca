@@ -1,63 +1,68 @@
-const SHORTCUT_CATEGORY_ALIASES = {
-  expense: {
-    casa: 'Casa e affitto',
-    auto: 'Auto e assicurazione',
-    'assicurazione auto': 'Auto e assicurazione',
-    parcheggio: 'Parcheggi',
-    parcheggi: 'Parcheggi',
-    manutenzione: 'Manutenzione auto',
-    'manutenzione auto': 'Manutenzione auto',
-    'parcheggi e manutenzione': 'Parcheggi e manutenzione',
-    alimentari: 'Alimentari e supermercato',
-    spesa: 'Alimentari e supermercato',
-    supermercato: 'Alimentari e supermercato',
-    bar: 'Bar, colazioni e snack',
-    colazioni: 'Bar, colazioni e snack',
-    'bar e colazioni': 'Bar, colazioni e snack',
-    snack: 'Bar, colazioni e snack',
-    pranzi: 'Pranzi fuori casa',
-    'pranzo fuori': 'Pranzi fuori casa',
-    'cene e aperitivi': 'Cene, aperitivi e ristoranti',
-    cene: 'Cene, aperitivi e ristoranti',
-    aperitivi: 'Cene, aperitivi e ristoranti',
-    ristoranti: 'Cene, aperitivi e ristoranti',
-    trasporti: 'Trasporti pubblici e taxi',
-    taxi: 'Trasporti pubblici e taxi',
-    telefono: 'Telefono e rate tecnologiche',
-    'rate telefono': 'Telefono e rate tecnologiche',
-    abbonamenti: 'Abbonamenti e intrattenimento',
-    shopping: 'Shopping e cura personale',
-    'cura personale': 'Shopping e cura personale',
-    salute: 'Salute e farmacia',
-    farmacia: 'Salute e farmacia',
-    sport: 'Sport e tempo libero',
-    'tempo libero': 'Sport e tempo libero',
-    regali: 'Regali, viaggi e vacanze',
-    viaggi: 'Regali, viaggi e vacanze',
-    commissioni: 'Commissioni bancarie e finanziarie',
-    'commissioni bancarie': 'Commissioni bancarie e finanziarie',
-    rate: 'Rate e pagamenti dilazionati',
-    'pagamenti dilazionati': 'Rate e pagamenti dilazionati',
-    altro: 'Altre spese personali',
-    'altre spese': 'Altre spese personali',
-    'altre spese personali': 'Altre spese personali',
-    'da classificare': 'Da verificare',
-  },
-  income: {
-    stipendio: 'Stipendio',
-    regalo: 'Regalo o entrata occasionale',
-    'regalo o entrata occasionale': 'Regalo o entrata occasionale',
-    rimborso: 'Rimborso ricevuto',
-    'altre entrate': 'Altre entrate',
-    altro: 'Altre entrate',
-  },
-  transfer: {
-    trasferimento: 'Trasferimento tra conti',
-    'giroconto': 'Trasferimento tra conti',
-  },
-  refund: {
-    rimborso: 'Rimborso ricevuto',
-  },
+const EXPENSE_CATEGORY_ALIASES = {
+  casa: 'Casa',
+  'casa e affitto': 'Casa',
+  affitto: 'Casa',
+  auto: 'Auto e trasporti',
+  'auto e assicurazione': 'Auto e trasporti',
+  'auto e trasporti': 'Auto e trasporti',
+  carburante: 'Auto e trasporti',
+  benzina: 'Auto e trasporti',
+  parcheggi: 'Auto e trasporti',
+  parcheggio: 'Auto e trasporti',
+  manutenzione: 'Auto e trasporti',
+  'manutenzione auto': 'Auto e trasporti',
+  'parcheggi e manutenzione': 'Auto e trasporti',
+  'trasporti pubblici e taxi': 'Auto e trasporti',
+  trasporti: 'Auto e trasporti',
+  taxi: 'Auto e trasporti',
+  alimentari: 'Alimentari',
+  spesa: 'Alimentari',
+  supermercato: 'Alimentari',
+  'alimentari e supermercato': 'Alimentari',
+  bar: 'Fuori casa e tempo libero',
+  colazioni: 'Fuori casa e tempo libero',
+  'bar e colazioni': 'Fuori casa e tempo libero',
+  snack: 'Fuori casa e tempo libero',
+  'bar colazioni e snack': 'Fuori casa e tempo libero',
+  'pranzi fuori casa': 'Fuori casa e tempo libero',
+  pranzi: 'Fuori casa e tempo libero',
+  'pranzo fuori': 'Fuori casa e tempo libero',
+  'cene aperitivi e ristoranti': 'Fuori casa e tempo libero',
+  'cene e aperitivi': 'Fuori casa e tempo libero',
+  cene: 'Fuori casa e tempo libero',
+  aperitivi: 'Fuori casa e tempo libero',
+  ristoranti: 'Fuori casa e tempo libero',
+  'sport e tempo libero': 'Fuori casa e tempo libero',
+  sport: 'Fuori casa e tempo libero',
+  'tempo libero': 'Fuori casa e tempo libero',
+  'personali e ricorrenti': 'Personali e ricorrenti',
+  'telefono e rate tecnologiche': 'Personali e ricorrenti',
+  telefono: 'Personali e ricorrenti',
+  'rate telefono': 'Personali e ricorrenti',
+  'abbonamenti e intrattenimento': 'Personali e ricorrenti',
+  abbonamenti: 'Personali e ricorrenti',
+  shopping: 'Personali e ricorrenti',
+  'shopping e cura personale': 'Personali e ricorrenti',
+  'cura personale': 'Personali e ricorrenti',
+  'salute e farmacia': 'Personali e ricorrenti',
+  salute: 'Personali e ricorrenti',
+  farmacia: 'Personali e ricorrenti',
+  'regali viaggi e vacanze': 'Personali e ricorrenti',
+  'regali e viaggi': 'Personali e ricorrenti',
+  regali: 'Personali e ricorrenti',
+  viaggi: 'Personali e ricorrenti',
+  vacanze: 'Personali e ricorrenti',
+  'commissioni bancarie e finanziarie': 'Personali e ricorrenti',
+  commissioni: 'Personali e ricorrenti',
+  'commissioni bancarie': 'Personali e ricorrenti',
+  'rate e pagamenti dilazionati': 'Personali e ricorrenti',
+  rate: 'Personali e ricorrenti',
+  'pagamenti dilazionati': 'Personali e ricorrenti',
+  'altre spese personali': 'Personali e ricorrenti',
+  'altre spese': 'Personali e ricorrenti',
+  altro: 'Personali e ricorrenti',
+  'da classificare': 'Da verificare',
+  'da verificare': 'Da verificare',
 };
 
 const normalizeCategoryLabel = (value) =>
@@ -70,6 +75,13 @@ const normalizeCategoryLabel = (value) =>
     .trim()
     .replace(/\\s+/g, ' ');
 
+export function normalizeExpenseCategory(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Da verificare';
+  const normalized = normalizeCategoryLabel(raw);
+  return EXPENSE_CATEGORY_ALIASES[normalized] || raw;
+}
+
 export function normalizeShortcutCategory(value, type = 'expense', categories = {}) {
   const raw = String(value || '').trim();
   const normalized = normalizeCategoryLabel(raw);
@@ -79,10 +91,12 @@ export function normalizeShortcutCategory(value, type = 'expense', categories = 
   const canonical = available.find((item) => normalizeCategoryLabel(item) === normalized);
   if (canonical) return canonical;
 
-  const alias = SHORTCUT_CATEGORY_ALIASES[type]?.[normalized];
-  if (alias && available.includes(alias)) return alias;
+  if (type === 'expense') {
+    const mapped = normalizeExpenseCategory(raw);
+    if (available.includes(mapped)) return mapped;
+  }
 
-  // Mantiene le categorie personalizzate esplicite, senza confonderle con alias noti.
+  // Mantiene categorie non standard esplicite invece di scartarle.
   return raw;
 }
 
