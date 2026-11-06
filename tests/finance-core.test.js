@@ -4,6 +4,7 @@ import {
   budgetComparison,
   calculateParticipantBalances,
   categoryBreakdown,
+  normalizeShortcutCategory,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
@@ -11,6 +12,58 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from '../finance-core.js';
+
+test('il Comando Rapido converte le vecchie etichette nelle categorie canoniche di Tasca', () => {
+  const categories = {
+    expense: [
+      'Casa e affitto',
+      'Auto e assicurazione',
+      'Carburante',
+      'Parcheggi',
+      'Manutenzione auto',
+      'Parcheggi e manutenzione',
+      'Alimentari e supermercato',
+      'Bar, colazioni e snack',
+      'Pranzi fuori casa',
+      'Cene, aperitivi e ristoranti',
+      'Trasporti pubblici e taxi',
+      'Telefono e rate tecnologiche',
+      'Abbonamenti e intrattenimento',
+      'Shopping e cura personale',
+      'Salute e farmacia',
+      'Sport e tempo libero',
+      'Regali, viaggi e vacanze',
+      'Commissioni bancarie e finanziarie',
+      'Rate e pagamenti dilazionati',
+      'Altre spese personali',
+      'Da verificare',
+    ],
+    income: ['Stipendio', 'Rimborso ricevuto', 'Regalo o entrata occasionale', 'Altre entrate'],
+    transfer: ['Trasferimento tra conti'],
+    refund: ['Rimborso ricevuto'],
+  };
+
+  const aliases = {
+    Alimentari: 'Alimentari e supermercato',
+    Spesa: 'Alimentari e supermercato',
+    'Bar e colazioni': 'Bar, colazioni e snack',
+    Pranzi: 'Pranzi fuori casa',
+    'Cene e aperitivi': 'Cene, aperitivi e ristoranti',
+    Shopping: 'Shopping e cura personale',
+    Altro: 'Altre spese personali',
+    'Parcheggi e manutenzione': 'Parcheggi e manutenzione',
+    'Regali e viaggi': 'Regali, viaggi e vacanze',
+  };
+
+  for (const [input, expected] of Object.entries(aliases)) {
+    assert.equal(normalizeShortcutCategory(input, 'expense', categories), expected, input);
+  }
+  assert.equal(normalizeShortcutCategory('  BAR   E COLAZIONI ', 'expense', categories), 'Bar, colazioni e snack');
+  assert.equal(normalizeShortcutCategory('Da verificare', 'expense', categories), 'Da verificare');
+  assert.equal(normalizeShortcutCategory('Stipendio', 'income', categories), 'Stipendio');
+  assert.equal(normalizeShortcutCategory('Trasferimento', 'transfer', categories), 'Trasferimento tra conti');
+  assert.equal(normalizeShortcutCategory('Categoria personalizzata', 'expense', categories), 'Categoria personalizzata');
+});
 
 test('riepilogo separa entrate, uscite e trasferimenti', () => {
   assert.deepEqual(
