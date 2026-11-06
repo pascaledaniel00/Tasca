@@ -13,29 +13,14 @@ import {
   validateTransactionInput,
 } from '../finance-core.js';
 
-test('il Comando Rapido converte le vecchie etichette nelle categorie canoniche di Tasca', () => {
+test('le categorie storiche e del Comando Rapido convergono nelle cinque categorie Tasca', () => {
   const categories = {
     expense: [
-      'Casa e affitto',
-      'Auto e assicurazione',
-      'Carburante',
-      'Parcheggi',
-      'Manutenzione auto',
-      'Parcheggi e manutenzione',
-      'Alimentari e supermercato',
-      'Bar, colazioni e snack',
-      'Pranzi fuori casa',
-      'Cene, aperitivi e ristoranti',
-      'Trasporti pubblici e taxi',
-      'Telefono e rate tecnologiche',
-      'Abbonamenti e intrattenimento',
-      'Shopping e cura personale',
-      'Salute e farmacia',
-      'Sport e tempo libero',
-      'Regali, viaggi e vacanze',
-      'Commissioni bancarie e finanziarie',
-      'Rate e pagamenti dilazionati',
-      'Altre spese personali',
+      'Casa',
+      'Auto e trasporti',
+      'Alimentari',
+      'Fuori casa e tempo libero',
+      'Personali e ricorrenti',
       'Da verificare',
     ],
     income: ['Stipendio', 'Rimborso ricevuto', 'Regalo o entrata occasionale', 'Altre entrate'],
@@ -44,21 +29,35 @@ test('il Comando Rapido converte le vecchie etichette nelle categorie canoniche 
   };
 
   const aliases = {
-    Alimentari: 'Alimentari e supermercato',
-    Spesa: 'Alimentari e supermercato',
-    'Bar e colazioni': 'Bar, colazioni e snack',
-    Pranzi: 'Pranzi fuori casa',
-    'Cene e aperitivi': 'Cene, aperitivi e ristoranti',
-    Shopping: 'Shopping e cura personale',
-    Altro: 'Altre spese personali',
-    'Parcheggi e manutenzione': 'Parcheggi e manutenzione',
-    'Regali e viaggi': 'Regali, viaggi e vacanze',
+    'Casa e affitto': 'Casa',
+    Auto: 'Auto e trasporti',
+    'Auto e assicurazione': 'Auto e trasporti',
+    Carburante: 'Auto e trasporti',
+    Parcheggi: 'Auto e trasporti',
+    'Manutenzione auto': 'Auto e trasporti',
+    'Trasporti pubblici e taxi': 'Auto e trasporti',
+    'Alimentari e supermercato': 'Alimentari',
+    Spesa: 'Alimentari',
+    'Bar e colazioni': 'Fuori casa e tempo libero',
+    'Bar, colazioni e snack': 'Fuori casa e tempo libero',
+    'Pranzi fuori casa': 'Fuori casa e tempo libero',
+    'Cene e aperitivi': 'Fuori casa e tempo libero',
+    'Sport e tempo libero': 'Fuori casa e tempo libero',
+    'Telefono e rate tecnologiche': 'Personali e ricorrenti',
+    'Abbonamenti e intrattenimento': 'Personali e ricorrenti',
+    'Shopping e cura personale': 'Personali e ricorrenti',
+    'Salute e farmacia': 'Personali e ricorrenti',
+    'Regali, viaggi e vacanze': 'Personali e ricorrenti',
+    'Commissioni bancarie e finanziarie': 'Personali e ricorrenti',
+    'Rate e pagamenti dilazionati': 'Personali e ricorrenti',
+    'Altre spese personali': 'Personali e ricorrenti',
   };
 
   for (const [input, expected] of Object.entries(aliases)) {
+    assert.equal(normalizeExpenseCategory(input), expected, input);
     assert.equal(normalizeShortcutCategory(input, 'expense', categories), expected, input);
   }
-  assert.equal(normalizeShortcutCategory('  BAR   E COLAZIONI ', 'expense', categories), 'Bar, colazioni e snack');
+  assert.equal(normalizeShortcutCategory('  ALIMENTARI ', 'expense', categories), 'Alimentari');
   assert.equal(normalizeShortcutCategory('Da verificare', 'expense', categories), 'Da verificare');
   assert.equal(normalizeShortcutCategory('Stipendio', 'income', categories), 'Stipendio');
   assert.equal(normalizeShortcutCategory('Trasferimento', 'transfer', categories), 'Trasferimento tra conti');
