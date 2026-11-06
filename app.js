@@ -45,7 +45,7 @@ import {
   const AI_WORKER_URL = 'https://tasca.pascaledaniel00.workers.dev';
 
   const CATEGORIES = {
-    // Le cinque categorie standard sono identiche a quelle da configurare nel Comando Rapido.
+    // Le sei categorie standard sono identiche a quelle da configurare nel Comando Rapido.
     // "Da verificare" resta una voce tecnica per movimenti privi di classificazione affidabile.
     expense: [
       'Casa',
@@ -53,6 +53,7 @@ import {
       'Alimentari',
       'Fuori casa e tempo libero',
       'Personali e ricorrenti',
+      'Altro',
       'Da verificare',
     ],
     income: ['Stipendio', 'Rimborso ricevuto', 'Regalo o entrata occasionale', 'Altre entrate'],
@@ -401,9 +402,9 @@ import {
             '</option>'
         )
         .join('');
-    if (activeSpaceId !== ALL_SPACES && !spaces.some((s) => s.id === activeSpaceId))
+    if (!activeSpaceId || (activeSpaceId !== ALL_SPACES && !spaces.some((s) => s.id === activeSpaceId)))
       activeSpaceId = (spaces.find((s) => s.space_type === 'personal') || spaces[0]).id;
-    select.value = activeSpaceId || ALL_SPACES;
+    select.value = activeSpaceId;
   }
   function monthRows(month) {
     return scopedTransactions().filter((t) => txDate(t).slice(0, 7) === month);
@@ -2808,6 +2809,10 @@ import {
         status: f.get('status'),
         notes: f.get('notes') || null,
       };
+    if (!spaces.some((space) => space.id === spaceId)) {
+      notify('Seleziona uno spazio personale o condiviso valido prima di registrare il movimento.', 'error');
+      return;
+    }
     const validationError = validateTransactionInput(payload);
     if (validationError) {
       notify(validationError, 'error');
@@ -3747,6 +3752,8 @@ import {
     $('editGoalBtn').addEventListener('click', openGoalForm);
     $('activeSpaceSelect').addEventListener('change', (e) => {
       activeSpaceId = e.target.value || null;
+      selectedSpace = null;
+      if ($('spaceDetail')) $('spaceDetail').innerHTML = '';
       renderAll();
       const current = activeSpace();
       notify(
