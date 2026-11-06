@@ -7,6 +7,7 @@ import {
   validateFundMovement,
   calculateParticipantBalances,
   categoryBreakdown,
+  normalizeExpenseCategory,
   normalizeShortcutCategory,
   monthlyTrend,
   serializeFinanceCsv,
@@ -44,27 +45,14 @@ import {
   const AI_WORKER_URL = 'https://tasca.pascaledaniel00.workers.dev';
 
   const CATEGORIES = {
+    // Le cinque categorie standard sono identiche a quelle da configurare nel Comando Rapido.
+    // "Da verificare" resta una voce tecnica per movimenti privi di classificazione affidabile.
     expense: [
-      'Casa e affitto',
-      'Auto e assicurazione',
-      'Carburante',
-      'Parcheggi',
-      'Manutenzione auto',
-      'Parcheggi e manutenzione',
-      'Alimentari e supermercato',
-      'Bar, colazioni e snack',
-      'Pranzi fuori casa',
-      'Cene, aperitivi e ristoranti',
-      'Trasporti pubblici e taxi',
-      'Telefono e rate tecnologiche',
-      'Abbonamenti e intrattenimento',
-      'Shopping e cura personale',
-      'Salute e farmacia',
-      'Sport e tempo libero',
-      'Regali, viaggi e vacanze',
-      'Commissioni bancarie e finanziarie',
-      'Rate e pagamenti dilazionati',
-      'Altre spese personali',
+      'Casa',
+      'Auto e trasporti',
+      'Alimentari',
+      'Fuori casa e tempo libero',
+      'Personali e ricorrenti',
       'Da verificare',
     ],
     income: ['Stipendio', 'Rimborso ricevuto', 'Regalo o entrata occasionale', 'Altre entrate'],
@@ -2712,9 +2700,35 @@ import {
         fetchAllRows(() => db.from('spaces').select('*').order('created_at', { ascending: false }).order('id', { ascending: false })),
       ]);
       if (requestId !== dataLoadSequence || user?.id !== requestUserId) return;
-      transactions = tx;
-      budgets = bg;
-      recurring = rc;
+      // Ricondurre le vecchie categorie alle cinque nuove senza riscrivere lo storico
+      // nel database: le descrizioni e gli importi originali restano invariati.
+      transactions = tx.map((row) =>
+        row.type === 'expense'
+          ? { ...row, category: normalizeExpenseCategory(row.category) }
+          : row
+      );
+      const groupedBudgets = new Map();
+      bg.forEach((row) => {
+        const category = normalizeExpenseCategory(row.category);
+        const key = [row.space_id, row.month_start, category].join('|');
+        const current = groupedBudgets.get(key);
+        if (current) {
+          current.amount = Number(current.amount || 0) + Number(row.amount || 0);
+          current.mergedIds.push(row.id);
+        } else {
+          groupedBudgets.set(key, {
+            ...row,
+            category,
+            amount: Number(row.amount || 0),
+            mergedIds: [row.id],
+          });
+        }
+      });
+      budgets = [...groupedBudgets.values()];
+      recurring = rc.map((row) => ({
+        ...row,
+        category: normalizeExpenseCategory(row.category),
+      }));
       spaces = sp;
       try {
         const [d, dp, g, gm] = await Promise.all([
@@ -2872,11 +2886,18 @@ import {
             x.id !== b?.id
         );
         if (same) throw new Error('Esiste già un budget per questa categoria e questo mese.');
-        const q = b
-          ? db.from('budgets').update(payload).eq('id', b.id)
-          : db.from('budgets').insert(payload);
-        const { error } = await q;
-        if (error) throw error;
+        if (b) {
+          const { error } = await db.from('budgets').update(payload).eq('id', b.id);
+          if (error) throw error;
+          const duplicateIds = (b.mergedIds || []).filter((id) => id !== b.id);
+          if (duplicateIds.length) {
+            const { error: deleteError } = await db.from('budgets').delete().in('id', duplicateIds);
+            if (deleteError) throw deleteError;
+          }
+        } else {
+          const { error } = await db.from('budgets').insert(payload);
+          if (error) throw error;
+        }
         closeModal();
         notify('Budget salvato');
         await loadData();
@@ -2887,7 +2908,9 @@ import {
   }
   async function deleteBudget(id) {
     if (!confirm('Eliminare questo budget?')) return;
-    const { error } = await db.from('budgets').delete().eq('id', id);
+    const budget = budgets.find((item) => item.id === id);
+    const ids = budget?.mergedIds?.length ? budget.mergedIds : [id];
+    const { error } = await db.from('budgets').delete().in('id', ids);
     if (error) {
       notify(error.message, 'error');
       return;
