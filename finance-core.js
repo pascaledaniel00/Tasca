@@ -1,3 +1,91 @@
+const SHORTCUT_CATEGORY_ALIASES = {
+  expense: {
+    casa: 'Casa e affitto',
+    auto: 'Auto e assicurazione',
+    'assicurazione auto': 'Auto e assicurazione',
+    parcheggio: 'Parcheggi',
+    parcheggi: 'Parcheggi',
+    manutenzione: 'Manutenzione auto',
+    'manutenzione auto': 'Manutenzione auto',
+    'parcheggi e manutenzione': 'Parcheggi e manutenzione',
+    alimentari: 'Alimentari e supermercato',
+    spesa: 'Alimentari e supermercato',
+    supermercato: 'Alimentari e supermercato',
+    bar: 'Bar, colazioni e snack',
+    colazioni: 'Bar, colazioni e snack',
+    'bar e colazioni': 'Bar, colazioni e snack',
+    snack: 'Bar, colazioni e snack',
+    pranzi: 'Pranzi fuori casa',
+    'pranzo fuori': 'Pranzi fuori casa',
+    'cene e aperitivi': 'Cene, aperitivi e ristoranti',
+    cene: 'Cene, aperitivi e ristoranti',
+    aperitivi: 'Cene, aperitivi e ristoranti',
+    ristoranti: 'Cene, aperitivi e ristoranti',
+    trasporti: 'Trasporti pubblici e taxi',
+    taxi: 'Trasporti pubblici e taxi',
+    telefono: 'Telefono e rate tecnologiche',
+    'rate telefono': 'Telefono e rate tecnologiche',
+    abbonamenti: 'Abbonamenti e intrattenimento',
+    shopping: 'Shopping e cura personale',
+    'cura personale': 'Shopping e cura personale',
+    salute: 'Salute e farmacia',
+    farmacia: 'Salute e farmacia',
+    sport: 'Sport e tempo libero',
+    'tempo libero': 'Sport e tempo libero',
+    regali: 'Regali, viaggi e vacanze',
+    viaggi: 'Regali, viaggi e vacanze',
+    commissioni: 'Commissioni bancarie e finanziarie',
+    'commissioni bancarie': 'Commissioni bancarie e finanziarie',
+    rate: 'Rate e pagamenti dilazionati',
+    'pagamenti dilazionati': 'Rate e pagamenti dilazionati',
+    altro: 'Altre spese personali',
+    'altre spese': 'Altre spese personali',
+    'altre spese personali': 'Altre spese personali',
+    'da classificare': 'Da verificare',
+  },
+  income: {
+    stipendio: 'Stipendio',
+    regalo: 'Regalo o entrata occasionale',
+    'regalo o entrata occasionale': 'Regalo o entrata occasionale',
+    rimborso: 'Rimborso ricevuto',
+    'altre entrate': 'Altre entrate',
+    altro: 'Altre entrate',
+  },
+  transfer: {
+    trasferimento: 'Trasferimento tra conti',
+    'giroconto': 'Trasferimento tra conti',
+  },
+  refund: {
+    rimborso: 'Rimborso ricevuto',
+  },
+};
+
+const normalizeCategoryLabel = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('it-IT')
+    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\\s+/g, ' ');
+
+export function normalizeShortcutCategory(value, type = 'expense', categories = {}) {
+  const raw = String(value || '').trim();
+  const normalized = normalizeCategoryLabel(raw);
+  if (!normalized || normalized === 'da verificare') return 'Da verificare';
+
+  const available = categories[type] || categories.expense || [];
+  const canonical = available.find((item) => normalizeCategoryLabel(item) === normalized);
+  if (canonical) return canonical;
+
+  const alias = SHORTCUT_CATEGORY_ALIASES[type]?.[normalized];
+  if (alias && available.includes(alias)) return alias;
+
+  // Mantiene le categorie personalizzate esplicite, senza confonderle con alias noti.
+  return raw;
+}
+
 export function calculateDebtSummary(debts = [], payments = []) {
   return debts.map((debt) => {
     const linked = payments.filter((payment) => payment.debt_id === debt.id);
