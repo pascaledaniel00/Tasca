@@ -14,7 +14,7 @@ import {
   validateTransactionInput,
 } from '../finance-core.js';
 
-test('le categorie storiche e del Comando Rapido convergono nelle cinque categorie Tasca', () => {
+test('le categorie storiche e del Comando Rapido convergono nelle sei categorie Tasca', () => {
   const categories = {
     expense: [
       'Casa',
@@ -22,6 +22,7 @@ test('le categorie storiche e del Comando Rapido convergono nelle cinque categor
       'Alimentari',
       'Fuori casa e tempo libero',
       'Personali e ricorrenti',
+      'Altro',
       'Da verificare',
     ],
     income: ['Stipendio', 'Rimborso ricevuto', 'Regalo o entrata occasionale', 'Altre entrate'],
@@ -51,7 +52,9 @@ test('le categorie storiche e del Comando Rapido convergono nelle cinque categor
     'Regali, viaggi e vacanze': 'Personali e ricorrenti',
     'Commissioni bancarie e finanziarie': 'Personali e ricorrenti',
     'Rate e pagamenti dilazionati': 'Personali e ricorrenti',
-    'Altre spese personali': 'Personali e ricorrenti',
+    'Altre spese personali': 'Altro',
+    'Altro': 'Altro',
+    'altre spese': 'Altro',
   };
 
   for (const [input, expected] of Object.entries(aliases)) {
@@ -59,6 +62,8 @@ test('le categorie storiche e del Comando Rapido convergono nelle cinque categor
     assert.equal(normalizeShortcutCategory(input, 'expense', categories), expected, input);
   }
   assert.equal(normalizeShortcutCategory('  ALIMENTARI ', 'expense', categories), 'Alimentari');
+  assert.equal(normalizeShortcutCategory('ALTRO', 'expense', categories), 'Altro');
+  assert.equal(normalizeExpenseCategory('  Altre spese personali  '), 'Altro');
   assert.equal(normalizeShortcutCategory('Da verificare', 'expense', categories), 'Da verificare');
   assert.equal(normalizeShortcutCategory('Stipendio', 'income', categories), 'Stipendio');
   assert.equal(normalizeShortcutCategory('Trasferimento', 'transfer', categories), 'Trasferimento tra conti');
