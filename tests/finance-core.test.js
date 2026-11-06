@@ -4,6 +4,7 @@ import {
   budgetComparison,
   calculateParticipantBalances,
   categoryBreakdown,
+  normalizeExpenseCategory,
   normalizeShortcutCategory,
   monthlyTrend,
   serializeFinanceCsv,
