@@ -3988,7 +3988,14 @@ import {
     }
     // Il Comando Rapido può passare space=personal/personale oppure space=shared/condiviso.
     // Se il parametro manca, manteniamo la selezione tradizionale tra tutti gli spazi.
-    const requestedSpace = normalizeCategoryLabel(params.get('space'));
+    const requestedSpace = String(params.get('space') || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLocaleLowerCase('it-IT')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
     const requestedSpaceType = ['personal', 'personale'].includes(requestedSpace)
       ? 'personal'
       : ['shared', 'condiviso'].includes(requestedSpace)
