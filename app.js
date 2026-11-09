@@ -1043,8 +1043,8 @@ import {
   let statementImportDecisions = {};
   function inferStatementExpenseCategory(description, knownTransactions = []) {
     const normalizeMerchant = (value) => String(value || '').normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('it-IT')
-      .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\\s+/g, ' ');
+      .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('it-IT')
+      .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
     const merchant = normalizeMerchant(description);
     if (!merchant) return 'Da verificare';
     const ignored = ['pagamento', 'acquisto', 'carta', 'contactless', 'apple', 'pay', 'visa', 'mastercard', 'pos'];
@@ -1061,11 +1061,11 @@ import {
       .sort((x, y) => y.score - x.score);
     if (learned.length && learned.every((match) => match.category === learned[0].category)) return learned[0].category;
     const rules = [
-      ['Alimentari', /\\b(esselunga|coop|conad|carrefour|lidl|eurospin|aldi|pam|tigros|iperal|il gigante|unes|supermercat|market|alimentari)\\b/],
-      ['Auto e trasporti', /\\b(eni|q8|tamoil|esso|shell|api|telepass|autostrade|pedaggio|parcheggio|parking|trenord|trenitalia|italo|atm milano|carburante|benzina|diesel)\\b/],
-      ['Fuori casa e tempo libero', /\\b(bar|caffe|coffee|starbucks|mcdonald|burger king|kfc|ristorante|pizzeria|trattoria|osteria|deliveroo|glovo|just eat|uber eats|aperitivo|cinema)\\b/],
-      ['Personali e ricorrenti', /\\b(netflix|spotify|now tv|now|disney plus|icloud|apple com bill|amazon prime|prime video|vodafone|tim|windtre|fastweb|covercare|farmacia|parafarmacia|palestra|virgin active|fitactive)\\b/],
-      ['Casa', /\\b(ikea|leroy merlin|bricoman|obi|affitto|condominio|utenze|enel energia|a2a|plenitude|acea)\\b/],
+      ['Alimentari', /\b(esselunga|coop|conad|carrefour|lidl|eurospin|aldi|pam|tigros|iperal|il gigante|unes|supermercat|market|alimentari)\b/],
+      ['Auto e trasporti', /\b(eni|q8|tamoil|esso|shell|api|telepass|autostrade|pedaggio|parcheggio|parking|trenord|trenitalia|italo|atm milano|carburante|benzina|diesel)\b/],
+      ['Fuori casa e tempo libero', /\b(bar|caffe|coffee|starbucks|mcdonald|burger king|kfc|ristorante|pizzeria|trattoria|osteria|deliveroo|glovo|just eat|uber eats|aperitivo|cinema)\b/],
+      ['Personali e ricorrenti', /\b(netflix|spotify|now tv|now|disney plus|icloud|apple com bill|amazon prime|prime video|vodafone|tim|windtre|fastweb|covercare|farmacia|parafarmacia|palestra|virgin active|fitactive)\b/],
+      ['Casa', /\b(ikea|leroy merlin|bricoman|obi|affitto|condominio|utenze|enel energia|a2a|plenitude|acea)\b/],
     ];
     const matches = rules.filter(([, pattern]) => pattern.test(merchant));
     return matches.length === 1 ? matches[0][0] : 'Da verificare';
