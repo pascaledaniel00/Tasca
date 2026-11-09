@@ -1049,25 +1049,41 @@ import {
     statementImportDecisions = {};
     renderStatementPreview();
   }
-  function renderStatementColumnMapping() {
-    const target = $('statementColumnMapping');
-    if (!target || !statementImportHeaders.length) return;
+  function requestStatementColumnMapping() {
+    const headers = statementImportHeaders;
+    const detected = detectStatementColumns(headers);
     const fields = [
       ['date', 'Data operazione', true], ['posted', 'Data contabilizzazione', false],
-      ['description', 'Descrizione', true], ['amount', 'Importo con segno', false],
+      ['description', 'Descrizione / causale', true], ['amount', 'Importo con segno', false],
       ['debit', 'Addebito / Dare', false], ['credit', 'Accredito / Avere', false],
     ];
-    const options = '<option value="">— Non presente —</option>' + statementImportHeaders.map((header) => '<option value="' + esc(header) + '">' + esc(header) + '</option>').join('');
-    target.innerHTML = '<details class="statement-mapping"><summary>Colonne rilevate · modifica se necessario</summary><div class="formgrid">' +
-      fields.map(([key, label, required]) => '<div class="field"><label>' + label + (required ? ' *' : '') + '</label><select data-statement-column="' + key + '">' + options + '</select></div>').join('') +
-      '</div><button id="applyStatementMapping" class="btn small secondary" type="button">Applica mappatura</button><p class="muted tiny">Compila Importo con segno oppure entrambe le colonne Dare e Avere. La mappatura vale solo per questo file.</p></details>';
-    target.querySelectorAll('[data-statement-column]').forEach((select) => { select.value = statementColumnMapping[select.dataset.statementColumn] || ''; });
-    $('applyStatementMapping')?.addEventListener('click', () => {
-      target.querySelectorAll('[data-statement-column]').forEach((select) => { statementColumnMapping[select.dataset.statementColumn] = select.value || null; });
-      normalizeCurrentStatementRows();
+    const options = '<option value="">— Seleziona colonna —</option>' + headers.map((header) => '<option value="' + esc(header) + '">' + esc(header) + '</option>').join('');
+    const needsChoice = !detected.mapping.date || !detected.mapping.description || (!detected.mapping.amount && !detected.mapping.debit && !detected.mapping.credit);
+    if (!needsChoice) {
+      statementColumnMapping = detected.mapping;
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      openModal('Associa le colonne del CSV', '<p>Non riesco a riconoscere automaticamente tutte le colonne necessarie. Scegli la colonna corretta per ogni dato: la finestra si chiuderà dopo la conferma.</p><div class="formgrid">' +
+        fields.map(([key,label,required]) => '<div class="field"><label>' + label + (required ? ' *' : '') + '</label><select data-statement-column="' + key + '">' + options + '</select></div>').join('') +
+        '</div><p class="muted tiny">Puoi indicare un importo con segno oppure le colonne separate Dare e Avere.</p><div class="row"><button class="btn" type="button" id="cancelStatementMapping">Annulla</button><button class="btn primary" type="button" id="applyStatementMapping">Conferma colonne</button></div>');
+      const body = $('modalBody');
+      fields.forEach(([key]) => { const select = body.querySelector('[data-statement-column="' + key + '"]'); if (select) select.value = detected.mapping[key] || ''; });
+      $('cancelStatementMapping').onclick = () => { closeModal(true); resolve(false); };
+      $('applyStatementMapping').onclick = () => {
+        const mapping = {};
+        body.querySelectorAll('[data-statement-column]').forEach((select) => { mapping[select.dataset.statementColumn] = select.value || null; });
+        if (!mapping.date || !mapping.description || (!mapping.amount && !mapping.debit && !mapping.credit)) {
+          notify('Seleziona data, descrizione e almeno una colonna importo.', 'error');
+          return;
+        }
+        statementColumnMapping = mapping;
+        closeModal(true);
+        resolve(true);
+      };
     });
   }
-  function rowsFromWorkbook(workbook) {
+    function rowsFromWorkbook(workbook) {
     const allRows = [];
     let firstHeaders = [];
     let bestScore = 0;
@@ -1101,62 +1117,90 @@ import {
     const target = $('statementImportPreview');
     if (!target) return;
     const summary = statementImportSummary(statementImportRows);
-    const rows = statementImportRows;
-    renderStatementColumnMapping();
-    const unresolved = rows.filter((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]).length;
-    const ready = rows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || statementImportDecisions[row.sourceRow] === 'keep-both' || statementImportDecisions[row.sourceRow] === 'keep-candidate')).length;
-    target.innerHTML = rows.length ? `
-      <div class="notice tiny">Righe: ${summary.total} · Importabili: ${ready} · Duplicati probabili: ${summary.duplicates} · Corrispondenze da decidere: ${unresolved} · Righe incomplete: ${summary.invalid + summary.review}</div>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Riga</th><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${row.sourceRow}</td><td>${esc(row.occurred_on || '—')}</td><td>${esc(row.description || 'Descrizione mancante')}</td><td>${esc(row.type)}</td><td>${row.amount == null ? '—' : eur(row.amount)}</td><td>${row.duplicate ? 'Duplicato probabile · escluso' : row.possibleDuplicate ? (statementImportDecisions[row.sourceRow] ? 'Decisione: ' + esc(statementImportDecisions[row.sourceRow]) : 'Confronto da decidere') : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare'}</td></tr>`).join('')}
-      </tbody></table></div>
-      ${rows.filter((row) => row.possibleDuplicate).map((row) => {
-        const match = row.duplicateSource === 'existing' ? transactions.find((tx) => tx.id === row.duplicateOf) : rows.find((item) => item.sourceRow === row.duplicateOf);
-        const decision = statementImportDecisions[row.sourceRow];
-        return `<div class="panel"><strong>Possibile corrispondenza · riga ${row.sourceRow}</strong><div class="formgrid"><div class="field"><label>${row.duplicateSource === 'existing' ? 'Movimento già registrato' : 'Movimento precedente nel file'}</label><p>${esc(match?.description || 'Movimento non disponibile')}</p><small class="muted">${esc(match ? fmtDate(txDate(match) || match.occurred_on) : '—')} · ${eur(match?.amount)} · ${esc(match?.payment_method || 'Metodo non specificato')}</small></div><div class="field"><label>Movimento da importare</label><p>${esc(row.description)}</p><small class="muted">${esc(fmtDate(row.occurred_on))} · ${eur(row.amount)} · Metodo: non indicato nell’estratto</small></div></div><div class="row"><button class="btn small" type="button" data-statement-decision="keep-existing" data-source-row="${row.sourceRow}">Tieni il precedente</button><button class="btn small" type="button" data-statement-decision="keep-candidate" data-source-row="${row.sourceRow}">Tieni quello bancario</button><button class="btn small primary" type="button" data-statement-decision="keep-both" data-source-row="${row.sourceRow}">Sono due spese · tieni entrambi</button></div>${decision ? '<p class="muted tiny">Scelta: ' + esc(decision) + '</p>' : '<p class="muted tiny">In attesa della tua scelta: nessuna nuova spesa verrà registrata.</p>'}</div>`;
-      }).join('')}
-      ${summary.total > 100 ? '<p class="muted tiny">Sono visualizzate tutte le righe del file.</p>' : ''}
-      <button id="confirmStatementImport" class="btn primary" type="button" ${ready && !unresolved ? '' : 'disabled'}>Conferma importazione di ${ready} movimenti</button>
-    ` : '';
-    target.querySelectorAll('[data-statement-decision]').forEach((button) => button.addEventListener('click', () => {
-      statementImportDecisions[button.dataset.sourceRow] = button.dataset.statementDecision;
-      renderStatementPreview();
-    }));
-    const button = $('confirmStatementImport');
-    if (button) button.addEventListener('click', importStatementRows);
+    const ready = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate).length;
+    target.innerHTML = statementImportRows.length ? '<div class="notice tiny">Righe lette: ' + summary.total + ' · Movimenti candidati: ' + ready + ' · Duplicati già esclusi: ' + summary.duplicates + ' · Da verificare: ' + (summary.invalid + summary.review) + '</div>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Descrizione</th><th>Tipo</th><th>Importo</th><th>Esito</th></tr></thead><tbody>' +
+      statementImportRows.map((row) => '<tr><td>' + esc(row.occurred_on || '—') + '</td><td>' + esc(row.description || 'Descrizione mancante') + '</td><td>' + esc(row.type) + '</td><td>' + (row.amount == null ? '—' : eur(row.amount)) + '</td><td>' + (row.duplicate ? 'Duplicato escluso' : row.status === 'invalid' ? 'Dati incompleti' : 'Da verificare') + '</td></tr>').join('') +
+      '</tbody></table></div>' : '';
   }
-  async function previewStatementFile() {
+  async function resolveStatementDuplicateChoices() {
+    for (const row of statementImportRows.filter((item) => item.possibleDuplicate)) {
+      const match = row.duplicateSource === 'existing' ? transactions.find((tx) => tx.id === row.duplicateOf) : statementImportRows.find((item) => item.sourceRow === row.duplicateOf);
+      if (!match) continue;
+      const choice = await requestDuplicateDecision(
+        match,
+        { description: row.description, amount: row.amount, occurred_on: row.occurred_on, payment_method: null },
+        row.duplicateSource === 'existing' ? 'Movimento già presente in Tasca' : 'Movimento precedente nel CSV',
+        'Movimento bancario da importare'
+      );
+      if (!choice) return false;
+      statementImportDecisions[row.sourceRow] = choice;
+    }
+    return true;
+  }
+  function requestStatementImportConfirmation(ready, updates) {
+    return new Promise((resolve) => {
+      openModal('Conferma importazione', '<p>Ho analizzato il file. Vuoi importare <strong>' + ready + '</strong> movimenti e riconciliare <strong>' + updates + '</strong> movimenti già presenti?</p><p class="muted tiny">I nuovi movimenti saranno aggiunti allo spazio attivo come “Da verificare”. Nessuna riga verrà salvata prima della conferma.</p><div class="row"><button class="btn" id="cancelStatementImport" type="button">Annulla</button><button class="btn primary" id="acceptStatementImport" type="button">Conferma importazione</button></div>');
+      $('cancelStatementImport').onclick = () => { closeModal(true); resolve(false); };
+      $('acceptStatementImport').onclick = () => { closeModal(true); resolve(true); };
+    });
+  }
+    async function previewStatementFile() {
     const file = $('statementFile')?.files?.[0];
     const status = $('statementImportStatus');
-    statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {}; statementImportFormat = '';
+    statementImportRows = []; statementImportRawRows = []; statementImportHeaders = []; statementColumnMapping = {}; statementImportFormat = ''; statementImportDecisions = {};
     renderStatementPreview();
     if (!file) { if (status) status.textContent = 'Seleziona prima un file.'; return; }
     try {
       const extension = file.name.split('.').pop().toLowerCase();
-      if (['ofx', 'qfx', 'qif', 'sta', 'mt940', 'xml', 'txt'].includes(extension)) {
+      if (extension === 'csv') {
+        if (!window.XLSX) throw new Error('Il lettore CSV non è disponibile. Ricarica la pagina e riprova.');
+        const source = await file.text();
+        if (!source.trim()) throw new Error('Il CSV è vuoto.');
+        const workbook = window.XLSX.read(source.replace(/^\\uFEFF/, ''), { type: 'string', raw: true, cellDates: true });
+        statementImportRawRows = rowsFromWorkbook(workbook);
+        statementImportFormat = 'CSV · ' + workbook.SheetNames.length + ' fogli';
+      } else if (['ofx', 'qfx', 'qif', 'sta', 'mt940', 'xml', 'txt'].includes(extension)) {
         const parsed = parseStatementText(await file.text(), file.name);
         statementImportFormat = parsed.format;
         statementImportRawRows = parsed.rows;
         statementImportHeaders = Object.keys(parsed.rows[0] || {});
-        const detected = detectStatementColumns(statementImportHeaders);
-        statementColumnMapping = detected.mapping;
-        if (!parsed.rows.length) throw new Error('Nessun movimento riconosciuto in questo formato.');
+        statementColumnMapping = detectStatementColumns(statementImportHeaders).mapping;
+        if (!parsed.rows.length) throw new Error('Non ho riconosciuto movimenti. Esporta il conto in CSV o Excel dalla banca.');
       } else {
-        if (!window.XLSX) throw new Error('Lettore Excel non disponibile. Riprova più tardi.');
-        const bytes = await file.arrayBuffer();
-        const workbook = window.XLSX.read(bytes, { type: 'array', cellDates: true, raw: true });
+        if (!window.XLSX) throw new Error('Il lettore Excel non è disponibile. Ricarica la pagina e riprova.');
+        const workbook = window.XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true, raw: true });
         statementImportRawRows = rowsFromWorkbook(workbook);
         statementImportFormat = extension.toUpperCase() + ' · ' + workbook.SheetNames.length + ' fogli';
-        if (!statementImportRawRows.length) throw new Error('Non ho trovato righe di movimento nel file.');
+      }
+      if (!statementImportRawRows.length) throw new Error('Non ho trovato righe di movimento nel file. Controlla che il CSV/Excel contenga una riga di intestazione e i movimenti.');
+      if (!await requestStatementColumnMapping()) {
+        if (status) status.textContent = 'Analisi annullata. Nessun dato è stato salvato.';
+        return;
       }
       normalizeCurrentStatementRows();
       const invalid = statementImportRows.filter((row) => row.status === 'invalid').length;
-      if (status) status.textContent = file.name + ': ' + statementImportRows.length + ' righe lette (' + statementImportFormat + '). ' + invalid + ' righe richiedono verifica. Nessun dato è stato ancora salvato.';
+      if (status) status.textContent = file.name + ': ' + statementImportRows.length + ' righe lette (' + statementImportFormat + '). ' + invalid + ' righe incomplete. Nessun dato è stato ancora salvato.';
+      const duplicatesResolved = await resolveStatementDuplicateChoices();
+      if (!duplicatesResolved) { if (status) status.textContent += ' Importazione annullata durante la riconciliazione.'; return; }
+      const summary = statementImportSummary(statementImportRows);
+      const ready = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && (!row.possibleDuplicate || ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow]))).length;
+      const updates = statementImportRows.filter((row) => row.possibleDuplicate && row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-candidate').length;
+      renderStatementPreview();
+      if (status) status.textContent += ' Totale uscite: ' + eur(summary.expenses) + ' · entrate: ' + eur(summary.income) + '.';
+      if (ready || updates) {
+        const accepted = await requestStatementImportConfirmation(ready, updates);
+        if (accepted) await importStatementRows(true);
+        else if (status) status.textContent += ' Importazione annullata: nessun dato salvato.';
+      }
     } catch (error) {
-      if (status) status.textContent = 'Impossibile leggere il file: ' + (error.message || 'formato non riconosciuto');
+      const message = error?.message || error?.name || 'errore non specificato';
+      if (status) status.textContent = 'Errore durante la lettura: ' + message;
+      openModal('Non riesco a leggere il file', '<p>' + esc(message) + '</p><p class="muted tiny">Nessun movimento è stato importato. Controlla il formato del file e riprova con un’esportazione CSV o Excel originale della banca.</p><button class="btn primary full" type="button" id="closeStatementError">Ho capito</button>');
+      $('closeStatementError').onclick = () => closeModal(true);
     }
   }
-  async function importStatementRows() {
+    async function importStatementRows(confirmed = false) {
     if (!db || !user || !statementImportRows.length) return;
     if (!requireSpecificSpace('importare un estratto conto')) return;
     const unresolved = statementImportRows.some((row) => row.possibleDuplicate && !statementImportDecisions[row.sourceRow]);
@@ -1168,7 +1212,7 @@ import {
     const rows = statementImportRows.filter((row) => row.status === 'needs_review' && !row.duplicate && !skippedFileRows.has(row.sourceRow) && row.amount > 0 && row.occurred_on && row.description && (!row.possibleDuplicate || (row.duplicateSource === 'file' && ['keep-both', 'keep-candidate'].includes(statementImportDecisions[row.sourceRow])) || (row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-both')));
     const updates = statementImportRows.filter((row) => row.possibleDuplicate && row.duplicateSource === 'existing' && statementImportDecisions[row.sourceRow] === 'keep-candidate');
     if (!rows.length && !updates.length) { notify('Non ci sono movimenti da importare o aggiornare.', 'error'); return; }
-    if (!confirm(`Stai per importare ${rows.length} movimenti e riconciliare ${updates.length} corrispondenze nello spazio attivo. I nuovi movimenti saranno marcati “Da verificare”. Vuoi continuare?`)) return;
+    if (!confirmed) { const accepted = await requestStatementImportConfirmation(rows.length, updates.length); if (!accepted) return; }
     try {
       for (const row of updates) {
         const existing = transactions.find((tx) => tx.id === row.duplicateOf);
