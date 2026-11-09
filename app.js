@@ -1269,6 +1269,60 @@ import {
       await loadData();
     } catch (error) { notify(error.message || 'Errore durante l’importazione', 'error'); }
   }
+  function existingUncategorizedCandidates() {
+    const known = scopedTransactions();
+    return known
+      .filter((tx) => tx.type === 'expense' && tx.status === 'confirmed' &&
+        String(tx.category || '').trim().toLocaleLowerCase('it-IT') === 'da verificare')
+      .map((tx) => ({ transaction: tx, category: inferStatementExpenseCategory(tx.description, known) }))
+      .filter((item) => CATEGORIES.expense.includes(item.category) && item.category !== 'Da verificare');
+  }
+  async function reviewExistingUncategorizedTransactions() {
+    const candidates = existingUncategorizedCandidates();
+    if (!candidates.length) {
+      notify('Non ho trovato spese “Da verificare” classificabili con sufficiente certezza.');
+      return;
+    }
+    const counts = candidates.reduce((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + 1;
+      return acc;
+    }, {});
+    const summary = Object.entries(counts).map(([category, count]) => esc(category) + ': ' + count).join(' · ');
+    const preview = candidates.slice(0, 30).map(({ transaction, category }) =>
+      '<tr><td>' + esc(fmtDate(txDate(transaction))) + '</td><td>' + esc(transaction.description || '—') +
+      '</td><td>' + esc(category) + '</td><td>' + eur(transaction.amount) + '</td></tr>'
+    ).join('');
+    openModal('Riclassifica le spese già registrate', `
+      <p>Tasca ha trovato <strong>${candidates.length} spese</strong> confermate con categoria “Da verificare” che può classificare in base all’esercente o a spese precedenti già classificate.</p>
+      <p class="muted tiny">${summary}</p>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Esercente / descrizione</th><th>Nuova categoria</th><th>Importo</th></tr></thead><tbody>${preview}</tbody></table></div>
+      ${candidates.length > 30 ? '<p class="muted tiny">Anteprima delle prime 30 righe; verranno aggiornate tutte le ' + candidates.length + ' spese idonee.</p>' : ''}
+      <p class="muted tiny">Importi, date, descrizioni, metodi di pagamento e spazi resteranno invariati. Sarà modificata soltanto la categoria. Le righe ambigue resteranno “Da verificare”.</p>
+      <div class="row-actions"><button type="button" class="btn secondary" data-category-review-cancel>Annulla</button><button type="button" class="btn primary" data-category-review-confirm>Conferma riclassificazione</button></div>
+    `);
+    $('modalBody').querySelector('[data-category-review-cancel]')?.addEventListener('click', closeModal);
+    $('modalBody').querySelector('[data-category-review-confirm]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      let updated = 0;
+      try {
+        for (const item of candidates) {
+          const { error } = await db.from('transactions').update({ category: item.category })
+            .eq('id', item.transaction.id).eq('space_id', item.transaction.space_id)
+            .eq('status', 'confirmed').eq('category', 'Da verificare');
+          if (error) throw error;
+          updated += 1;
+        }
+        closeModal(true);
+        await loadData();
+        notify('Riclassificate ' + updated + ' spese. Le altre restano da verificare.');
+      } catch (error) {
+        closeModal(true);
+        await loadData();
+        notify('Riclassificate ' + updated + ' spese prima dell’errore: ' + (error.message || 'errore sconosciuto'), 'error');
+      }
+    });
+  }
   function renderTransactions() {
     const query = $('searchMovements').value.trim().toLowerCase(),
       type = $('filterType').value,
@@ -3840,6 +3894,7 @@ import {
             : 'Seleziona uno spazio'
       );
     });
+    $('classifyExistingTransactionsBtn')?.addEventListener('click', reviewExistingUncategorizedTransactions);
     $('searchMovements').addEventListener('input', renderTransactions);
     $('filterType').addEventListener('change', renderTransactions);
     $('filterMonth').addEventListener('change', renderTransactions);
