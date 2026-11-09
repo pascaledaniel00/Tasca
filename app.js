@@ -1223,7 +1223,7 @@ import {
       const payload = rows.map((row) => ({
         space_id: activeSpaceId, type: row.type, amount: row.amount, currency: 'EUR',
         description: row.description.slice(0, 160), category: row.category, occurred_on: row.occurred_on,
-        paid_by: user.id, created_by: user.id, payment_method: null, status: 'verify',
+        paid_by: user.id, created_by: user.id, payment_method: null, status: 'confirmed',
         notes: [row.notes, row.posted_on ? 'Data contabilizzazione: ' + row.posted_on : null, 'Importato da estratto conto · riga ' + row.sourceRow, row.possibleDuplicate ? 'Riconciliazione: scelta esplicita di mantenere anche questa voce.' : null].filter(Boolean).join(' · ').slice(0, 1000),
       }));
       if (payload.length) {
