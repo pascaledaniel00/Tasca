@@ -284,12 +284,13 @@ import {
           <button class="btn full" type="button" data-duplicate-choice="keep-existing">Tieni il movimento già registrato</button>
           <button class="btn full" type="button" data-duplicate-choice="keep-candidate">Tieni il nuovo movimento</button>
           <button class="btn primary full" type="button" data-duplicate-choice="keep-both">Sono due spese diverse · tieni entrambi</button>
+          <button class="btn full" type="button" data-duplicate-choice="cancel">Annulla importazione</button>
         </div>`);
       const body = $('modalBody');
       const finish = (choice) => {
         body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => button.removeEventListener('click', button._duplicateHandler));
         closeModal(true);
-        resolve(choice);
+        resolve(choice === 'cancel' ? null : choice);
       };
       body?.querySelectorAll('[data-duplicate-choice]').forEach((button) => {
         button._duplicateHandler = () => finish(button.dataset.duplicateChoice);
