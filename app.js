@@ -9,13 +9,14 @@ import {
   categoryBreakdown,
   normalizeExpenseCategory,
   normalizeShortcutCategory,
+  normalizeShortcutSpace,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
   summarizeTransactions,
   validateRecurringPlanInput,
   validateTransactionInput,
-} from './finance-core.js?v=20261109-1';
+} from './finance-core.js?v=20261112-1';
 import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison, forecastCashflow } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
@@ -4117,31 +4118,20 @@ import {
       );
       return;
     }
-    // Il Comando Rapido può passare space=personal/personale oppure space=shared/condiviso.
-    // Se il parametro manca, manteniamo la selezione tradizionale tra tutti gli spazi.
-    const requestedSpace = String(params.get('space') || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .toLocaleLowerCase('it-IT')
-      .replace(/[^\p{L}\p{N}]+/gu, ' ')
-      .trim()
-      .replace(/\s+/g, ' ');
-    const requestedSpaceType = ['personal', 'personale'].includes(requestedSpace)
-      ? 'personal'
-      : ['shared', 'condiviso'].includes(requestedSpace)
-        ? 'shared'
-        : ['trip', 'viaggio', 'progetto/viaggio'].includes(requestedSpace)
-          ? 'trip'
-          : null;
-    if (requestedSpace && !requestedSpaceType) {
-      notify('Spazio del Comando Rapido non riconosciuto. Usa Personale o Condiviso.', 'error');
+    // Accetta sia il tipo di spazio (anche con prefissi descrittivi) sia il nome esatto.
+    // Se il parametro manca, mantiene la selezione tradizionale tra gli spazi disponibili.
+    const spaceResolution = normalizeShortcutSpace(params.get('space') || '', spaces);
+    if (spaceResolution.invalid) {
+      notify('Spazio del Comando Rapido non riconosciuto. Usa Personale, Condiviso o il nome esatto dello spazio.', 'error');
       clearShortcutParams();
       return;
     }
-    const eligibleSpaces = requestedSpaceType
-      ? spaces.filter((space) => space.space_type === requestedSpaceType)
-      : spaces;
+    const requestedSpaceType = spaceResolution.spaceType;
+    const eligibleSpaces = spaceResolution.space
+      ? [spaceResolution.space]
+      : requestedSpaceType
+        ? spaces.filter((space) => space.space_type === requestedSpaceType)
+        : spaces;
     if (requestedSpaceType && eligibleSpaces.length === 0) {
       notify(
         requestedSpaceType === 'personal'
