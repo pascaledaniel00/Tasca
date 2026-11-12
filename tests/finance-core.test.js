@@ -6,6 +6,7 @@ import {
   categoryBreakdown,
   normalizeExpenseCategory,
   normalizeShortcutCategory,
+  normalizeShortcutSpace,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
@@ -67,7 +68,28 @@ test('le categorie storiche e del Comando Rapido convergono nelle sei categorie 
   assert.equal(normalizeShortcutCategory('Da verificare', 'expense', categories), 'Da verificare');
   assert.equal(normalizeShortcutCategory('Stipendio', 'income', categories), 'Stipendio');
   assert.equal(normalizeShortcutCategory('Trasferimento', 'transfer', categories), 'Trasferimento tra conti');
-  assert.equal(normalizeShortcutCategory('Categoria personalizzata', 'expense', categories), 'Categoria personalizzata');
+  assert.equal(normalizeShortcutCategory('Categoria personalizzata', 'expense', categories), 'Da verificare');
+  assert.equal(normalizeShortcutCategory('categoria sconosciuta', 'income', categories), 'Altre entrate');
+  assert.equal(normalizeShortcutCategory('categoria sconosciuta', 'transfer', categories), 'Trasferimento tra conti');
+  assert.equal(normalizeShortcutCategory('categoria sconosciuta', 'refund', categories), 'Rimborso ricevuto');
+});
+
+test('il Comando Rapido riconosce varianti dello spazio e nomi esatti', () => {
+  const spaces = [
+    { id: 'p1', name: 'Personale', space_type: 'personal' },
+    { id: 's1', name: 'Casa condivisa', space_type: 'shared' },
+    { id: 't1', name: 'Vacanza', space_type: 'trip' },
+  ];
+  assert.deepEqual(normalizeShortcutSpace('Spazio personale', spaces), {
+    spaceType: 'personal', space: null, invalid: false,
+  });
+  assert.deepEqual(normalizeShortcutSpace('SPAZIO CONDIVISO', spaces), {
+    spaceType: 'shared', space: null, invalid: false,
+  });
+  assert.equal(normalizeShortcutSpace('Progetto/viaggio', spaces).spaceType, 'trip');
+  assert.equal(normalizeShortcutSpace('Casa condivisa', spaces).space.id, 's1');
+  assert.equal(normalizeShortcutSpace('', spaces).invalid, false);
+  assert.equal(normalizeShortcutSpace('Spazio inesistente', spaces).invalid, true);
 });
 
 test('riepilogo separa entrate, uscite e trasferimenti', () => {
