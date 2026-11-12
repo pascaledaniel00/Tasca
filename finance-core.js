@@ -85,9 +85,13 @@ export function normalizeExpenseCategory(value) {
 export function normalizeShortcutCategory(value, type = 'expense', categories = {}) {
   const raw = String(value || '').trim();
   const normalized = normalizeCategoryLabel(raw);
-  if (!normalized || normalized === 'da verificare') return 'Da verificare';
+  const available = Array.isArray(categories[type]) ? categories[type] : [];
+  if (!available.length) return raw || 'Da verificare';
 
-  const available = categories[type] || categories.expense || [];
+  if (!normalized || normalized === 'da verificare' || normalized === 'da classificare') {
+    return available.includes('Da verificare') ? 'Da verificare' : available[0];
+  }
+
   const canonical = available.find((item) => normalizeCategoryLabel(item) === normalized);
   if (canonical) return canonical;
 
@@ -96,11 +100,43 @@ export function normalizeShortcutCategory(value, type = 'expense', categories = 
     if (available.includes(mapped)) return mapped;
   }
   if (type === 'transfer' && ['trasferimento', 'trasferimenti', 'transfer'].includes(normalized)) {
-    return available.find((item) => normalizeCategoryLabel(item) === 'trasferimento tra conti') || raw;
+    const transfer = available.find((item) => normalizeCategoryLabel(item) === 'trasferimento tra conti');
+    if (transfer) return transfer;
   }
 
-  // Mantiene categorie non standard esplicite invece di scartarle.
-  return raw;
+  // Non inviare al database etichette non previste dalle categorie Tasca.
+  const safeFallback = {
+    expense: 'Da verificare',
+    income: 'Altre entrate',
+    transfer: 'Trasferimento tra conti',
+    refund: 'Rimborso ricevuto',
+  }[type];
+  return available.includes(safeFallback) ? safeFallback : available[0];
+}
+
+export function normalizeShortcutSpace(value, spaces = []) {
+  const normalized = normalizeCategoryLabel(value);
+  if (!normalized) return { spaceType: null, space: null, invalid: false };
+
+  const exactMatches = spaces.filter(
+    (space) => normalizeCategoryLabel(space.name) === normalized
+  );
+  if (exactMatches.length === 1) {
+    return { spaceType: exactMatches[0].space_type, space: exactMatches[0], invalid: false };
+  }
+
+  const withoutPrefix = normalized.replace(/^(?:spazio|area)\s+/, '');
+  const aliases = {
+    personal: ['personal', 'personale', 'spazio personale', 'area personale'],
+    shared: ['shared', 'condiviso', 'condivisa', 'condivisi', 'condivise', 'spazio condiviso', 'spazio condivisa', 'area condivisa'],
+    trip: ['trip', 'viaggio', 'viaggi', 'progetto', 'progetto viaggio', 'progetto/viaggio', 'progetti e viaggi', 'spazio progetto viaggio'],
+  };
+  for (const [spaceType, values] of Object.entries(aliases)) {
+    if (values.includes(normalized) || values.includes(withoutPrefix)) {
+      return { spaceType, space: null, invalid: false };
+    }
+  }
+  return { spaceType: null, space: null, invalid: true };
 }
 
 export function calculateDebtSummary(debts = [], payments = []) {
