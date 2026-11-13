@@ -91,7 +91,7 @@ export function normalizeShortcutSpace(value, spaces = []) {
   const aliases = {
     personal: ['personal', 'personale', 'spazio personale', 'area personale'],
     shared: ['shared', 'condiviso', 'condivisa', 'condivisi', 'condivise', 'spazio condiviso', 'spazio condivisa', 'area condivisa'],
-    trip: ['trip', 'viaggio', 'viaggi', 'progetto', 'progetti', 'progetti e/o viaggi', 'progetti e viaggi', 'spazio progetto', 'spazio progetti', 'spazio progetti e/o viaggi', 'progetto viaggio', 'progetto/viaggio', 'progetti e viaggi', 'spazio progetto viaggio'],
+    trip: ['trip', 'viaggio', 'viaggi', 'progetto', 'progetti', 'progetti e o viaggi', 'progetti e/o viaggi', 'progetti e viaggi', 'spazio progetto', 'spazio progetti', 'spazio progetti e o viaggi', 'spazio progetti e/o viaggi', 'progetto viaggio', 'progetto/viaggio', 'spazio progetto viaggio'],
   };
   for (const [spaceType, values] of Object.entries(aliases)) {
     if (values.includes(normalized) || values.includes(withoutPrefix)) {
