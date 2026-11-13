@@ -75,6 +75,9 @@ test('il Comando Rapido riconosce varianti dello spazio e nomi esatti', () => {
     spaceType: 'shared', space: null, invalid: false,
   });
   assert.equal(normalizeShortcutSpace('Progetto/viaggio', spaces).spaceType, 'trip');
+  assert.equal(normalizeShortcutSpace('Progetti e/o viaggi', spaces).spaceType, 'trip');
+  assert.equal(normalizeShortcutSpace('Spazio Progetti e/o viaggi', spaces).spaceType, 'trip');
+  assert.equal(normalizeShortcutSpace('PROGETTI E/O VIAGGI', spaces).spaceType, 'trip');
   assert.equal(normalizeShortcutSpace('Casa condivisa', spaces).space.id, 's1');
   assert.equal(normalizeShortcutSpace('', spaces).invalid, false);
   assert.equal(normalizeShortcutSpace('Spazio inesistente', spaces).invalid, true);
