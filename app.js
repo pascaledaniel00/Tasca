@@ -16,7 +16,7 @@ import {
   summarizeTransactions,
   validateRecurringPlanInput,
   validateTransactionInput,
-} from './finance-core.js?v=20261113-1';
+} from './finance-core.js?v=20261113-2';
 import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison, forecastCashflow } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
@@ -1062,11 +1062,11 @@ import {
       .sort((x, y) => y.score - x.score);
     if (learned.length && learned.every((match) => match.category === learned[0].category)) return learned[0].category;
     const rules = [
-      ['Spesa e alimentari', /\\b(esselunga|coop|conad|carrefour|lidl|eurospin|aldi|pam|tigros|iperal|il gigante|unes|supermercat|market|alimentari)\\b/],
-      ['Auto e trasporti', /\\b(eni|q8|tamoil|esso|shell|api|telepass|autostrade|pedaggio|parcheggio|parking|trenord|trenitalia|italo|atm milano|carburante|benzina|diesel)\\b/],
-      ['Bar e ristoranti', /\\b(bar|caffe|coffee|starbucks|mcdonald|burger king|kfc|ristorante|pizzeria|trattoria|osteria|deliveroo|glovo|just eat|uber eats|aperitivo)\\b/],
-      ['Casa e utenze', /\\b(ikea|leroy merlin|bricoman|obi|affitto|condominio|utenze|enel energia|a2a|plenitude|acea)\\b/],
-      ['Shopping e cura personale', /\\b(zara|hm|uniqlo|decathlon|sephora|douglas|acqua e sapone|ovs|primark|foot locker)\\b/],
+      ['Spesa e alimentari', /\b(esselunga|coop|conad|carrefour|lidl|eurospin|aldi|pam|tigros|iperal|il gigante|unes|supermercat|market|alimentari)\b/],
+      ['Auto e trasporti', /\b(eni|q8|tamoil|esso|shell|api|telepass|autostrade|pedaggio|parcheggio|parking|trenord|trenitalia|italo|atm milano|carburante|benzina|diesel)\b/],
+      ['Bar e ristoranti', /\b(bar|caffe|coffee|starbucks|mcdonald|burger king|kfc|ristorante|pizzeria|trattoria|osteria|deliveroo|glovo|just eat|uber eats|aperitivo)\b/],
+      ['Casa e utenze', /\b(ikea|leroy merlin|bricoman|obi|affitto|condominio|utenze|enel energia|a2a|plenitude|acea)\b/],
+      ['Shopping e cura personale', /\b(zara|hm|uniqlo|decathlon|sephora|douglas|acqua e sapone|ovs|primark|foot locker)\b/],
     ];
     const matches = rules.filter(([, pattern]) => pattern.test(merchant));
     return matches.length === 1 ? matches[0][0] : 'Da verificare';
