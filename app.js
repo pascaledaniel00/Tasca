@@ -16,7 +16,7 @@ import {
   summarizeTransactions,
   validateRecurringPlanInput,
   validateTransactionInput,
-} from './finance-core.js?v=20261113-2';
+} from './finance-core.js?v=20261113-shortcut-space';
 import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison, forecastCashflow } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
