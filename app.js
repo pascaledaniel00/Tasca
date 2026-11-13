@@ -399,7 +399,7 @@ import {
             (s.space_type === 'personal'
               ? 'Personale'
               : s.space_type === 'trip'
-                ? 'Progetto'
+                ? 'Progetti e/o viaggi'
                 : 'Condiviso') +
             '</option>'
         )
@@ -2548,7 +2548,7 @@ import {
           const kind =
             s.space_type === 'personal' ? 'personal' : s.space_type === 'trip' ? 'trip' : 'shared';
           const label =
-            kind === 'personal' ? 'Personale' : kind === 'trip' ? 'Progetto' : 'Condiviso';
+            kind === 'personal' ? 'Personale' : kind === 'trip' ? 'Progetti e/o viaggi' : 'Condiviso';
           const symbol = kind === 'personal' ? '●' : kind === 'trip' ? '◇' : '●';
           return `<div class="space-card ${kind}"><div class="movicon ${kind}">${symbol}</div><div class="movinfo"><strong>${esc(s.name)}</strong><div><span class="space-type ${kind}">${label}</span></div><small>Creato ${esc(fmtDate((s.created_at || '').slice(0, 10)))}</small></div><div class="space-buttons"><button class="btn small" data-open-space="${esc(s.id)}">Apri</button><button class="btn small danger" data-delete-space="${esc(s.id)}" type="button">Elimina</button></div></div>`;
         })
@@ -2720,8 +2720,8 @@ import {
       body: 'Scegli un argomento e una difficoltà per allenarti con domande, spiegazioni e progressi. I quiz servono per imparare e non modificano il registro dei movimenti.',
     },
     {
-      title: 'Spazi personali, condivisi e progetti',
-      body: 'Usa gli spazi per separare le tue finanze personali, quelle condivise e le spese dei progetti. Inviti, membri e ripartizione delle spese funzionano solo quando la relativa configurazione è attiva.',
+      title: 'Spazi personali, condivisi e progetti e/o viaggi',
+      body: 'Usa gli spazi per separare le tue finanze personali, quelle condivise e le spese dei progetti e/o viaggi. Inviti, membri e ripartizione delle spese funzionano solo quando la relativa configurazione è attiva.',
     },
     {
       title: 'Comando Rapido e impostazioni',
@@ -3147,7 +3147,7 @@ import {
   function openSpaceForm(initialType = 'personal') {
     openModal(
       'Crea spazio',
-      `<form id="spaceForm"><div class="field"><label>Nome dello spazio</label><input name="name" maxlength="100" required placeholder="Es. Budget personale, Casa, Regali di Natale, Vacanza"></div><div class="field u-my-16"><label>Tipo di spazio</label><select name="space_type" id="spaceTypeSelect"><option value="personal" ${initialType === 'personal' ? 'selected' : ''}>Personale</option><option value="shared" ${initialType === 'shared' ? 'selected' : ''}>Condiviso</option><option value="trip" ${initialType === 'trip' ? 'selected' : ''}>Progetto</option></select></div><section id="inviteBeforeCreate" class="invite-step" hidden><h3 class="u-mb-6">Invita una persona (facoltativo)</h3><p class="tiny muted u-mb-12">Puoi creare lo spazio anche da solo e invitare altre persone in seguito.</p><div class="field"><label for="initialInviteEmail">Email della persona (facoltativa)</label><input id="initialInviteEmail" name="invite_email" type="email" maxlength="320" placeholder="nome@esempio.it"></div></section><div class="space-form-actions"><button class="btn primary full" type="submit">Crea spazio</button></div></form>`
+      `<form id="spaceForm"><div class="field"><label>Nome dello spazio</label><input name="name" maxlength="100" required placeholder="Es. Budget personale, Casa, Regali di Natale, Vacanza"></div><div class="field u-my-16"><label>Tipo di spazio</label><select name="space_type" id="spaceTypeSelect"><option value="personal" ${initialType === 'personal' ? 'selected' : ''}>Personale</option><option value="shared" ${initialType === 'shared' ? 'selected' : ''}>Condiviso</option><option value="trip" ${initialType === 'trip' ? 'selected' : ''}>Progetti e/o viaggi</option></select></div><section id="inviteBeforeCreate" class="invite-step" hidden><h3 class="u-mb-6">Invita una persona (facoltativo)</h3><p class="tiny muted u-mb-12">Puoi creare lo spazio anche da solo e invitare altre persone in seguito.</p><div class="field"><label for="initialInviteEmail">Email della persona (facoltativa)</label><input id="initialInviteEmail" name="invite_email" type="email" maxlength="320" placeholder="nome@esempio.it"></div></section><div class="space-form-actions"><button class="btn primary full" type="submit">Crea spazio</button></div></form>`
     );
     const typeSelect = $('spaceTypeSelect'),
       inviteBox = $('inviteBeforeCreate'),
@@ -3444,7 +3444,7 @@ import {
       (space.space_type === 'personal'
         ? 'Spazio personale'
         : space.space_type === 'trip'
-          ? 'Spazio progetto'
+          ? 'Spazio progetti e/o viaggi'
           : 'Spazio condiviso') +
       '</p>' +
       '<button class="btn primary full u-space-action" id="addSpaceMovementTop" data-add-space-movement data-space-id="' +
@@ -4138,7 +4138,7 @@ import {
           ? 'Non hai uno spazio personale disponibile per questa registrazione.'
           : requestedSpaceType === 'shared'
             ? 'Non hai uno spazio condiviso disponibile per questa registrazione.'
-            : 'Non hai uno spazio progetto disponibile per questa registrazione.',
+            : 'Non hai uno spazio progetti e/o viaggi disponibile per questa registrazione.',
         'error'
       );
       clearShortcutParams();
@@ -4152,7 +4152,7 @@ import {
             space.space_type === 'personal'
               ? 'Personale'
               : space.space_type === 'trip'
-                ? 'Progetto'
+                ? 'Progetti e/o viaggi'
                 : 'Condiviso';
           return index + 1 + '. ' + space.name + ' (' + kind + ')';
         })
