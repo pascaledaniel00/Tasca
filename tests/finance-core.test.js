@@ -18,11 +18,11 @@ import {
 test('le categorie storiche e del Comando Rapido convergono nelle sei categorie Tasca', () => {
   const categories = {
     expense: [
-      'Casa',
+      'Spesa e alimentari',
       'Auto e trasporti',
-      'Alimentari',
-      'Fuori casa e tempo libero',
-      'Personali e ricorrenti',
+      'Bar e ristoranti',
+      'Casa e utenze',
+      'Shopping e cura personale',
       'Altro',
       'Da verificare',
     ],
@@ -32,30 +32,18 @@ test('le categorie storiche e del Comando Rapido convergono nelle sei categorie 
   };
 
   const aliases = {
-    'Casa e affitto': 'Casa',
-    Auto: 'Auto e trasporti',
-    'Auto e assicurazione': 'Auto e trasporti',
-    Carburante: 'Auto e trasporti',
-    Parcheggi: 'Auto e trasporti',
-    'Manutenzione auto': 'Auto e trasporti',
-    'Trasporti pubblici e taxi': 'Auto e trasporti',
-    'Alimentari e supermercato': 'Alimentari',
-    Spesa: 'Alimentari',
-    'Bar e colazioni': 'Fuori casa e tempo libero',
-    'Bar, colazioni e snack': 'Fuori casa e tempo libero',
-    'Pranzi fuori casa': 'Fuori casa e tempo libero',
-    'Cene e aperitivi': 'Fuori casa e tempo libero',
-    'Sport e tempo libero': 'Fuori casa e tempo libero',
-    'Telefono e rate tecnologiche': 'Personali e ricorrenti',
-    'Abbonamenti e intrattenimento': 'Personali e ricorrenti',
-    'Shopping e cura personale': 'Personali e ricorrenti',
-    'Salute e farmacia': 'Personali e ricorrenti',
-    'Regali, viaggi e vacanze': 'Personali e ricorrenti',
-    'Commissioni bancarie e finanziarie': 'Personali e ricorrenti',
-    'Rate e pagamenti dilazionati': 'Personali e ricorrenti',
-    'Altre spese personali': 'Altro',
-    'Altro': 'Altro',
-    'altre spese': 'Altro',
+    'Casa e affitto': 'Casa e utenze', Casa: 'Casa e utenze', Bollette: 'Casa e utenze',
+    Auto: 'Auto e trasporti', 'Auto e assicurazione': 'Auto e trasporti', Carburante: 'Auto e trasporti',
+    Parcheggi: 'Auto e trasporti', 'Manutenzione auto': 'Auto e trasporti', 'Trasporti pubblici e taxi': 'Auto e trasporti',
+    Alimentari: 'Spesa e alimentari', Spesa: 'Spesa e alimentari', 'Alimentari e supermercato': 'Spesa e alimentari',
+    Bar: 'Bar e ristoranti', 'Bar e colazioni': 'Bar e ristoranti', 'Bar, colazioni e snack': 'Bar e ristoranti',
+    'Pranzi fuori casa': 'Bar e ristoranti', 'Cene e aperitivi': 'Bar e ristoranti',
+    'Fuori casa e tempo libero': 'Bar e ristoranti',
+    'Shopping e cura personale': 'Shopping e cura personale', Shopping: 'Shopping e cura personale',
+    'Telefono e rate tecnologiche': 'Altro', 'Abbonamenti e intrattenimento': 'Altro',
+    'Personali e ricorrenti': 'Altro', 'Salute e farmacia': 'Altro', 'Regali, viaggi e vacanze': 'Altro',
+    'Commissioni bancarie e finanziarie': 'Altro', 'Rate e pagamenti dilazionati': 'Altro',
+    'Sport e tempo libero': 'Altro', 'Altre spese personali': 'Altro', Altro: 'Altro', 'altre spese': 'Altro',
   };
 
   for (const [input, expected] of Object.entries(aliases)) {
