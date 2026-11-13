@@ -50,7 +50,7 @@ test('le categorie storiche e del Comando Rapido convergono nelle sei categorie 
     assert.equal(normalizeExpenseCategory(input), expected, input);
     assert.equal(normalizeShortcutCategory(input, 'expense', categories), expected, input);
   }
-  assert.equal(normalizeShortcutCategory('  ALIMENTARI ', 'expense', categories), 'Alimentari');
+  assert.equal(normalizeShortcutCategory('  ALIMENTARI ', 'expense', categories), 'Spesa e alimentari');
   assert.equal(normalizeShortcutCategory('ALTRO', 'expense', categories), 'Altro');
   assert.equal(normalizeExpenseCategory('  Altre spese personali  '), 'Altro');
   assert.equal(normalizeShortcutCategory('Da verificare', 'expense', categories), 'Da verificare');
