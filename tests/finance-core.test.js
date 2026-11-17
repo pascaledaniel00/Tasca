@@ -7,6 +7,7 @@ import {
   normalizeExpenseCategory,
   normalizeShortcutCategory,
   normalizeShortcutSpace,
+  normalizeShortcutDate,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
@@ -14,6 +15,17 @@ import {
   validateRecurringPlanInput,
   validateTransactionInput,
 } from '../finance-core.js';
+
+test('normalizeShortcutDate accetta date italiane e ISO e rifiuta date impossibili', () => {
+  assert.equal(normalizeShortcutDate('17-11-2026'), '2026-11-17');
+  assert.equal(normalizeShortcutDate('05-01-2026'), '2026-01-05');
+  assert.equal(normalizeShortcutDate('31-12-2026'), '2026-12-31');
+  assert.equal(normalizeShortcutDate('2026-11-17'), '2026-11-17');
+  assert.equal(normalizeShortcutDate('31-02-2026'), null);
+  assert.equal(normalizeShortcutDate('29-02-2025'), null);
+  assert.equal(normalizeShortcutDate('2026-13-01'), null);
+  assert.equal(normalizeShortcutDate(''), null);
+});
 
 test('le categorie storiche e del Comando Rapido convergono nelle sei categorie Tasca', () => {
   const categories = {
