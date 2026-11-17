@@ -3522,7 +3522,7 @@ import {
           const link = url.toString();
           result.innerHTML =
             '<div class="notice"><strong>Invito creato</strong><p class="tiny">Scade: ' +
-            esc(new Date(row.expires_at).toLocaleString('it-IT')) +
+            esc(formatItalianDateTime(row.expires_at)) +
             '</p><input id="inviteLink" readonly value="' +
             esc(link) +
             '" class="invite-link-input-compact"><button class="btn small u-mt-8" id="copyInviteLink" type="button">Copia link</button><p class="tiny muted">Condividi il link solo con ' +
