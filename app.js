@@ -10,13 +10,14 @@ import {
   normalizeExpenseCategory,
   normalizeShortcutCategory,
   normalizeShortcutSpace,
+  normalizeShortcutDate,
   monthlyTrend,
   serializeFinanceCsv,
   settlementPlan,
   summarizeTransactions,
   validateRecurringPlanInput,
   validateTransactionInput,
-} from './finance-core.js?v=20261113-shortcut-space';
+} from './finance-core.js?v=20261117-date-it';
 import { buildPaydayCycles, summarizePaydayCycle, paydayCycleBudgetComparison, forecastCashflow } from './payday-cycle-core.js?v=20261102-1';
 import {
   normalizeStatementRows,
@@ -414,10 +415,29 @@ import {
   function monthSummary(month = monthNow()) {
     return summarizeTransactions(monthRows(month));
   }
+  function formatItalianDate(value) {
+    if (!value) return '—';
+    const raw = String(value);
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return iso[3] + '-' + iso[2] + '-' + iso[1];
+    const italian = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (italian) return raw;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return raw;
+    return String(parsed.getDate()).padStart(2, '0') + '-' +
+      String(parsed.getMonth() + 1).padStart(2, '0') + '-' +
+      String(parsed.getFullYear()).padStart(4, '0');
+  }
+  function formatItalianDateTime(value) {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return formatItalianDate(parsed) + ' ' +
+      String(parsed.getHours()).padStart(2, '0') + ':' +
+      String(parsed.getMinutes()).padStart(2, '0');
+  }
   function fmtDate(s) {
-    if (!s) return '—';
-    const d = new Date(s + 'T12:00:00');
-    return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString('it-IT');
+    return formatItalianDate(s);
   }
   function movementHtml(t, actions = false) {
     const positive = t.type === 'income' || t.type === 'refund';
@@ -3195,7 +3215,7 @@ import {
             const link = u.toString();
             openModal(
               'Spazio creato · Invito pronto',
-              `<div class="notice"><strong>${esc(name)}</strong> è stato creato. Invia il link a ${esc(email)}. Scade il ${esc(new Date(inv.expires_at).toLocaleString('it-IT'))}.</div><div class="field"><label for="newInviteLink">Link d’invito</label><input id="newInviteLink" readonly value="${esc(link)}" class="invite-link-input"></div><button class="btn terra full" id="copyNewInviteLink" type="button">Copia link d’invito</button><button class="btn full u-mt-8" id="finishInvite" type="button">Vai allo spazio</button>`
+              `<div class="notice"><strong>${esc(name)}</strong> è stato creato. Invia il link a ${esc(email)}. Scade il ${esc(formatItalianDateTime(inv.expires_at))}.</div><div class="field"><label for="newInviteLink">Link d’invito</label><input id="newInviteLink" readonly value="${esc(link)}" class="invite-link-input"></div><button class="btn terra full" id="copyNewInviteLink" type="button">Copia link d’invito</button><button class="btn full u-mt-8" id="finishInvite" type="button">Vai allo spazio</button>`
             );
             $('copyNewInviteLink').addEventListener('click', async () => {
               try {
@@ -3557,7 +3577,7 @@ import {
     const meta = user.user_metadata || {};
     const displayName = meta.full_name || meta.name || '';
     const created = user.created_at
-      ? new Date(user.created_at).toLocaleDateString('it-IT')
+      ? formatItalianDate(user.created_at)
       : 'Non disponibile';
     $('accountPopover').innerHTML =
       `<div class="account-popover-head"><strong>Account e impostazioni</strong><button class="account-popover-close" id="accountPopoverClose" type="button" aria-label="Chiudi">×</button></div><div class="account-settings">
@@ -4097,7 +4117,7 @@ import {
     const description = String(params.get('description') || params.get('merchant') || '')
       .trim()
       .slice(0, 160);
-    const date = params.get('date') || today();
+    const date = normalizeShortcutDate(params.get('date') || today());
     const method = params.get('method') || 'Apple Pay';
     const rawCategory = String(params.get('category') || 'Da verificare').trim();
     const type = ['expense', 'income', 'transfer', 'refund'].includes(params.get('type'))
@@ -4110,7 +4130,7 @@ import {
       !Number.isFinite(amount) ||
       amount <= 0 ||
       !description ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      !date
     ) {
       notify(
         'Dati del Comando Rapido incompleti o non validi. Controlla importo, esercente e data.',
@@ -4216,7 +4236,7 @@ import {
           '\n' +
           eur(amount) +
           '\nData: ' +
-          date +
+          fmtDate(date) +
           '\nMetodo: ' +
           method +
           '\nCategoria: ' +
