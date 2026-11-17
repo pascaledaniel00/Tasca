@@ -281,6 +281,29 @@ export function budgetComparison(budgets = [], rows = [], month, limit = 4) {
     .slice(0, limit);
 }
 
+// Accetta date italiane dd-MM-yyyy e date ISO storiche; restituisce sempre ISO per il database.
+export function normalizeShortcutDate(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  let year, month, day;
+  let match = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (match) {
+    day = Number(match[1]); month = Number(match[2]); year = Number(match[3]);
+  } else {
+    match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    year = Number(match[1]); month = Number(match[2]); day = Number(match[3]);
+  }
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (!Number.isInteger(year) || year < 1000 ||
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day) return null;
+  return String(year).padStart(4, '0') + '-' +
+    String(month).padStart(2, '0') + '-' +
+    String(day).padStart(2, '0');
+}
+
 export function validateTransactionInput(payload = {}) {
   if (!payload.space_id) return 'Crea prima uno spazio personale nella sezione Spazi.';
   if (!['expense', 'income', 'transfer', 'refund'].includes(payload.type)) {
